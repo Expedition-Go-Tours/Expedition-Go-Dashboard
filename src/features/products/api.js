@@ -61,8 +61,25 @@ export const getMyProduct = async (id) => {
 };
 
 /**
+ * Upload photos to Cloudinary (standalone, no tour creation)
+ * @param {FormData} formData - FormData with `photos` field containing File[]
+ * @returns {Promise} Axios response with { data: { photos: string[] } }
+ */
+export const uploadPhotos = (formData) =>
+  api.post('/tours/upload-photos', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+
+/**
  * Delete a product/tour
  * @param {string} id - Product ID
  * @returns {Promise} Axios response
  */
 export const deleteProduct = (id) => api.delete(`/tours/${id}`);
+
+/**
+ * Request a new keyword to be added to the pre-approved list
+ * @param {string} keyword
+ * @returns {Promise} Axios response
+ */
+export const requestKeyword = (keyword) => api.post('/keywords/request', { keyword });

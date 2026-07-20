@@ -1,542 +1,403 @@
-import { useParams, useSearchParams, useNavigate, useBlocker } from "react-router-dom";
-import { useEffect, useState, useCallback } from "react";
-import { Loader2, AlertCircle } from "lucide-react";
-import { useProductBuilderStore, SECTIONS } from "@/features/products/stores/productBuilderStore";
-import { getMyProduct } from "@/features/products/api";
-import WizardStepLayout from "@/features/products/components/WizardStepLayout";
-import LanguageTitleStep from "@/features/products/components/LanguageTitleStep";
-import CategorizationStep from "@/features/products/components/CategorizationStep";
-import ThemeStep from "@/features/products/components/ThemeStep";
-import ProductPhotosStep from "@/features/products/components/ProductPhotosStep";
-import MeetingPickupStep from "@/features/products/components/MeetingPickupStep";
-import TourDetailsStep from "@/features/products/components/TourDetailsStep";
-import LanguagesOfferedStep from "@/features/products/components/LanguagesOfferedStep";
-import InclusionsExclusionsStep from "@/features/products/components/InclusionsExclusionsStep";
-import USPStep from "@/features/products/components/USPStep";
-import TravelerInfoStep from "@/features/products/components/TravelerInfoStep";
-import TravelerDetailsStep from "@/features/products/components/TravelerDetailsStep";
-import PricingSchedulesStep from "@/features/products/components/PricingSchedulesStep";
-import BookingProcessStep from "@/features/products/components/BookingProcessStep";
-import CancellationPolicyStep from "@/features/products/components/CancellationPolicyStep";
-import TravelerRequiredInfoStep from "@/features/products/components/TravelerRequiredInfoStep";
-import PreviewStep from "@/features/products/components/PreviewStep";
-import { normalizeHighlights } from "@/features/products/utils/normalizeHighlights";
-import { normalizeItinerary } from "@/features/products/utils/normalizeItinerary";
-import {
-  parseProductTypeFromCategorization,
-} from "@/features/products/utils/productTypeFromCategorization";
+import { useParams, useSearchParams, useNavigate, useBlocker } from 'react-router-dom'
+import { useEffect, useState, useCallback } from 'react'
+import { Loader2, AlertCircle, X } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { toast } from 'sonner'
+import { useProductBuilderStore } from '@/features/products/productBuilderStore'
+import { getMyProduct, createProduct, updateProduct } from '@/features/products/api'
+import { GYG_STEPS, GYG_SECTIONS } from '@/features/products/gygSteps'
+import WizardSidebar from '@/features/products/WizardSidebar'
+import WizardNavFooter from '@/features/products/WizardNavFooter'
+import Step01Language from '@/features/products/steps/Step01Language'
+import Step02Category from '@/features/products/steps/Step02Category'
+import Step03Title from '@/features/products/steps/Step03Title'
+import Step04Descriptions from '@/features/products/steps/Step04Descriptions'
+import Step05Locations from '@/features/products/steps/Step05Locations'
+import Step06Keywords from '@/features/products/steps/Step06Keywords'
+import Step07Inclusions from '@/features/products/steps/Step07Inclusions'
+import Step08Photos from '@/features/products/steps/Step08Photos'
+import Step09ExtraInfo from '@/features/products/steps/Step09ExtraInfo'
+import Step10Options from '@/features/products/steps/Step10Options'
+import Step11MeetingPoint from '@/features/products/steps/Step11MeetingPoint'
+import Step12PricingAvailability from '@/features/products/steps/Step12PricingAvailability'
+import Step13Itinerary from '@/features/products/steps/Step13Itinerary'
 
-const STEPS = [
-  { id: "language-and-title", label: "Language & Title", description: "Choose your writing language and set your product title.", component: LanguageTitleStep },
-  { id: "categorization", label: "Categorization", description: "Choose your product type and categorize it.", component: CategorizationStep },
-  { id: "theme", label: "Theme", description: "Choose themes that best describe your product.", component: ThemeStep },
-  { id: "photos", label: "Photos & Media", description: "Upload photos and add media to showcase your product.", component: ProductPhotosStep },
-  { id: "meeting-and-pickup", label: "Meeting & Pickup", description: "Set meeting and pickup instructions.", component: MeetingPickupStep },
-  { id: "tour-details", label: "Tour Details", description: "Add itinerary and highlights for your product.", component: TourDetailsStep },
-  { id: "languages-offered", label: "Languages Offered", description: "Select languages your product is offered in.", component: LanguagesOfferedStep },
-  { id: "inclusions-exclusions", label: "Inclusions & Exclusions", description: "Specify what's included and excluded.", component: InclusionsExclusionsStep },
-  { id: "unique-selling-points", label: "What Makes Your Product Unique", description: "Describe what sets your product apart.", component: USPStep },
-  { id: "info-travelers-need", label: "Information Travelers Need", description: "Provide important information for travelers.", component: TravelerInfoStep },
-  { id: "traveler-details", label: "Traveler Details", description: "Select details to collect from travelers.", component: TravelerDetailsStep },
-  { id: "pricing-schedules", label: "Pricing Schedules", description: "Set pricing tiers, taxes, and fees.", component: PricingSchedulesStep },
-  { id: "booking-process", label: "Booking Process", description: "Configure booking confirmation, cut-off, and operating days.", component: BookingProcessStep },
-  { id: "cancellation-policy", label: "Cancellation Policy", description: "Set cancellation and refund policies.", component: CancellationPolicyStep },
-  { id: "traveler-required-info", label: "Traveler Required Info", description: "Select information to collect from travelers.", component: TravelerRequiredInfoStep },
-  { id: "preview", label: "Preview", description: "Preview your product before submitting.", component: PreviewStep },
-];
+const STEP_COMPONENTS = {
+  1: Step01Language,
+  2: Step02Category,
+  3: Step03Title,
+  4: Step04Descriptions,
+  5: Step05Locations,
+  6: Step06Keywords,
+  7: Step07Inclusions,
+  8: Step08Photos,
+  9: Step09ExtraInfo,
+  10: Step10Options,
+  11: Step11MeetingPoint,
+  12: Step12PricingAvailability,
+  13: Step13Itinerary,
+}
+
+const STEP_LABELS = {
+  1: 'Language',
+  2: 'Product Category',
+  3: 'Title & Reference Code',
+  4: 'Descriptions & highlights',
+  5: 'Locations',
+  6: 'Keywords',
+  7: 'Inclusions',
+  8: 'Photos',
+  9: 'Extra information',
+  10: 'Options',
+  11: 'Meeting Point & Pickup',
+  12: 'Pricing & Availability',
+  13: 'Itinerary',
+}
+
+function getGygStepIndex(sectionId, stepId) {
+  const idx = GYG_STEPS.findIndex((s) => s.sectionId === sectionId && s.stepId === stepId)
+  return idx >= 0 ? idx : 0
+}
 
 function tourToProduct(tour) {
-  if (!tour) return null;
-
-  const categorization = tour.categorization || {};
-  const theme = tour.theme || {};
-  const content = tour.productContent || {};
-  const schedules = tour.schedulesAndPricing || {};
-  const booking = tour.bookingAndTickets || {};
-  const pricingSchedules = schedules.pricingSchedules || {};
-  const cancellation = booking.cancellationPolicy || {};
-  const meetingPoint = booking.meetingPoint || {};
-  const location = content.location || {};
-  const duration = categorization.duration || {};
-  const groupSize = categorization.groupSize || {};
-  const transportMode = categorization.transportMode || {};
-  const transportModes = [
-    ...(transportMode.land || []),
-    ...(transportMode.air || []),
-  ];
-
-  const durationHours = duration.hours || 0;
-  const durationMinutes = duration.minutes || 0;
-  const durationDays = duration.days || 0;
-  const durationValue = durationMinutes || durationHours || durationDays;
-  const durationUnit = durationMinutes > 0 ? "minutes" : durationDays > 0 ? "days" : "hours";
-
-  const dayMapping = {
-    Monday: "monday", Tuesday: "tuesday", Wednesday: "wednesday",
-    Thursday: "thursday", Friday: "friday", Saturday: "saturday", Sunday: "sunday",
-  };
-  const operatingDays = (schedules.operatingDays || []).map(
-    (d) => dayMapping[d] || d?.toLowerCase?.() || d
-  );
-
-  const timeSlots = (schedules.timeSlots || []).map((slot) => ({
-    startTime: typeof slot === "string" ? slot : (slot.startTime || slot),
-    endTime: slot.endTime || "",
-  }));
-
-  const {
-    productType,
-    tourDurationCategory,
-    activityCategories,
-    transportCategories,
-  } = parseProductTypeFromCategorization(categorization);
+  if (!tour) return null
+  const content = tour.productContent || {}
+  const categorization = tour.categorization || {}
+  const booking = tour.bookingAndTickets || {}
+  const meetingPoint = booking.meetingPoint || {}
 
   return {
-    title: tour.title || "",
-    referenceCode: tour.referenceCode || "",
-    description: tour.description || "",
-    shortSummary: content.shortSummary || "",
-    specialOffers: tour.specialOffers || [],
-    category: categorization.category || "",
-    subcategory: categorization.subcategory || "",
-    theme: theme.primaryTheme || theme.primary || "",
-    primaryTheme: theme.primaryTheme || theme.primary || "",
-    secondaryThemes: theme.secondaryThemes || theme.secondary || [],
-    tags: tour.tags || [],
-    slug: tour.slug || "",
-    difficulty: categorization.difficulty || "Easy",
-    duration: durationValue,
-    durationUnit,
-    activityType: categorization.activityType || "Guided Tour",
-    productType,
-    tourTransportationModes: transportModes,
-    tourDurationCategory,
-    activityCategories,
-    transportCategories,
-    city: location.city || tour.city || "",
-    country: location.country || tour.country || "",
-    region: location.region || "",
-    latitude: tour.latitude,
-    longitude: tour.longitude,
-    metaTitle: tour.metaTitle || tour.title || "",
-    metaDescription: tour.metaDescription || "",
-    photos: (tour.photos || []).map((url, i) => ({
-      id: `photo_${i}_${url}`,
-      url,
-      file: null,
-      alt: '',
-    })),
-    heroImage: (() => {
-      if (!tour.coverPhoto) return null;
-      const extractId = (url) => {
-        if (!url) return '';
-        const m = url.match(/\/(?:v\d+\/)?([^/]+)$/);
-        return m ? m[1] : url;
-      };
-      const coverId = extractId(tour.coverPhoto);
-      const idx = (tour.photos || []).findIndex((url) => extractId(url) === coverId);
-      return idx >= 0 ? `photo_${idx}_${tour.photos[idx]}` : null;
-    })(),
-    videoUrl: "",
-    pricing: {
-      pricingModel: schedules.travelerDetails?.pricingModel || "perPerson",
-      vehicleType: schedules.travelerDetails?.vehicleType || "",
-      maxTravelersPerBooking: schedules.travelerDetails?.maxTravelersPerBooking ?? 2,
-      currency: pricingSchedules.currency || "USD",
-      ageGroups: (() => {
-        const apiAgeGroups = schedules.travelerDetails?.ageGroups || [];
-        if (apiAgeGroups.length > 0) {
-          return apiAgeGroups.map(ag => ({
-            name: ag.label,
-            enabled: true,
-            minAge: ag.minAge ?? 0,
-            maxAge: ag.maxAge ?? 99,
-          }));
+    language: content.writingLanguage || '',
+    category: categorization.category || '',
+    activityType: categorization.activityType || '',
+    difficulty: categorization.difficulty || '',
+    duration: categorization.duration?.value ?? categorization.duration?.hours ?? null,
+    durationUnit: categorization.duration?.unit || 'hours',
+    title: tour.title || '',
+    referenceCode: tour.referenceCode || '',
+    shortDescription: content.shortSummary || '',
+    fullDescription: tour.description || '',
+    highlights: Array.isArray(content.highlights) ? content.highlights : [],
+    locations: content.locations || [],
+    keywords: tour.tags || [],
+    whatsIncluded: content.included || [],
+    whatsNotIncluded: content.excluded || [],
+    guideType: content.guideType || 'guide',
+    foodProvided: !!content.foodProvided,
+    mealType: content.mealType || '',
+    drinksIncluded: !!content.drinksIncluded,
+    dietaryOptions: content.dietaryOptions || [],
+    transportationProvided: !!content.transportationProvided,
+    transportationType: content.transportationType || '',
+    notSuitableFor: content.healthRestrictions || [],
+    notAllowed: content.notAllowed || [],
+    petFriendly: !!content.petFriendly,
+    mandatoryItems: content.whatToBring || [],
+    knowBeforeYouGo: content.additionalInfo || '',
+    emergencyCountryCode: content.emergencyCountryCode || '',
+    emergencyPhone: content.emergencyPhone || '',
+    voucherInfo: content.voucherInfo || '',
+    photos: (tour.photos || []).map((p) => (typeof p === 'string' ? p : p.url || '')),
+    copyrightConfirmed: true,
+    options: content.options || [],
+    meetingPoint: meetingPoint.lat
+      ? {
+          name: meetingPoint.name || '',
+          address: meetingPoint.address || '',
+          lat: meetingPoint.lat,
+          lng: meetingPoint.lng,
         }
-        return [
-          { name: "Adult", enabled: true, minAge: 18, maxAge: 64 },
-          { name: "Infant", enabled: false, minAge: 0, maxAge: 2 },
-          { name: "Child", enabled: false, minAge: 3, maxAge: 17 },
-          { name: "Youth", enabled: false, minAge: 12, maxAge: 17 },
-          { name: "Senior", enabled: false, minAge: 65, maxAge: 99 },
-        ];
-      })(),
-      schedules: [{
-        startDate: pricingSchedules.schedules?.[0]?.startDate || "",
-        endDate: pricingSchedules.schedules?.[0]?.endDate || "",
-        prices: (pricingSchedules.schedules?.[0]?.prices || []).map(p => ({
-          ageGroup: p.ageGroup,
-          retailPrice: p.retailPrice ?? "",
-          commissionRate: p.commissionRate ?? 15,
-        })),
-      }],
-      taxes: "",
-      fees: "",
-      commissionRate: 15,
-    },
-    cancellationPolicy: cancellation.type || "flexible",
-    refundRules: booking.refundRules || cancellation.refundPercentage ? `${cancellation.refundPercentage}%` : "",
-    schedule: {
-      operatingDays: operatingDays.length > 0 ? operatingDays : [],
-      timeSlots: timeSlots.length > 0 ? timeSlots : [{ startTime: "09:00", endTime: "12:00" }],
-      seasonalAvailability: "all_year",
-      blackoutDates: [],
-      capacityPerSlot: schedules.capacityPerSlot ?? 20,
-      bookingCutoffHours: cancellation.cutoffHours ?? 24,
-    },
-    bookingRules: {
-      confirmationType: booking.confirmationType || (booking.instantBooking ? "instant" : "manual"),
-      minAdvanceBookingHours: booking.minAdvanceBookingHours ?? 48,
-      maxGroupSize: groupSize.max ?? 20,
-      minGroupSize: groupSize.min ?? 1,
-      instantBooking: booking.instantBooking ?? false,
-      refundPercentage: cancellation.refundPercentage ?? 100,
-      travelerRequiredInfo: booking.travelerRequiredInfo || [],
-      ticketTypes: [],
-      redemptionInstructions: "",
-      redemptionVenueAddress: "",
-    },
-    content: {
-      writingLanguage: content.writingLanguage || "English",
-      shortSummary: content.shortSummary || "",
-      itinerary: normalizeItinerary(content.itinerary),
-      highlights: normalizeHighlights(content.highlights),
-      included: content.included || [],
-      excluded: content.excluded || [],
-      whatToBring: content.whatToBring || [],
-      meetingInstructions: content.meetingInstructions || "",
-      meetingPoint: meetingPoint.name || meetingPoint.address || "",
-      meetingPointAddress: meetingPoint.address || "",
-      meetingPointLat: meetingPoint.coordinates?.lat || null,
-      meetingPointLng: meetingPoint.coordinates?.lng || null,
-      pickupAvailable: content.pickupAvailable ?? booking.pickupAvailable ?? false,
-      pickupAreas: content.pickupAreas || [],
-      pickupLocations: content.pickupLocations || [],
-      pickupCustomLocation: content.pickupCustomLocation ?? false,
-      pickupLeadTime: content.pickupLeadTime ?? 30,
-      pickupType: content.pickupType || "",
-      pickupAppearance: content.pickupAppearance || "",
-      pickupPhotoUrls: content.pickupPhotoUrls || [],
-      pickupAdditionalDetails: content.pickupAdditionalDetails || booking.pickupDetails || "",
-      dropoffAvailable: content.dropoffAvailable ?? false,
-      dropoffSameAsPickup: content.dropoffSameAsPickup ?? true,
-      dropoffTime: content.dropoffTime ?? 0,
-      additionalInfo: content.additionalInfo || "",
-      uniqueSellingPoints: Array.isArray(content.uniqueSellingPoints) ? content.uniqueSellingPoints : (content.uniqueSellingPoints ? [content.uniqueSellingPoints] : []),
-      travelerRequirements: content.travelerRequirements || "",
-      languages: content.languages || ["English"],
-      hasGuideLead: content.hasGuideLead ?? false,
-      guideType: content.guideType || "",
-      inclusionsConfirmed: content.inclusionsConfirmed ?? false,
-      isPrivateActivity: content.isPrivateActivity ?? false,
-      maxTravelers: content.maxTravelers ?? 20,
-      resellerType: content.resellerType || "not_reseller",
-      accessibility: content.accessibility || {
-        wheelchairAccessible: true,
-        transportationWheelchairAccessible: true,
-        surfacesWheelchairAccessible: true,
-        strollerAccessible: true,
-        serviceAnimalsAllowed: true,
-        publicTransportation: true,
-        infantsOnLaps: true,
-        infantSeatsAvailable: true,
-        custom: [],
-      },
-      healthRestrictions: content.healthRestrictions || [],
-      physicalDifficulty: content.physicalDifficulty || "easy",
-      contactPhone: content.contactPhone || { countryCode: "+233", number: "" },
-      passportRequired: content.passportRequired ?? false,
-      flightInfoRequired: content.flightInfoRequired ?? false,
-      shipInfoRequired: content.shipInfoRequired ?? false,
-      trainInfoRequired: content.trainInfoRequired ?? false,
-      hotelInfoRequired: content.hotelInfoRequired ?? false,
-    },
-    status: (tour.status || "draft").toLowerCase(),
-    totalBookings: tour._count?.bookings ?? tour.totalBookings ?? 0,
-    totalRevenue: tour.totalRevenue || 0,
-    averageRating: tour.averageRating || 0,
-    reviewCount: tour._count?.reviews ?? tour.reviewCount ?? 0,
-    viewCount: tour.viewCount || 0,
-    supplier: tour.supplier || null,
-    createdAt: tour.createdAt || new Date().toISOString(),
-    updatedAt: tour.updatedAt || new Date().toISOString(),
-  };
+      : null,
+    meetingPointDescription: content.meetingInstructions || '',
+    arrivalTime: content.arrivalTime || '',
+    pickupProvided: !!content.pickupAvailable,
+    pickupType: content.pickupType || 'area',
+    pickupDescription: content.pickupDescription || '',
+    referenceStartTime: content.referenceStartTime || '',
+    pickupAreas: (content.pickupAreas || []).map((a) =>
+      typeof a === 'string' ? { name: a, time: '' } : a,
+    ),
+    dropoffProvided: !!content.dropoffAvailable,
+    dropoffDescription: content.dropoffDescription || '',
+    cutoffHours: booking.cancellationPolicy?.cutoffHours ?? 0,
+    itinerary: Array.isArray(content.itinerary) ? content.itinerary : [],
+  }
 }
 
 export default function ProductBuilderPage() {
-  const { id } = useParams();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const navigate = useNavigate();
+  const { id } = useParams()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const navigate = useNavigate()
+  const store = useProductBuilderStore()
   const {
     currentStep,
-    loadDraft,
     hasHydrated,
-    currentSectionId,
-    currentStepId,
     completedStepIds,
-    navigateTo,
     isDirty,
     isSubmitting,
-  } = useProductBuilderStore();
-  const [loadingProduct, setLoadingProduct] = useState(false);
-  const [productError, setProductError] = useState(null);
-  const [showExitWarning, setShowExitWarning] = useState(false);
+    navigateTo,
+    loadDraft,
+    reset,
+  } = store
 
-  // Block in-app navigation when dirty
+  const [loadingProduct, setLoadingProduct] = useState(false)
+  const [productError, setProductError] = useState(null)
+  const [showExitWarning, setShowExitWarning] = useState(false)
+
+  const gygStepNumber = currentStep + 1
+  const StepComponent = STEP_COMPONENTS[gygStepNumber]
+
   const blocker = useBlocker(
     useCallback(
       ({ currentLocation, nextLocation }) =>
         isDirty && !isSubmitting && currentLocation.pathname !== nextLocation.pathname,
       [isDirty, isSubmitting],
     ),
-  );
+  )
 
-  // Show confirmation dialog when navigation is blocked
   useEffect(() => {
-    if (blocker.state === "blocked") {
-      setShowExitWarning(true);
+    if (blocker.state === 'blocked') {
+      setShowExitWarning(true)
     }
-  }, [blocker.state]);
+  }, [blocker.state])
 
   const handleConfirmExit = () => {
-    setShowExitWarning(false);
-    blocker.proceed?.();
-  };
+    setShowExitWarning(false)
+    blocker.proceed?.()
+  }
 
   const handleCancelExit = () => {
-    setShowExitWarning(false);
-    blocker.reset?.();
-  };
+    setShowExitWarning(false)
+    blocker.reset?.()
+  }
 
-  // Warn on tab close / browser refresh
   useEffect(() => {
-    if (!isDirty) return;
+    if (!isDirty) return
     const handler = (e) => {
-      e.preventDefault();
-      e.returnValue = "";
-    };
-    window.addEventListener("beforeunload", handler);
-    return () => window.removeEventListener("beforeunload", handler);
-  }, [isDirty]);
+      e.preventDefault()
+      e.returnValue = ''
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [isDirty])
 
-  // Read query params
-  const querySection = searchParams.get("section") || "basics";
-  const queryStep = searchParams.get("step") || "language-and-title";
+  const querySection = searchParams.get('section') || ''
+  const queryStep = searchParams.get('step') || ''
 
-  // Sync store with query params on mount / param change
   useEffect(() => {
-    if (!hasHydrated) return;
-    const section = SECTIONS.find((s) => s.id === querySection);
-    if (section) {
-      const step = section.steps.find((s) => s.id === queryStep);
-      if (step) {
-        navigateTo(querySection, queryStep);
+    if (!hasHydrated) return
+    if (querySection && queryStep) {
+      const idx = getGygStepIndex(querySection, queryStep)
+      if (idx !== currentStep) {
+        navigateTo(querySection, queryStep)
       }
     }
-  }, [querySection, queryStep, hasHydrated]);
+  }, [querySection, queryStep, hasHydrated])
 
-  // Update URL when store changes (via next/prev buttons)
   useEffect(() => {
-    if (!hasHydrated) return;
-    const section = currentSectionId || "basics";
-    const step = currentStepId || "language-and-title";
+    if (!hasHydrated) return
+    const gygStep = GYG_STEPS[currentStep]
+    if (!gygStep) return
+    const section = gygStep.sectionId
+    const step = gygStep.stepId
     if (section !== querySection || step !== queryStep) {
-      setSearchParams({ section, step }, { replace: true });
+      setSearchParams({ section, step }, { replace: true })
     }
-  }, [currentSectionId, currentStepId, hasHydrated]);
+  }, [currentStep, hasHydrated])
 
-  // Load existing product from API when editing
   useEffect(() => {
-    if (!id || id === "new" || !hasHydrated) return;
+    if (!id || id === 'new' || !hasHydrated) return
 
-    let cancelled = false;
-    setLoadingProduct(true);
-    setProductError(null);
+    let cancelled = false
+    setLoadingProduct(true)
+    setProductError(null)
 
     getMyProduct(id)
       .then((res) => {
-        if (cancelled) return;
-        const tour = res.data?.data?.tour;
+        if (cancelled) return
+        const tour = res.data?.data?.tour
         if (!tour) {
-          setProductError("Product not found");
-          return;
+          setProductError('Product not found')
+          return
         }
-        const product = tourToProduct(tour);
-        loadDraft(product);
+        const product = tourToProduct(tour)
+        loadDraft(product)
       })
       .catch((err) => {
-        if (cancelled) return;
-        setProductError(err.response?.data?.message || err.message || "Failed to load product");
+        if (cancelled) return
+        setProductError(err.response?.data?.message || err.message || 'Failed to load product')
       })
       .finally(() => {
-        if (!cancelled) setLoadingProduct(false);
-      });
+        if (!cancelled) setLoadingProduct(false)
+      })
 
-    return () => { cancelled = true; };
-  }, [id, hasHydrated]);
+    return () => { cancelled = true }
+  }, [id, hasHydrated])
+
+  const [saving, setSaving] = useState(false)
+  const [savedProductId, setSavedProductId] = useState(id && id !== 'new' ? id : null)
+
+  async function handleSave() {
+    const state = useProductBuilderStore.getState()
+
+    const payload = {
+      ...state,
+      photos: (state.photos || []).map((p) => (typeof p === 'string' ? p : p.url || p)),
+      existingPhotos: (state.photos || []).map((p) => (typeof p === 'string' ? p : p.url || p)),
+    }
+
+    delete payload._pendingFiles
+    delete payload._hasHydrated
+    delete payload._version
+    delete payload.currentStep
+    delete payload.completedStepIds
+    delete payload.isDirty
+    delete payload.isSubmitting
+    delete payload.lastSaved
+
+    setSaving(true)
+    try {
+      const res = savedProductId
+        ? await updateProduct(savedProductId, payload)
+        : await createProduct(payload)
+      const newId = savedProductId || res.data?.data?.tour?._id
+      if (newId) setSavedProductId(newId)
+      return res
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  function handleNext() {
+    if (gygStepNumber < 13) {
+      const storeState = useProductBuilderStore.getState()
+      storeState.nextStep()
+    }
+  }
+
+  function handleBack() {
+    if (gygStepNumber > 1) {
+      const storeState = useProductBuilderStore.getState()
+      storeState.prevStep()
+    }
+  }
+
+  function handleSelectStep(stepId) {
+    const gygStep = GYG_STEPS.find((s) => s.id === stepId)
+    if (gygStep) {
+      navigateTo(gygStep.sectionId, gygStep.stepId)
+    }
+  }
 
   if (loadingProduct) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-white">
         <div className="flex flex-col items-center gap-3">
           <Loader2 size={32} className="animate-spin text-emerald-600" />
           <p className="text-sm text-slate-500">Loading product...</p>
         </div>
       </div>
-    );
+    )
   }
 
   if (productError) {
     return (
-      <div className="p-4 md:p-6">
-        <div className="flex flex-col items-center justify-center min-h-[400px]">
-          <div className="bg-red-50 border border-red-300 rounded-xl p-6 max-w-md text-center shadow-sm">
-            <AlertCircle size={40} className="text-red-600 mx-auto mb-3" />
-            <h2 className="text-lg font-semibold text-red-800 mb-2">Failed to Load Product</h2>
-            <p className="text-sm text-red-700 mb-4">{productError}</p>
-            <button
-              onClick={() => navigate("/products")}
-              className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-medium hover:bg-emerald-700 transition-colors"
-            >
-              Back to Products
-            </button>
-          </div>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-white">
+        <div className="bg-red-50 border border-red-300 rounded-2xl p-8 max-w-md text-center">
+          <AlertCircle size={40} className="text-red-600 mx-auto mb-3" />
+          <h2 className="text-lg font-semibold text-red-800 mb-2">Failed to Load Product</h2>
+          <p className="text-sm text-red-700 mb-4">{productError}</p>
+          <button
+            onClick={() => navigate('/products')}
+            className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-medium hover:bg-emerald-700 transition-colors"
+          >
+            Back to Products
+          </button>
         </div>
       </div>
-    );
+    )
   }
 
-  const CurrentStepComponent = STEPS[currentStep]?.component;
-
   return (
-    <>
-    <div className="h-screen flex flex-col overflow-hidden">
-      {/* Fixed header */}
-      <div className="flex-shrink-0 p-4 md:p-6 pb-0">
-        <div className="flex items-center justify-between mb-4 md:mb-6">
-          <div className="flex items-center gap-4">
-            <div className="w-1 h-10 bg-linear-to-b from-emerald-500 to-emerald-300 rounded-full" />
-            <div>
-              <h1 className="text-xl md:text-2xl font-bold text-slate-800">
-                {id && id !== "new" ? "Edit Product" : "Create New Product"}
-              </h1>
-              <p className="text-sm text-slate-500 mt-0.5 hidden md:block">
-                Step {currentStep + 1} of {STEPS.length}: {STEPS[currentStep]?.label}
-              </p>
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25, ease: 'easeOut' }}
+      className="fixed inset-0 z-50 bg-white overflow-hidden"
+    ><div className="h-full flex flex-col">
+          {/* Header bar */}
+          <div className="flex items-center justify-between px-6 py-3 border-b border-slate-200 bg-white shrink-0">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => {
+                  if (isDirty) {
+                    setShowExitWarning(true)
+                  } else {
+                    navigate('/products')
+                  }
+                }}
+                className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors"
+                type="button"
+              >
+                <X size={20} />
+              </button>
+              <div className="w-0.5 h-6 bg-gradient-to-b from-emerald-500 to-emerald-300 rounded-full" />
+              <div>
+                <h1 className="text-base font-bold text-slate-800">
+                  {id && id !== 'new' ? 'Edit Product' : 'Create New Product'}
+                </h1>
+                <p className="text-xs text-slate-500">
+                  Step {gygStepNumber} of 13: {STEP_LABELS[gygStepNumber]}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Main area: sidebar + content */}
+          <div className="flex-1 flex gap-0 min-h-0 px-6 py-5">
+            <WizardSidebar currentStep={gygStepNumber} onSelectStep={handleSelectStep} />
+            <div className="flex-1 flex flex-col ml-6 bg-white rounded-[20px] border border-slate-200 shadow-sm overflow-hidden">
+              <div className="flex-1 p-8 overflow-y-auto">
+                <h2 className="text-xl font-bold mb-6 tracking-tight">{STEP_LABELS[gygStepNumber]}</h2>
+                {StepComponent && <StepComponent />}
+              </div>
+              <WizardNavFooter
+                currentStep={gygStepNumber}
+                totalSteps={13}
+                onBack={handleBack}
+                onNext={handleNext}
+                onSave={handleSave}
+                saving={saving}
+              />
             </div>
           </div>
         </div>
 
-        {/* Mobile step navigator */}
-        <div className="lg:hidden mb-4">
-          {(() => {
-            const currentSection = SECTIONS.find((s) => s.id === currentSectionId);
-            if (!currentSection) return null;
-            const sectionIndex = SECTIONS.indexOf(currentSection);
-            return (
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">
-                    {currentSection.label}
-                  </span>
-                  <span className="text-[10px] text-slate-400">
-                    {sectionIndex + 1}/{SECTIONS.length}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-1">
-                  {SECTIONS.map((section, sIdx) => {
-                    const isCurrentSection = section.id === currentSectionId;
-                    const hasCompleted = section.steps.some((st) => completedStepIds.includes(st.id));
-                    const allDone = section.steps.every((st) => completedStepIds.includes(st.id));
-                    return (
-                      <button
-                        key={section.id}
-                        onClick={() => {
-                          const target = allDone
-                            ? section.steps[0]
-                            : section.steps.find((st) => !completedStepIds.includes(st.id)) || section.steps[0];
-                          navigateTo(section.id, target.id);
-                        }}
-                        className={`shrink-0 px-2.5 py-1 rounded-lg text-[10px] font-semibold transition-all border ${
-                          isCurrentSection
-                            ? "bg-emerald-50 border-emerald-200 text-emerald-700"
-                            : allDone
-                              ? "bg-emerald-50/50 border-emerald-100 text-emerald-600"
-                              : hasCompleted
-                                ? "bg-amber-50/50 border-amber-100 text-amber-600"
-                                : "bg-slate-50 border-slate-200 text-slate-400"
-                        }`}
-                      >
-                        {allDone ? "✓" : ""} {section.label}
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="flex items-center gap-1 mt-2 overflow-x-auto scrollbar-none">
-                  {currentSection.steps.map((step) => {
-                    const isDone = completedStepIds.includes(step.id);
-                    const isCurrent = step.id === currentStepId;
-                    return (
-                      <button
-                        key={step.id}
-                        onClick={() => navigateTo(currentSection.id, step.id)}
-                        className={`shrink-0 flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium transition-all ${
-                          isCurrent
-                            ? "bg-emerald-600 text-white shadow-sm"
-                            : isDone
-                              ? "bg-emerald-100 text-emerald-700"
-                              : "bg-slate-100 text-slate-500 hover:bg-slate-200"
-                        }`}
-                      >
-                        <span className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[8px] font-bold ${
-                          isCurrent ? "bg-white/20" : isDone ? "bg-emerald-200" : "bg-slate-200"
-                        }`}>
-                          {isDone ? "✓" : step.stepIndex + 1}
-                        </span>
-                        <span className="max-w-[80px] truncate">{step.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
+        {/* Exit Warning Modal */}
+        {showExitWarning && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50">
+            <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full mx-4 p-6">
+              <h3 className="text-lg font-semibold text-slate-900 mb-2">Unsaved changes</h3>
+              <p className="text-sm text-slate-600 mb-6">
+                You have unsaved changes. Are you sure you want to leave? Your progress will be lost.
+              </p>
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={handleCancelExit}
+                  className="px-4 py-2 text-sm font-medium text-slate-700 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors"
+                >
+                  Stay
+                </button>
+                <button
+                  onClick={handleConfirmExit}
+                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-xl hover:bg-red-700 transition-colors"
+                >
+                  Leave anyway
+                </button>
               </div>
-            );
-          })()}
-        </div>
-      </div>
-
-      {/* Wizard area — fills remaining height */}
-      <div className="flex-1 min-h-0 px-4 md:px-6 pb-4 md:pb-6">
-        <WizardStepLayout title={STEPS[currentStep]?.label} description={STEPS[currentStep]?.description}>
-          {CurrentStepComponent && <CurrentStepComponent />}
-        </WizardStepLayout>
-      </div>
-    </div>
-
-    {/* Exit Warning Modal */}
-    {showExitWarning && (
-      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50">
-        <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full mx-4 p-6">
-          <h3 className="text-lg font-semibold text-slate-900 mb-2">Unsaved changes</h3>
-          <p className="text-sm text-slate-600 mb-6">
-            You have unsaved changes. Are you sure you want to leave? Your progress will be lost.
-          </p>
-          <div className="flex gap-3 justify-end">
-            <button
-              onClick={handleCancelExit}
-              className="px-4 py-2 text-sm font-medium text-slate-700 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors"
-            >
-              Stay
-            </button>
-            <button
-              onClick={handleConfirmExit}
-              className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-xl hover:bg-red-700 transition-colors"
-            >
-              Leave anyway
-            </button>
+            </div>
           </div>
-        </div>
-      </div>
-    )}
-  </>
-  );
+        )}
+      </motion.div>
+  )
 }
