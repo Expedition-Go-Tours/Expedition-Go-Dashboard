@@ -5,8 +5,8 @@ import AuthCallback from '@/features/auth/pages/AuthCallback';
 import { useAuthStore } from '@/stores/authStore';
 
 const mockNavigate = vi.fn();
-const mockReplaceState = vi.fn();
 const mockFetchCurrentUser = vi.fn();
+const mockLoadSupplierProfile = vi.fn().mockResolvedValue(null);
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom');
@@ -18,7 +18,7 @@ vi.mock('react-router-dom', async () => {
 
 vi.mock('@/features/auth/api', () => ({
   fetchCurrentUser: (...args) => mockFetchCurrentUser(...args),
-  loadSupplierProfile: vi.fn().mockResolvedValue(null),
+  loadSupplierProfile: (...args) => mockLoadSupplierProfile(...args),
   getLoginErrorMessage: (err) => err?.message || 'Login failed',
   showSupplierLoginToast: vi.fn(),
 }));
@@ -32,18 +32,19 @@ describe('AuthCallback', () => {
     vi.clearAllMocks();
     useAuthStore.getState().setUnauthenticated();
     mockNavigate.mockClear();
-    mockReplaceState.mockClear();
     mockFetchCurrentUser.mockResolvedValue({
       id: '1',
       name: 'Test User',
       email: 'test@example.com',
       roles: ['supplier'],
     });
+    mockLoadSupplierProfile.mockResolvedValue(null);
   });
 
-  function renderWithToken(token) {
+  function renderWithToken(token, refreshToken) {
+    const params = `accessToken=${token}${refreshToken ? `&refreshToken=${refreshToken}` : ''}`;
     return render(
-      <MemoryRouter initialEntries={[`/auth/callback?token=${token}`]}>
+      <MemoryRouter initialEntries={[`/auth/callback?${params}`]}>
         <Routes>
           <Route path="/auth/callback" element={<AuthCallback />} />
         </Routes>
@@ -52,7 +53,7 @@ describe('AuthCallback', () => {
   }
 
   it('renders loading state when token is present', () => {
-    renderWithToken('valid-firebase-token');
+    renderWithToken('valid-token');
     expect(screen.getByText(/Verifying your session/i)).toBeInTheDocument();
   });
 
@@ -70,30 +71,32 @@ describe('AuthCallback', () => {
   });
 
   it('redirects to dashboard after successful auth', async () => {
-    renderWithToken('valid-firebase-token');
+    renderWithToken('valid-token', 'valid-refresh');
 
     await waitFor(() => {
       expect(screen.getByText(/Authentication successful/i)).toBeInTheDocument();
     }, { timeout: 10000 });
 
-    // The component uses setTimeout(..., 1500) before navigate()
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith('/', { replace: true });
     }, { timeout: 10000 });
   }, 15000);
 
-  it('updates auth store with user data on success', async () => {
-    renderWithToken('valid-firebase-token');
+  it('updates auth store with user data and supplier profile on success', async () => {
+    const mockProfile = { id: 'sp1', status: 'ACTIVE' };
+    mockLoadSupplierProfile.mockResolvedValue(mockProfile);
+    renderWithToken('valid-token', 'valid-refresh');
 
     await waitFor(() => {
       expect(useAuthStore.getState().isAuthenticated).toBe(true);
       expect(useAuthStore.getState().user).toBeTruthy();
+      expect(useAuthStore.getState().supplierProfile).toEqual(mockProfile);
     }, { timeout: 10000 });
   }, 15000);
 
   it('shows error state when token verification fails', async () => {
     mockFetchCurrentUser.mockRejectedValue(new Error('Invalid token'));
-    renderWithToken('invalid-token');
+    renderWithToken('invalid-token', 'invalid-refresh');
 
     await waitFor(() => {
       expect(screen.getByText(/Authentication failed/i)).toBeInTheDocument();

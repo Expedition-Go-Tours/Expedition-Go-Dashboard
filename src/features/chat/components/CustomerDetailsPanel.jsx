@@ -93,6 +93,7 @@ export default function CustomerDetailsPanel({ conversation, currentUserId, onCl
                 <img
                   src={optimizeImage(cu.photoURL, 56)}
                   alt=""
+                  loading="lazy"
                   className="absolute inset-0 h-full w-full object-cover"
                   onError={(e) => { e.target.style.display = "none"; }}
                 />
@@ -200,6 +201,7 @@ export default function CustomerDetailsPanel({ conversation, currentUserId, onCl
                       <img
                         src={optimizeImage(booking.tourPhoto, 40)}
                         alt=""
+                        loading="lazy"
                         className="w-full h-full object-cover"
                         onError={(e) => { e.target.style.display = "none"; }} />
                     ) : (

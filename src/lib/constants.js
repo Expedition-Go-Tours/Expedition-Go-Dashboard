@@ -1,6 +1,3 @@
-// API Base URL
-export const API_BASE_URL = "https://expedition-go-backend-v2.onrender.com/api";
-
 // Booking statuses — aligned with backend BookingStatus enum
 export const BOOKING_STATUSES = {
   PENDING: {

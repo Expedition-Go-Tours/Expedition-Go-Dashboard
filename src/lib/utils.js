@@ -1,6 +1,14 @@
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
+export function safeId() {
+  try {
+    return crypto.randomUUID()
+  } catch {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 10)
+  }
+}
+
 export function cn(...inputs) {
   return twMerge(clsx(inputs));
 }

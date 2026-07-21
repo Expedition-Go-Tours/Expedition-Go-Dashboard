@@ -252,6 +252,7 @@ export default function ChatWindow({ conversation, messages, messageStatuses, on
             <img
               src={optimizeImage(otherParticipant.photoURL, 36)}
               alt=""
+              loading="lazy"
               className="absolute inset-0 h-full w-full object-cover"
               onError={(e) => { e.target.style.display = "none"; }}
             />

@@ -14,7 +14,8 @@ import {
   Compass,
 } from "lucide-react";
 import { useSupplierLogin } from "@/features/auth/hooks/useSupplierLogin";
-import { getLoginErrorMessage } from "@/features/auth/api";
+import { useGoogleOneTap } from "@/features/auth/hooks/useGoogleOneTap";
+import { getLoginErrorMessage, loginWithGoogleOneTap } from "@/features/auth/api";
 import config from "@/config";
 import supplierLoginImage from "@/assets/supplier_login.jpg";
 
@@ -35,7 +36,8 @@ const stagger = {
 };
 
 export default function LoginPage() {
-  const { completeLoginWithEmail, loading, error, setError } = useSupplierLogin();
+  const { completeLoginWithEmail, completeLoginFromToken, loading, error, setError } = useSupplierLogin();
+  const { setCallback } = useGoogleOneTap();
   const [searchParams] = useSearchParams();
 
   const redirect = searchParams.get("redirect");
@@ -55,6 +57,27 @@ export default function LoginPage() {
     window.addEventListener("pageshow", onPageShow);
     return () => window.removeEventListener("pageshow", onPageShow);
   }, []);
+
+  useEffect(() => {
+    setCallback(async (credential) => {
+      setGoogleLoading(true);
+      setError("");
+
+      try {
+        const data = await loginWithGoogleOneTap(credential);
+        const { accessToken, refreshToken } = data;
+
+        if (refreshToken) {
+          localStorage.setItem("refresh_token", refreshToken);
+        }
+
+        await completeLoginFromToken(accessToken, refreshToken);
+      } catch (err) {
+        setError(getLoginErrorMessage(err));
+        setGoogleLoading(false);
+      }
+    });
+  }, [setCallback, completeLoginFromToken, setError]);
 
   const handleEmailSignIn = async (event) => {
     event.preventDefault();

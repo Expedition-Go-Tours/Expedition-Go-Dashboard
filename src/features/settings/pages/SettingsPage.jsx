@@ -354,11 +354,11 @@ function ProfileTab() {
             <div className="shrink-0">
               {logoPreview ? (
                 <div className="relative w-24 h-24 rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-                  <img src={logoPreview} alt="Preview" className="w-full h-full object-cover" />
+                  <img src={logoPreview} alt="Preview" loading="lazy" className="w-full h-full object-cover" />
                 </div>
               ) : currentLogoUrl ? (
                 <div className="relative w-24 h-24 rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-                  <img src={optimizeImage(currentLogoUrl, 96)} alt="Logo" className="w-full h-full object-cover"
+                  <img src={optimizeImage(currentLogoUrl, 96)} alt="Logo" loading="lazy" className="w-full h-full object-cover"
                     onError={(e) => { e.target.style.display = "none"; }} />
                 </div>
               ) : null}

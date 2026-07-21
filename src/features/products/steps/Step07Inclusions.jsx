@@ -179,7 +179,6 @@ export default function Step07Inclusions() {
     whatsNotIncluded,
     activitiesIncluded,
     pickupTransportTypes,
-    guideType,
     foodProvided,
     mealType,
     drinksIncluded,
@@ -220,23 +219,6 @@ export default function Step07Inclusions() {
           placeholder="e.g. Food, Drinks, Hotel pickup"
         />
       </div>
-
-      <hr className="border-slate-100" />
-
-      {/* Guide Information */}
-      <ToggleGroup
-        label="Who will customers interact with?"
-        options={[
-          { value: 'guide', label: 'Guide' },
-          { value: 'driver', label: 'Driver' },
-          { value: 'host', label: 'Host' },
-          { value: 'nobody', label: 'Nobody' },
-        ]}
-        value={guideType}
-        onChange={(v) => setField('guideType', v)}
-      />
-
-      <hr className="border-slate-100" />
 
       {/* Activities & Experiences */}
       <div>

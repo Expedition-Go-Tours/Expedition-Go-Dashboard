@@ -105,7 +105,7 @@ export default function Step1Products() {
                   >
                     <div className="w-11 h-11 rounded-lg bg-slate-100 overflow-hidden shrink-0 border border-slate-200">
                       {tour.photos?.[0] ? (
-                        <img src={tour.photos[0]} alt="" className="w-full h-full object-cover" />
+                        <img src={tour.photos[0]} alt="" loading="lazy" className="w-full h-full object-cover" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
                           <Package size={18} className="text-slate-400" />
@@ -174,7 +174,7 @@ export default function Step1Products() {
                 >
                   <div className="w-10 h-10 rounded-lg bg-emerald-100 overflow-hidden shrink-0">
                     {target.tourPhotos?.[0] ? (
-                      <img src={target.tourPhotos[0]} alt="" className="w-full h-full object-cover" />
+                      <img src={target.tourPhotos[0]} alt="" loading="lazy" className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
                         <Package size={16} className="text-emerald-600" />

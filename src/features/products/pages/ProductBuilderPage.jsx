@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { useProductBuilderStore } from '@/features/products/productBuilderStore'
 import { getMyProduct, createProduct, updateProduct } from '@/features/products/api'
 import { GYG_STEPS, GYG_SECTIONS } from '@/features/products/gygSteps'
+import ErrorBoundary from '@/components/shared/ErrorBoundary'
 import WizardSidebar from '@/features/products/WizardSidebar'
 import WizardNavFooter from '@/features/products/WizardNavFooter'
 import Step01Language from '@/features/products/steps/Step01Language'
@@ -15,12 +16,15 @@ import Step04Descriptions from '@/features/products/steps/Step04Descriptions'
 import Step05Locations from '@/features/products/steps/Step05Locations'
 import Step06Keywords from '@/features/products/steps/Step06Keywords'
 import Step07Inclusions from '@/features/products/steps/Step07Inclusions'
-import Step08Photos from '@/features/products/steps/Step08Photos'
-import Step09ExtraInfo from '@/features/products/steps/Step09ExtraInfo'
-import Step10Options from '@/features/products/steps/Step10Options'
-import Step11MeetingPoint from '@/features/products/steps/Step11MeetingPoint'
-import Step12PricingAvailability from '@/features/products/steps/Step12PricingAvailability'
-import Step13Itinerary from '@/features/products/steps/Step13Itinerary'
+import Step08GuideInfo from '@/features/products/steps/Step08GuideInfo'
+import Step09Photos from '@/features/products/steps/Step09Photos'
+import Step10ExtraInfo from '@/features/products/steps/Step10ExtraInfo'
+import Step11Options from '@/features/products/steps/Step11Options'
+import Step12MeetingPoint from '@/features/products/steps/Step12MeetingPoint'
+import Step13PricingAvailability from '@/features/products/steps/Step13PricingAvailability'
+import Step14Itinerary from '@/features/products/steps/Step14Itinerary'
+import { safeId } from '@/lib/utils'
+import { safeId } from '@/lib/utils'
 
 const STEP_COMPONENTS = {
   1: Step01Language,
@@ -30,12 +34,13 @@ const STEP_COMPONENTS = {
   5: Step05Locations,
   6: Step06Keywords,
   7: Step07Inclusions,
-  8: Step08Photos,
-  9: Step09ExtraInfo,
-  10: Step10Options,
-  11: Step11MeetingPoint,
-  12: Step12PricingAvailability,
-  13: Step13Itinerary,
+  8: Step08GuideInfo,
+  9: Step09Photos,
+  10: Step10ExtraInfo,
+  11: Step11Options,
+  12: Step12MeetingPoint,
+  13: Step13PricingAvailability,
+  14: Step14Itinerary,
 }
 
 const STEP_LABELS = {
@@ -46,12 +51,13 @@ const STEP_LABELS = {
   5: 'Locations',
   6: 'Keywords',
   7: 'Inclusions',
-  8: 'Photos',
-  9: 'Extra information',
-  10: 'Options',
-  11: 'Meeting Point & Pickup',
-  12: 'Pricing & Availability',
-  13: 'Itinerary',
+  8: 'Guide information',
+  9: 'Photos',
+  10: 'Extra information',
+  11: 'Options',
+  12: 'Meeting Point or Pickup',
+  13: 'Pricing & Availability',
+  14: 'Itinerary',
 }
 
 function getGygStepIndex(sectionId, stepId) {
@@ -65,12 +71,20 @@ function tourToProduct(tour) {
   const categorization = tour.categorization || {}
   const booking = tour.bookingAndTickets || {}
   const meetingPoint = booking.meetingPoint || {}
+  const sp = tour.schedulesAndPricing || {}
+  const td = sp.travelerDetails || {}
+  const ps = sp.pricingSchedules || {}
+  const schedule = Array.isArray(ps.schedules) && ps.schedules.length > 0 ? ps.schedules[0] : {}
+  const avail = sp.availability || {}
+  const theme = tour.theme || {}
 
   return {
     language: content.writingLanguage || '',
     category: categorization.category || '',
+    subcategory: categorization.subcategory || '',
     activityType: categorization.activityType || '',
     difficulty: categorization.difficulty || '',
+    transportMode: categorization.transportMode || '',
     duration: categorization.duration?.value ?? categorization.duration?.hours ?? null,
     durationUnit: categorization.duration?.unit || 'hours',
     title: tour.title || '',
@@ -79,10 +93,14 @@ function tourToProduct(tour) {
     fullDescription: tour.description || '',
     highlights: Array.isArray(content.highlights) ? content.highlights : [],
     locations: content.locations || [],
+    attractions: content.attractions || [],
     keywords: tour.tags || [],
+    activitiesIncluded: content.activitiesIncluded || [],
+    pickupTransportTypes: content.pickupTransportTypes || [],
     whatsIncluded: content.included || [],
     whatsNotIncluded: content.excluded || [],
-    guideType: content.guideType || 'guide',
+    guideType: content.guideType || 'tour-guide',
+    guideMaterials: content.guideMaterials || { audioGuide: false, infoBooklet: false },
     foodProvided: !!content.foodProvided,
     mealType: content.mealType || '',
     drinksIncluded: !!content.drinksIncluded,
@@ -97,9 +115,14 @@ function tourToProduct(tour) {
     emergencyCountryCode: content.emergencyCountryCode || '',
     emergencyPhone: content.emergencyPhone || '',
     voucherInfo: content.voucherInfo || '',
-    photos: (tour.photos || []).map((p) => (typeof p === 'string' ? p : p.url || '')),
+    photos: (tour.photos || []).map((p) => {
+      const url = typeof p === 'string' ? p : p.url || '';
+      return { id: safeId(), url };
+    }),
     copyrightConfirmed: true,
+    coverPhoto: tour.coverPhoto || '',
     options: content.options || [],
+    meetingMode: content.meetingMode || 'meeting_point',
     meetingPoint: meetingPoint.lat
       ? {
           name: meetingPoint.name || '',
@@ -108,19 +131,54 @@ function tourToProduct(tour) {
           lng: meetingPoint.lng,
         }
       : null,
+    meetingPointPicture: content.meetingPointPicture || '',
     meetingPointDescription: content.meetingInstructions || '',
-    arrivalTime: content.arrivalTime || '',
-    pickupProvided: !!content.pickupAvailable,
+    arrivalTimeType: content.arrivalTimeType || 'none',
+    arrivalTimeCustom: content.arrivalTimeCustom || '',
     pickupType: content.pickupType || 'area',
     pickupDescription: content.pickupDescription || '',
+    pickupTiming: content.pickupTiming || 'at_start',
+    pickupFinalLocationTiming: content.pickupFinalLocationTiming || 'day_before',
     referenceStartTime: content.referenceStartTime || '',
     pickupAreas: (content.pickupAreas || []).map((a) =>
       typeof a === 'string' ? { name: a, time: '' } : a,
     ),
-    dropoffProvided: !!content.dropoffAvailable,
+    pickupLocations: content.pickupLocations || [],
+    pickupGeoshape: content.pickupGeoshape || null,
+    dropoffOption: content.dropoffOption || 'none',
+    dropoffLocation: content.dropoffLocation || null,
     dropoffDescription: content.dropoffDescription || '',
     cutoffHours: booking.cancellationPolicy?.cutoffHours ?? 0,
     itinerary: Array.isArray(content.itinerary) ? content.itinerary : [],
+    pricingModel: td.pricingModel || 'perPerson',
+    pricingApproach: td.pricingApproach || 'dependsOnAge',
+    uniformPrice: td.uniformPrice ?? (td.pricingApproach === 'sameForEveryone'
+      ? (Array.isArray(td.ageGroups) && td.ageGroups[0]?.price != null ? td.ageGroups[0].price : null)
+      : null),
+    ageGroups: Array.isArray(td.ageGroups) && td.ageGroups.length > 0
+      ? td.ageGroups
+      : [{ name: 'Adult', price: null, minAge: 13, maxAge: 99, notAllowed: false, ticketNotRequired: false, needsAdult: false }],
+    minParticipants: td.minParticipants ?? 1,
+    maxParticipants: td.maxParticipants ?? 10,
+    pricingTiers: Array.isArray(td.pricingTiers) ? td.pricingTiers : [],
+    groupSizes: Array.isArray(td.groupSizes) ? td.groupSizes : [],
+    additionalPersonsEnabled: !!td.additionalPersonsEnabled,
+    additionalPersonPrice: td.additionalPersonPrice ?? null,
+    maxGroupsPerTimeSlot: td.maxGroupsPerTimeSlot ?? 1,
+    currency: ps.currency || '',
+    scheduleType: avail.scheduleType || 'fixedTimeSlot',
+    scheduleName: schedule.name || '',
+    scheduleStartDate: schedule.startDate || '',
+    scheduleHasEndDate: !!schedule.hasEndDate,
+    scheduleEndDate: schedule.hasEndDate ? (schedule.endDate || '') : '',
+    timeSlots: Array.isArray(schedule.timeSlots) ? schedule.timeSlots : [],
+    operatingHoursStart: avail.operatingHoursStart || '09:00',
+    operatingHoursEnd: avail.operatingHoursEnd || '17:00',
+    dateExceptions: Array.isArray(schedule.dateExceptions) ? schedule.dateExceptions : [],
+    primaryTheme: theme.primaryTheme || '',
+    secondaryThemes: Array.isArray(theme.secondary) ? theme.secondary : [],
+    metaTitle: tour.metaTitle || '',
+    metaDescription: tour.metaDescription || '',
   }
 }
 
@@ -250,9 +308,13 @@ export default function ProductBuilderPage() {
     delete payload._hasHydrated
     delete payload._version
     delete payload.currentStep
+    delete payload.currentSectionId
+    delete payload.currentStepId
     delete payload.completedStepIds
     delete payload.isDirty
+    delete payload.isSaving
     delete payload.isSubmitting
+    delete payload.hasHydrated
     delete payload.lastSaved
 
     setSaving(true)
@@ -269,7 +331,7 @@ export default function ProductBuilderPage() {
   }
 
   function handleNext() {
-    if (gygStepNumber < 13) {
+    if (gygStepNumber < 14) {
       const storeState = useProductBuilderStore.getState()
       storeState.nextStep()
     }
@@ -347,7 +409,7 @@ export default function ProductBuilderPage() {
                   {id && id !== 'new' ? 'Edit Product' : 'Create New Product'}
                 </h1>
                 <p className="text-xs text-slate-500">
-                  Step {gygStepNumber} of 13: {STEP_LABELS[gygStepNumber]}
+                  Step {gygStepNumber} of 14: {STEP_LABELS[gygStepNumber]}
                 </p>
               </div>
             </div>
@@ -359,11 +421,15 @@ export default function ProductBuilderPage() {
             <div className="flex-1 flex flex-col ml-6 bg-white rounded-[20px] border border-slate-200 shadow-sm overflow-hidden">
               <div className="flex-1 p-8 overflow-y-auto">
                 <h2 className="text-xl font-bold mb-6 tracking-tight">{STEP_LABELS[gygStepNumber]}</h2>
-                {StepComponent && <StepComponent />}
+                {StepComponent && (
+                  <ErrorBoundary errorMessage="Something went wrong in this step. Try refreshing or contact support.">
+                    <StepComponent />
+                  </ErrorBoundary>
+                )}
               </div>
               <WizardNavFooter
                 currentStep={gygStepNumber}
-                totalSteps={13}
+                totalSteps={14}
                 onBack={handleBack}
                 onNext={handleNext}
                 onSave={handleSave}

@@ -3,6 +3,7 @@ import { useDropzone } from 'react-dropzone'
 import { useProductBuilderStore } from '@/features/products/productBuilderStore'
 import { useStepErrors } from '@/features/products/useStepErrors'
 import { uploadPhotos } from '@/features/products/api'
+import { safeId } from '@/lib/utils'
 
 export default function Step08Photos() {
   const photos = useProductBuilderStore((s) => s.photos)
@@ -15,7 +16,7 @@ export default function Step08Photos() {
   const setPhotoUrl = useProductBuilderStore((s) => s.setPhotoUrl)
   const setCoverPhoto = useProductBuilderStore((s) => s.setCoverPhoto)
   const setField = useProductBuilderStore((s) => s.setField)
-  const errors = useStepErrors(8)
+  const errors = useStepErrors(9)
 
   const [uploading, setUploading] = useState(new Set())
   const [uploadErrors, setUploadErrors] = useState({})
@@ -67,7 +68,7 @@ export default function Step08Photos() {
   const onDrop = useCallback(
     (acceptedFiles) => {
       for (const file of acceptedFiles) {
-        const id = crypto.randomUUID()
+        const id = safeId()
         addPhoto(id, file)
         uploadFile(id, file)
       }

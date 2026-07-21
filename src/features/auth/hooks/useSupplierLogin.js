@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   loginWithEmail,
   fetchCurrentUser,
+  loadSupplierProfile,
   getLoginErrorMessage,
 } from "@/features/auth/api";
 import { useAuthStore, canAccessSupplierDashboard } from "@/stores/authStore";
@@ -30,18 +31,6 @@ async function checkIsTeamMember() {
     return res.data?.data?.role !== null;
   } catch {
     return false;
-  }
-}
-
-async function fetchSupplierProfile(authToken) {
-  try {
-    const response = await api.get("/suppliers/application/status", {
-      skipGlobalErrorHandler: true,
-      headers: { Authorization: `Bearer ${authToken}` },
-    });
-    return response.data?.data?.supplierProfile || response.data?.data || null;
-  } catch {
-    return null;
   }
 }
 
@@ -80,7 +69,7 @@ export function useSupplierLogin() {
           localStorage.setItem("refresh_token", refreshToken);
         }
 
-        const supplierProfile = await fetchSupplierProfile(accessToken);
+        const supplierProfile = await loadSupplierProfile(accessToken);
         await finalizeLogin(user, accessToken, supplierProfile);
 
         return { user, supplierProfile };
@@ -111,7 +100,7 @@ export function useSupplierLogin() {
           throw new Error("Backend did not return user data.");
         }
 
-        const supplierProfile = await fetchSupplierProfile(accessToken);
+        const supplierProfile = await loadSupplierProfile(accessToken);
         await finalizeLogin(user, accessToken, supplierProfile);
 
         return { user, supplierProfile };

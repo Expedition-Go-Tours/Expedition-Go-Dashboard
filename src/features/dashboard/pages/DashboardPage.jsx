@@ -385,7 +385,7 @@ export default function DashboardPage() {
               {recentBookings.slice(0, 4).map((b) => (
                 <div key={b.id} onClick={() => navigate(`/bookings?bookingId=${b.id}`)} className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-emerald-50/40 transition-colors cursor-pointer border border-transparent hover:border-emerald-100">
                   {b.tourPhoto ? (
-                    <img src={b.tourPhoto} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0 ring-1 ring-emerald-100" />
+                    <img src={b.tourPhoto} alt="" loading="lazy" className="w-10 h-10 rounded-lg object-cover shrink-0 ring-1 ring-emerald-100" />
                   ) : (
                     <div className="w-10 h-10 rounded-lg bg-emerald-50 border border-emerald-200/60 flex items-center justify-center shrink-0 text-sm font-bold text-emerald-700">
                       {(b.tourName || "T").charAt(0)}

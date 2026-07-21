@@ -3,8 +3,6 @@ import config from "@/config";
 import { retryWithBackoff, isRetryableError, handleApiError } from "./errorHandler";
 import { useAuthStore, getAuthToken } from "@/stores/authStore";
 
-const FALLBACK_BASE_URL = "https://expedition-go-backend-v2.onrender.com/api";
-
 const AUTH_REQUIRED_PREFIXES = [
   "/suppliers",
   "/tours/supplier",
@@ -16,9 +14,8 @@ const AUTH_REQUIRED_PREFIXES = [
 ];
 
 const api = axios.create({
-  baseURL: config.api.baseURL || FALLBACK_BASE_URL,
+  baseURL: config.api.baseURL,
   timeout: config.api.timeout,
-  withCredentials: true,
 });
 
 function getRequestAuthorization(headers) {
@@ -127,7 +124,8 @@ api.interceptors.response.use(
             return api(originalRequest);
           }
         }
-      } catch {
+      } catch (refreshErr) {
+        console.error("[Auth] Token refresh failed:", refreshErr?.response?.status, refreshErr?.message);
       }
 
       if (typeof window !== "undefined") {

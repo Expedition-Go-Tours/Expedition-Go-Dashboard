@@ -79,10 +79,11 @@ export default function ConversationList({ conversations, selectedId, onSelect, 
               <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-emerald-600 text-sm font-bold text-white">
                 <span>{initial}</span>
                 {otherUser?.photoURL && (
-                  <img
-                    src={optimizeImage(otherUser.photoURL, 40)}
-                    alt=""
-                    className="absolute inset-0 h-full w-full object-cover"
+                    <img
+                      src={optimizeImage(otherUser.photoURL, 40)}
+                      alt=""
+                      loading="lazy"
+                      className="absolute inset-0 h-full w-full object-cover"
                     onError={(e) => { e.target.style.display = "none"; }}
                   />
                 )}

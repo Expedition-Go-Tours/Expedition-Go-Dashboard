@@ -2,10 +2,9 @@ import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Loader2, CheckCircle2, AlertCircle, ArrowRight, Shield } from "lucide-react";
 import { toast } from "sonner";
-import { getLoginErrorMessage } from "@/features/auth/api";
+import { getLoginErrorMessage, fetchCurrentUser, loadSupplierProfile } from "@/features/auth/api";
 import { useAuthStore } from "@/stores/authStore";
 import { getPostLoginPath } from "@/features/auth/hooks/useSupplierLogin";
-import { fetchCurrentUser } from "@/features/auth/api";
 
 export default function AuthCallback() {
   const navigate = useNavigate();
@@ -45,17 +44,18 @@ export default function AuthCallback() {
     }
 
     fetchCurrentUser(accessToken)
-      .then((user) => {
+      .then(async (user) => {
         if (!user) {
           throw new Error("Backend did not return user data.");
         }
 
-        login(user, accessToken, null);
+        const supplierProfile = await loadSupplierProfile(accessToken);
+        login(user, accessToken, supplierProfile);
 
         setStatus("success");
 
         const returnUrl = localStorage.getItem("auth_return_url");
-        const redirectTo = returnUrl || getPostLoginPath(null);
+        const redirectTo = returnUrl || getPostLoginPath(supplierProfile);
 
         setTimeout(() => {
           localStorage.removeItem("auth_return_url");

@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { safeId } from '@/lib/utils'
 import { GYG_STEPS } from './gygSteps'
 
 function getSectionStep(index) {
@@ -11,8 +12,10 @@ function getSectionStep(index) {
 const INITIAL_FORM = {
   language: '',
   category: '',
+  subcategory: '',
   activityType: '',
   difficulty: '',
+  transportMode: '',
   duration: null,
   durationUnit: 'hours',
   title: '',
@@ -21,12 +24,14 @@ const INITIAL_FORM = {
   fullDescription: '',
   highlights: [],
   locations: [],
+  attractions: [],
   keywords: [],
   activitiesIncluded: [],
   pickupTransportTypes: [],
   whatsIncluded: [],
   whatsNotIncluded: [],
-  guideType: 'guide',
+  guideType: 'tour-guide',
+  guideMaterials: { audioGuide: false, infoBooklet: false },
   foodProvided: false,
   mealType: '',
   drinksIncluded: false,
@@ -46,15 +51,22 @@ const INITIAL_FORM = {
   coverPhoto: '',
   copyrightConfirmed: false,
   options: [],
+  meetingMode: 'meeting_point',
   meetingPoint: null,
+  meetingPointPicture: '',
   meetingPointDescription: '',
-  arrivalTime: '',
-  pickupProvided: false,
+  arrivalTimeType: 'none',
+  arrivalTimeCustom: '',
   pickupType: 'area',
   pickupDescription: '',
+  pickupTiming: 'at_start',
+  pickupFinalLocationTiming: 'day_before',
   referenceStartTime: '',
   pickupAreas: [],
-  dropoffProvided: false,
+  pickupLocations: [],
+  pickupGeoshape: null,
+  dropoffOption: 'none',
+  dropoffLocation: null,
   dropoffDescription: '',
   pricingModel: 'perPerson',
   currency: '',
@@ -68,6 +80,7 @@ const INITIAL_FORM = {
   operatingHoursEnd: '17:00',
   dateExceptions: [],
   pricingApproach: 'dependsOnAge',
+  uniformPrice: null,
   ageGroups: [{ name: 'Adult', price: null, minAge: 13, maxAge: 99, notAllowed: false, ticketNotRequired: false, needsAdult: false }],
   minParticipants: 1,
   maxParticipants: 10,
@@ -77,6 +90,11 @@ const INITIAL_FORM = {
   additionalPersonPrice: null,
   maxGroupsPerTimeSlot: 1,
   itinerary: [],
+  cutoffHours: 0,
+  primaryTheme: '',
+  secondaryThemes: [],
+  metaTitle: '',
+  metaDescription: '',
 }
 
 export const useProductBuilderStore = create(
@@ -120,6 +138,16 @@ export const useProductBuilderStore = create(
           locations.splice(to, 0, removed)
           return { locations, isDirty: true }
         }),
+
+      addAttraction: (attraction) =>
+        set((s) => ({ attractions: [...s.attractions, attraction], isDirty: true })),
+      updateAttraction: (index, updates) =>
+        set((s) => ({
+          attractions: s.attractions.map((a, i) => (i === index ? { ...a, ...updates } : a)),
+          isDirty: true,
+        })),
+      removeAttraction: (index) =>
+        set((s) => ({ attractions: s.attractions.filter((_, i) => i !== index), isDirty: true })),
 
       addKeyword: (kw) =>
         set((s) => ({ keywords: [...s.keywords, kw], isDirty: true })),
@@ -200,17 +228,25 @@ export const useProductBuilderStore = create(
           options: [
             ...s.options,
             {
-              id: crypto.randomUUID(),
+              id: safeId(),
               title: '',
+              refCode: '',
+              description: '',
               languages: [],
-              guideMaterials: { audioGuide: false, infoBooklet: false },
               isPrivate: false,
               skipTheLine: 'none',
               wheelchairAccessible: false,
+              audioGuide: false,
+              infoBooklet: false,
+              maxGroupSize: null,
               duration: null,
               durationUnit: null,
+              validityEnabled: false,
+              validityType: 'date_picked',
               validity: null,
               validityUnit: null,
+              validityStartDate: '',
+              validityEndDate: '',
             },
           ],
           isDirty: true,
@@ -227,6 +263,26 @@ export const useProductBuilderStore = create(
           options: s.options.filter((_, i) => i !== index),
           isDirty: true,
         })),
+      reorderOption: (from, to) =>
+        set((s) => {
+          const options = [...s.options]
+          const [removed] = options.splice(from, 1)
+          options.splice(to, 0, removed)
+          return { options, isDirty: true }
+        }),
+      duplicateOption: (index) =>
+        set((s) => {
+          const original = s.options[index]
+          if (!original) return s
+          const clone = {
+            ...original,
+            id: safeId(),
+            title: original.title ? `${original.title} (copy)` : '',
+          }
+          const options = [...s.options]
+          options.splice(index + 1, 0, clone)
+          return { options, isDirty: true }
+        }),
 
       addItineraryEntry: () =>
         set((s) => {
@@ -276,7 +332,7 @@ export const useProductBuilderStore = create(
 
       addAgeGroup: () =>
         set((s) => ({
-          ageGroups: [...s.ageGroups, { name: '', price: null, minAge: 0, maxAge: 0, notAllowed: false, ticketNotRequired: false, needsAdult: false }],
+          ageGroups: [...s.ageGroups, { name: '', price: null, minAge: 1, maxAge: 99, notAllowed: false, ticketNotRequired: false, needsAdult: false }],
           isDirty: true,
         })),
       updateAgeGroup: (index, updates) =>
@@ -292,7 +348,7 @@ export const useProductBuilderStore = create(
 
       addPricingTier: () =>
         set((s) => ({
-          pricingTiers: [...s.pricingTiers, { id: crypto.randomUUID(), from: null, to: null, pricePerPerson: null }],
+          pricingTiers: [...s.pricingTiers, { id: safeId(), from: null, to: null, pricePerPerson: null }],
           isDirty: true,
         })),
       updatePricingTier: (index, updates) =>
@@ -308,7 +364,7 @@ export const useProductBuilderStore = create(
 
       addGroupSize: () =>
         set((s) => ({
-          groupSizes: [...s.groupSizes, { id: crypto.randomUUID(), size: null, price: null }],
+          groupSizes: [...s.groupSizes, { id: safeId(), size: null, price: null }],
           isDirty: true,
         })),
       updateGroupSize: (index, updates) =>
@@ -324,7 +380,7 @@ export const useProductBuilderStore = create(
 
       addDateException: () =>
         set((s) => ({
-          dateExceptions: [...s.dateExceptions, { id: crypto.randomUUID(), date: '', type: 'closed', overrideTimes: [] }],
+          dateExceptions: [...s.dateExceptions, { id: safeId(), date: '', type: 'closed', overrideTimes: [] }],
           isDirty: true,
         })),
       updateDateException: (index, updates) =>
@@ -353,6 +409,29 @@ export const useProductBuilderStore = create(
           pickupAreas: s.pickupAreas.filter((_, i) => i !== index),
           isDirty: true,
         })),
+
+      addPickupLocation: (loc) =>
+        set((s) => ({
+          pickupLocations: [...s.pickupLocations, loc],
+          isDirty: true,
+        })),
+      updatePickupLocation: (index, updates) =>
+        set((s) => ({
+          pickupLocations: s.pickupLocations.map((l, i) => (i === index ? { ...l, ...updates } : l)),
+          isDirty: true,
+        })),
+      removePickupLocation: (index) =>
+        set((s) => ({
+          pickupLocations: s.pickupLocations.filter((_, i) => i !== index),
+          isDirty: true,
+        })),
+      reorderPickupLocations: (from, to) =>
+        set((s) => {
+          const locations = [...s.pickupLocations]
+          const [removed] = locations.splice(from, 1)
+          locations.splice(to, 0, removed)
+          return { pickupLocations: locations, isDirty: true }
+        }),
 
       nextStep: () => {
         const { currentStep, completedStepIds } = get()

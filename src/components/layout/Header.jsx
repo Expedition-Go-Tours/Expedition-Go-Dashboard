@@ -63,7 +63,7 @@ export default function Header() {
             <div className="flex items-center gap-3 px-4 pt-4 pb-3 border-b border-slate-100">
               <div className="w-10 h-10 rounded-full overflow-hidden bg-[#044b3b] shrink-0 ring-2 ring-[#044b3b]/10">
                 {(user?.avatar || user?.photoURL) ? (
-                  <img src={optimizeImage(user.avatar || user.photoURL, 40)} alt="" className="w-full h-full object-cover" />
+                  <img src={optimizeImage(user.avatar || user.photoURL, 40)} alt="" loading="lazy" className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-white text-sm font-semibold">{avatarLetter}</div>
                 )}

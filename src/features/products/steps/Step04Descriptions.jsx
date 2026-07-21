@@ -48,22 +48,8 @@ export default function Step04Descriptions() {
 
       <div className="mb-5">
         <label className="block text-sm font-semibold mb-2 text-slate-800">Highlights * (3-5)</label>
-        <ul className="list-none p-0 m-0 mb-2.5">
-          {highlights.map((item, i) => (
-            <li key={i} className="flex items-center justify-between px-3 py-2 mb-1 bg-slate-50 rounded-lg border border-slate-100 text-sm">
-              <span>{item}</span>
-              <button
-                className="bg-transparent border-0 text-red-500 cursor-pointer text-sm p-1 rounded-lg hover:bg-red-50"
-                onClick={() => removeHighlight(i)}
-                type="button"
-              >
-                ✕
-              </button>
-            </li>
-          ))}
-        </ul>
         {highlights.length < 5 && (
-          <div className="flex gap-2">
+          <div className="flex gap-2 mb-2.5">
             <input
               className="flex-1 min-h-[46px] rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm transition-all focus-ring"
               type="text"
@@ -87,6 +73,20 @@ export default function Step04Descriptions() {
             </button>
           </div>
         )}
+        <ul className="list-none p-0 m-0 mb-2.5">
+          {highlights.map((item, i) => (
+            <li key={i} className="flex items-center justify-between px-3 py-2 mb-1 bg-slate-50 rounded-lg border border-slate-100 text-sm">
+              <span>{item}</span>
+              <button
+                className="bg-transparent border-0 text-red-500 cursor-pointer text-sm p-1 rounded-lg hover:bg-red-50"
+                onClick={() => removeHighlight(i)}
+                type="button"
+              >
+                ✕
+              </button>
+            </li>
+          ))}
+        </ul>
         {errors.highlights && <span className="text-[13px] text-red-600 font-medium mt-1 flex items-center gap-1">{errors.highlights[0]}</span>}
       </div>
     </div>

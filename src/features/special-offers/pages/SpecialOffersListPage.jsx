@@ -256,7 +256,7 @@ export default function SpecialOffersListPage() {
                         aria-label="View product"
                       />
                       {tour?.photos?.[0] || firstTarget.tourPhoto ? (
-                        <img src={tour?.photos?.[0] || firstTarget.tourPhoto} alt="" className="w-full h-full object-cover" />
+                        <img src={tour?.photos?.[0] || firstTarget.tourPhoto} alt="" loading="lazy" className="w-full h-full object-cover" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center bg-slate-100">
                           <Package size={20} className="text-slate-400" />
@@ -361,7 +361,7 @@ export default function SpecialOffersListPage() {
                             >
                               <div className="w-4 h-4 rounded bg-slate-200 overflow-hidden shrink-0">
                                 {tData.photos?.[0] || t.tourPhoto ? (
-                                  <img src={tData.photos?.[0] || t.tourPhoto} alt="" className="w-full h-full object-cover" />
+                                  <img src={tData.photos?.[0] || t.tourPhoto} alt="" loading="lazy" className="w-full h-full object-cover" />
                                 ) : (
                                   <Package size={9} className="text-slate-400 m-auto" />
                                 )}
@@ -454,7 +454,7 @@ export default function SpecialOffersListPage() {
                         <span key={t.id || t.tourId} className="inline-flex items-center gap-1.5 px-2 py-1 bg-slate-50 border border-slate-200 rounded-md text-[11px] text-slate-600">
                           <div className="w-4 h-4 rounded bg-slate-200 overflow-hidden shrink-0">
                             {(tData.photos?.[0] || t.tourPhoto) ? (
-                              <img src={tData.photos?.[0] || t.tourPhoto} alt="" className="w-full h-full object-cover" />
+                              <img src={tData.photos?.[0] || t.tourPhoto} alt="" loading="lazy" className="w-full h-full object-cover" />
                             ) : (
                               <Package size={9} className="text-slate-400 m-auto" />
                             )}
@@ -639,7 +639,7 @@ export default function SpecialOffersListPage() {
                             >
                               <div className="w-10 h-10 rounded-lg bg-slate-200 overflow-hidden shrink-0">
                                 {tData.photos?.[0] || t.tourPhoto ? (
-                                  <img src={tData.photos?.[0] || t.tourPhoto} alt="" className="w-full h-full object-cover" />
+                                  <img src={tData.photos?.[0] || t.tourPhoto} alt="" loading="lazy" className="w-full h-full object-cover" />
                                 ) : (
                                   <div className="w-full h-full flex items-center justify-center">
                                     <Package size={14} className="text-slate-400" />

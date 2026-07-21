@@ -560,7 +560,7 @@ export default function ProductsListPage() {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3 min-w-0">
                           <div className="w-9 h-9 rounded-lg bg-slate-100 overflow-hidden shrink-0">
-                            {(() => { const s = getPhotoSrc(product); return s ? <img src={s} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center"><Package size={14} className="text-slate-300" /></div>; })()}
+                            {(() => { const s = getPhotoSrc(product); return s ? <img src={s} alt="" loading="lazy" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center"><Package size={14} className="text-slate-300" /></div>; })()}
                           </div>
                           <div className="min-w-0">
                             <p className="text-sm font-medium text-slate-800 truncate cursor-pointer hover:text-emerald-700 transition-colors" onClick={() => navigate(`/products/${product.id}`)}>

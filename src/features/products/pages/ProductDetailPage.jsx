@@ -7,6 +7,7 @@ import {
   Check, X as XIcon, Camera, ChevronLeft, ChevronRight,
   Eye, Shield, Activity, Navigation, MoreHorizontal,
   Tag, Award, Percent, DollarSign, MessageSquare, Pencil,
+  MapPin,
 } from "lucide-react";
 import { toast } from "sonner";
 import { getMyProduct, updateProduct, deleteProduct } from "@/features/products/api";
@@ -16,6 +17,7 @@ import { PRODUCT_STATUSES } from "@/lib/constants";
 import { formatCurrency, formatDate, formatTime, cn } from "@/lib/utils";
 import config from "@/config";
 import { normalizeItinerary } from "@/features/products/utils/normalizeItinerary";
+import { transformImage } from "@/lib/image";
 
 function useImageError(proxyUrlFn) {
   const handleError = useCallback((e, photoIndex) => {
@@ -46,22 +48,8 @@ function reorderPhotos(tour) {
   return [coverPhoto, ...rest];
 }
 
-function getCloudinaryUrl(url, w = 400, h = 300) {
-  if (!url) return url;
-  if (url.includes('cloudinary.com')) {
-    const idx = url.indexOf('/upload/');
-    if (idx !== -1) {
-      const before = url.substring(0, idx + 8);
-      const after = url.substring(idx + 8);
-      return `${before}c_fill,w_${w},h_${h},q_auto,f_auto/${after}`;
-    }
-  }
-  return url;
-}
-
-function getCloudinaryHero(url) {
-  return getCloudinaryUrl(url, 1200, 600);
-}
+const getCloudinaryUrl = (url, w = 400, h = 300) => transformImage(url, { width: w, height: h, crop: 'fill' });
+const getCloudinaryHero = (url) => transformImage(url, { width: 2400, height: 1200, crop: 'fill' });
 
 function formatDuration(duration) {
   const parts = [];
@@ -89,6 +77,7 @@ const SECTION_EDIT_MAP = {
   "Location": { section: "basics", step: "categorization" },
   "Schedule": { section: "schedules-and-pricing", step: "pricing-schedules" },
   "Booking Rules": { section: "booking-and-tickets", step: "booking-process" },
+  "Meeting & Pickup": { section: "booking-and-tickets", step: "meeting-point-pickup" },
   "Languages": { section: "product-content", step: "languages-offered" },
   "Tags": { section: "basics", step: "theme" },
 };
@@ -213,7 +202,7 @@ function AllPhotosModal({ displayPhotos, open, onClose, onSelect, handleImageErr
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {displayPhotos.map((photo, i) => (
               <button key={i} onClick={() => { onClose(); onSelect(i); }} className="group relative aspect-[4/3] overflow-hidden rounded-lg bg-slate-100">
-                <img src={getCloudinaryUrl(photo, 600, 450)} alt={`${tour?.title} - Photo ${i + 1}`} className="absolute inset-0 w-full h-full object-cover transition-all duration-500 group-hover:scale-110" onError={(e) => handleImageError(e, i)} />
+                <img src={getCloudinaryUrl(photo, 600, 450)} alt={`${tour?.title} - Photo ${i + 1}`} loading="lazy" className="absolute inset-0 w-full h-full object-cover transition-all duration-500 group-hover:scale-110" onError={(e) => handleImageError(e, i)} />
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all duration-300" />
                 <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-black/40 text-white text-[10px] px-2 py-0.5 rounded-full">{i + 1}</div>
               </button>
@@ -541,7 +530,7 @@ export default function ProductDetailPage() {
             <div className="grid grid-cols-1 md:grid-cols-4 md:grid-rows-2 gap-1 rounded-xl overflow-hidden shadow-sm shadow-slate-900/5">
               {displayPhotos.slice(0, 5).map((photo, i) => (
                 <button key={i} onClick={() => setLightboxIndex(i)} className={cn("relative overflow-hidden bg-slate-100 group cursor-pointer", i === 0 ? "md:col-span-2 md:row-span-2 min-h-[260px] md:min-h-[440px]" : "min-h-[130px] md:min-h-[219px]")}>
-                  <img src={i === 0 ? getCloudinaryHero(photo) : getCloudinaryUrl(photo, 600, 450)} alt={`${tour.title} - Photo ${i + 1}`} className="absolute inset-0 w-full h-full object-cover transition-all duration-700 group-hover:scale-105" onError={(e) => handleImageError(e, i)} />
+                  <img src={i === 0 ? getCloudinaryHero(photo) : getCloudinaryUrl(photo, 600, 450)} alt={`${tour.title} - Photo ${i + 1}`} loading={i === 0 ? undefined : "lazy"} className="absolute inset-0 w-full h-full object-cover transition-all duration-700 group-hover:scale-105" onError={(e) => handleImageError(e, i)} />
                   <div className="absolute inset-0 bg-linear-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300" />
                   {i === 0 && (
                     <div className="absolute bottom-3 right-3 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-white/10 backdrop-blur-sm border border-white/20 shadow-sm opacity-0 group-hover:opacity-100 transition-all duration-300">
@@ -552,7 +541,7 @@ export default function ProductDetailPage() {
               ))}
               {displayPhotos.length > 5 && (
                 <button onClick={() => setGalleryOpen(true)} className="relative overflow-hidden bg-slate-100 min-h-[130px] md:min-h-[219px] group cursor-pointer">
-                  <img src={getCloudinaryUrl(displayPhotos[5], 600, 450)} alt={`${tour.title} - Photo 6`} className="absolute inset-0 w-full h-full object-cover transition-all duration-500 group-hover:scale-105" onError={(e) => handleImageError(e, 5)} />
+                  <img src={getCloudinaryUrl(displayPhotos[5], 600, 450)} alt={`${tour.title} - Photo 6`} loading="lazy" className="absolute inset-0 w-full h-full object-cover transition-all duration-500 group-hover:scale-105" onError={(e) => handleImageError(e, 5)} />
                   <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/30 to-transparent flex items-end justify-center pb-4 sm:pb-5 transition-all duration-300 group-hover:from-black/80">
                     <span className="text-xs font-semibold text-white/90 bg-white/10 backdrop-blur-sm border border-white/20 px-3 py-1.5 rounded-lg">+{displayPhotos.length - 5} more</span>
                   </div>
@@ -746,6 +735,173 @@ export default function ProductDetailPage() {
                   {/* Subtle bottom fade */}
                   <div className="absolute bottom-0 left-0 right-0 h-6 bg-linear-to-t from-white to-transparent pointer-events-none" />
                 </div>
+              </SectionCard>
+            )}
+
+            {/* MEETING & PICKUP */}
+            {(content.meetingMode || booking.meetingPoint?.name || content.meetingPointPicture || content.arrivalTimeType !== 'none' || content.pickupTransportTypes?.length > 0 || content.pickupAreas?.length > 0 || content.pickupLocations?.length > 0 || content.pickupDescription || content.dropoffOption !== 'none') && (
+              <SectionCard title="Meeting & Pickup" onEdit={() => handleEditSection("Meeting & Pickup")}>
+                {/* Mode badge */}
+                <div className="flex items-center flex-wrap gap-2 mb-4">
+                  {content.meetingMode === 'pickup' ? (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200/60">
+                      <Navigation size={11} /> Pickup
+                    </span>
+                  ) : content.meetingMode === 'selfGuided' ? (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200/60">
+                      <MapPin size={11} /> Self-Guided
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
+                      <MapPin size={11} /> Meeting Point
+                    </span>
+                  )}
+                </div>
+
+                {/* MEETING POINT MODE */}
+                {(!content.meetingMode || content.meetingMode === 'meeting_point') && (
+                  <>
+                    {(booking.meetingPoint?.name || booking.meetingPoint?.address) && (
+                      <div className="bg-slate-50 rounded-lg px-3.5 py-3 mb-3">
+                        <p className="text-[11px] text-slate-400 uppercase tracking-wider font-medium mb-1">Meeting Point</p>
+                        {booking.meetingPoint?.name && <p className="font-semibold text-slate-800 text-sm">{booking.meetingPoint.name}</p>}
+                        {booking.meetingPoint?.address && <p className="text-xs text-slate-500 mt-0.5">{booking.meetingPoint.address}</p>}
+                        {(booking.meetingPoint?.lat && booking.meetingPoint?.lng) && (
+                          <p className="text-xs text-slate-400 flex items-center gap-1 mt-1.5">
+                            <Navigation size={10} /> {booking.meetingPoint.lat}, {booking.meetingPoint.lng}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                    {content.meetingPointPicture && (
+                      <div className="mb-3">
+                        <p className="text-[11px] text-slate-400 uppercase tracking-wider font-medium mb-1.5">Photo</p>
+                        <img src={content.meetingPointPicture} alt="Meeting point" className="w-full max-h-48 object-cover rounded-lg border border-slate-200" />
+                      </div>
+                    )}
+                    {content.arrivalTimeType && content.arrivalTimeType !== 'none' && (
+                      <div className="flex items-center gap-2 text-sm text-slate-600 mb-1">
+                        <Clock size={13} className="text-slate-400 shrink-0" />
+                        <span>Arrive <strong className="text-slate-700">
+                          {({
+                            '5min': '5 minutes before',
+                            '10min': '10 minutes before',
+                            '15min': '15 minutes before',
+                            '30min': '30 minutes before',
+                            'notified': 'when notified',
+                            'custom': content.arrivalTimeCustom || 'custom time',
+                          })[content.arrivalTimeType] || content.arrivalTimeType}
+                        </strong></span>
+                      </div>
+                    )}
+                    {content.meetingPointDescription && (
+                      <p className="text-sm text-slate-600 leading-relaxed mt-2">{content.meetingPointDescription}</p>
+                    )}
+                  </>
+                )}
+
+                {/* PICKUP MODE */}
+                {content.meetingMode === 'pickup' && (
+                  <>
+                    {content.pickupTransportTypes?.length > 0 && (
+                      <div className="mb-3">
+                        <p className="text-[11px] text-slate-400 uppercase tracking-wider font-medium mb-1.5">Transport</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {content.pickupTransportTypes.map((t, i) => (
+                            <span key={i} className="text-xs px-2.5 py-1 rounded-md bg-slate-50 text-slate-500 font-medium border border-slate-100">
+                              {typeof t === 'string' ? t : t.name || t.type || ''}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {content.pickupAreas?.length > 0 && (
+                      <div className="mb-3">
+                        <p className="text-[11px] text-slate-400 uppercase tracking-wider font-medium mb-1.5">Pickup Areas</p>
+                        <div className="space-y-1.5">
+                          {content.pickupAreas.map((area, i) => {
+                            const name = typeof area === 'string' ? area : area.name || '';
+                            const time = typeof area === 'string' ? '' : area.time || '';
+                            return (
+                              <div key={i} className="flex items-center justify-between text-sm bg-slate-50 rounded-lg px-3 py-2">
+                                <span className="text-slate-700 font-medium">{name}</span>
+                                {time && <span className="text-xs text-slate-400">{time}</span>}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                    {content.pickupLocations?.length > 0 && (
+                      <div className="mb-3">
+                        <p className="text-[11px] text-slate-400 uppercase tracking-wider font-medium mb-1.5">Pickup Locations</p>
+                        <div className="space-y-1.5">
+                          {content.pickupLocations.map((loc, i) => (
+                            <div key={i} className="text-sm bg-slate-50 rounded-lg px-3 py-2">
+                              <p className="font-medium text-slate-700">{loc.name}</p>
+                              {loc.address && <p className="text-xs text-slate-500 mt-0.5">{loc.address}</p>}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {content.pickupTiming && (
+                        <span className="text-xs px-2 py-1 rounded-md bg-slate-50 text-slate-500 border border-slate-100">
+                          Pickup {content.pickupTiming === 'at_start' ? 'at start' : 'before start'}
+                        </span>
+                      )}
+                      {content.pickupFinalLocationTiming && (
+                        <span className="text-xs px-2 py-1 rounded-md bg-slate-50 text-slate-500 border border-slate-100">
+                          Location: {content.pickupFinalLocationTiming === 'day_before' ? 'day before' : 'after selection'}
+                        </span>
+                      )}
+                      {content.referenceStartTime && (
+                        <span className="text-xs px-2 py-1 rounded-md bg-slate-50 text-slate-500 border border-slate-100">
+                          Ref: {formatTime(content.referenceStartTime)}
+                        </span>
+                      )}
+                    </div>
+                    {content.pickupGeoshape && (
+                      <div className="mb-2 p-3 bg-slate-50 rounded-lg border border-dashed border-slate-200">
+                        <p className="text-[11px] text-slate-400 uppercase tracking-wider font-medium mb-1">Pickup Zone</p>
+                        <p className="text-xs text-slate-500">Geographic zone mapped</p>
+                      </div>
+                    )}
+                    {content.pickupDescription && (
+                      <p className="text-sm text-slate-600 leading-relaxed">{content.pickupDescription}</p>
+                    )}
+                  </>
+                )}
+
+                {/* SELF-GUIDED MODE */}
+                {content.meetingMode === 'selfGuided' && (
+                  <div className="bg-slate-50 rounded-lg px-3.5 py-3">
+                    <p className="text-sm text-slate-600">This is a self-guided experience. No meeting point or pickup required.</p>
+                  </div>
+                )}
+
+                {/* DROP-OFF */}
+                {content.dropoffOption && content.dropoffOption !== 'none' && (
+                  <div className={cn("border-t border-slate-100 pt-3 mt-3", content.meetingMode === 'selfGuided' && "border-t-0 pt-0 mt-0")}>
+                    <p className="text-[11px] text-slate-400 uppercase tracking-wider font-medium mb-1.5">Drop-off</p>
+                    <div className="bg-slate-50 rounded-lg px-3.5 py-3">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-200/60 text-slate-600 uppercase tracking-wider">
+                          {content.dropoffOption === 'same_location' ? 'Same as meeting point' :
+                           content.dropoffOption === 'different_location' ? 'Different location' :
+                           'Service included'}
+                        </span>
+                      </div>
+                      {content.dropoffLocation && (
+                        <p className="text-sm font-medium text-slate-700 mt-1.5">{content.dropoffLocation}</p>
+                      )}
+                      {content.dropoffDescription && (
+                        <p className="text-sm text-slate-600 mt-1 leading-relaxed">{content.dropoffDescription}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
               </SectionCard>
             )}
 
@@ -1191,12 +1347,6 @@ export default function ProductDetailPage() {
                         </div>
                       )}
                     </div>
-                  </div>
-                )}
-                {booking.pickupAvailable && booking.pickupDetails && (
-                  <div className="bg-slate-50 rounded-lg px-3.5 py-3 -mx-1">
-                    <p className="text-[11px] text-slate-400 uppercase tracking-wider font-medium mb-1">Pickup</p>
-                    <p className="text-sm text-slate-600">{booking.pickupDetails}</p>
                   </div>
                 )}
                 {content.meetingInstructions && (

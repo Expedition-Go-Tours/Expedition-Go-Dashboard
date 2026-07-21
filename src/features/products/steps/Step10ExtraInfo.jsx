@@ -7,10 +7,11 @@ function TagList({ items, onAdd, onRemove, placeholder, suggestions = [] }) {
   const [inputValue, setInputValue] = useState('')
   const [showSuggestions, setShowSuggestions] = useState(false)
 
-  function handleAdd() {
-    const val = inputValue.trim()
-    if (val) {
-      onAdd(val)
+
+  function handleAdd(val) {
+    const value = (typeof val === 'string' ? val : inputValue).trim()
+    if (value) {
+      onAdd(value)
       setInputValue('')
       if (inputRef.current) inputRef.current.focus()
     }
@@ -76,9 +77,11 @@ function TagList({ items, onAdd, onRemove, placeholder, suggestions = [] }) {
             <button
               key={suggestion}
               type="button"
-              onClick={() => {
-                setInputValue(suggestion)
-                handleAdd()
+              onMouseDown={(e) => {
+                e.preventDefault()
+                onAdd(suggestion)
+                setInputValue('')
+                setShowSuggestions(false)
               }}
               className="w-full text-left px-3.5 py-2.5 text-sm hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-0"
             >

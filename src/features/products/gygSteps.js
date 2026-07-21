@@ -24,12 +24,13 @@ export const GYG_STEPS = [
   { id: 5, label: 'Locations', sectionId: 'product-content', stepId: 'locations' },
   { id: 6, label: 'Keywords', sectionId: 'product-content', stepId: 'keywords' },
   { id: 7, label: 'Inclusions', sectionId: 'product-content', stepId: 'inclusions' },
-  { id: 8, label: 'Photos', sectionId: 'media', stepId: 'photos' },
-  { id: 9, label: 'Extra information', sectionId: 'product-content', stepId: 'extra-info' },
-  { id: 10, label: 'Options', sectionId: 'option-setup', stepId: 'options' },
-  { id: 11, label: 'Meeting Point & Pickup', sectionId: 'option-setup', stepId: 'meeting-point' },
-  { id: 12, label: 'Pricing & Availability', sectionId: 'option-setup', stepId: 'pricing' },
-  { id: 13, label: 'Itinerary', sectionId: 'itinerary-section', stepId: 'itinerary' },
+  { id: 8, label: 'Guide information', sectionId: 'product-content', stepId: 'guide-info' },
+  { id: 9, label: 'Photos', sectionId: 'media', stepId: 'photos' },
+  { id: 10, label: 'Extra information', sectionId: 'product-content', stepId: 'extra-info' },
+  { id: 11, label: 'Options', sectionId: 'option-setup', stepId: 'options' },
+  { id: 12, label: 'Meeting Point or Pickup', sectionId: 'option-setup', stepId: 'meeting-point' },
+  { id: 13, label: 'Pricing & Availability', sectionId: 'option-setup', stepId: 'pricing' },
+  { id: 14, label: 'Itinerary', sectionId: 'itinerary-section', stepId: 'itinerary' },
 ]
 
 

@@ -42,15 +42,15 @@ const isDev = appEnv === 'development';
 // Safe env parsing with sensible defaults
 const env = {
   // API
-  VITE_API_BASE_URL: envString(import.meta.env.VITE_API_BASE_URL, 'https://expedition-go-backend-v2.onrender.com/api'),
+  VITE_API_BASE_URL: envString(import.meta.env.VITE_API_BASE_URL, ''),
   VITE_API_TIMEOUT: envNum(import.meta.env.VITE_API_TIMEOUT, 30000),
   VITE_API_RETRY_ATTEMPTS: envNum(import.meta.env.VITE_API_RETRY_ATTEMPTS, 3),
 
   // Auth
   VITE_AUTH_PROVIDER: envString(import.meta.env.VITE_AUTH_PROVIDER, 'firebase'),
-  VITE_AUTH_API_BASE_URL: envString(import.meta.env.VITE_AUTH_API_BASE_URL, 'https://expedition-go-backend-v2.onrender.com/api'),
+  VITE_AUTH_API_BASE_URL: envString(import.meta.env.VITE_AUTH_API_BASE_URL, ''),
   VITE_TOKEN_REFRESH_INTERVAL: envNum(import.meta.env.VITE_TOKEN_REFRESH_INTERVAL, 300000),
-  VITE_SESSION_TIMEOUT: envNum(import.meta.env.VITE_SESSION_TIMEOUT, 1800000),
+  VITE_SESSION_TIMEOUT: envNum(import.meta.env.VITE_SESSION_TIMEOUT, 3600000),
 
   // Firebase
   VITE_FIREBASE_API_KEY: envString(import.meta.env.VITE_FIREBASE_API_KEY, ''),
@@ -95,7 +95,8 @@ const env = {
   VITE_DEFAULT_PAGE_SIZE: envNum(import.meta.env.VITE_DEFAULT_PAGE_SIZE, 25),
   VITE_MAX_PAGE_SIZE: envNum(import.meta.env.VITE_MAX_PAGE_SIZE, 100),
 
-  // Maps
+  // Google
+  VITE_GOOGLE_CLIENT_ID: envString(import.meta.env.VITE_GOOGLE_CLIENT_ID, ''),
   VITE_GOOGLE_MAPS_API_KEY: envString(import.meta.env.VITE_GOOGLE_MAPS_API_KEY, ''),
 
   // Third-party
@@ -185,6 +186,10 @@ export const config = {
   pagination: {
     defaultPageSize: env.VITE_DEFAULT_PAGE_SIZE,
     maxPageSize: env.VITE_MAX_PAGE_SIZE,
+  },
+
+  google: {
+    clientId: env.VITE_GOOGLE_CLIENT_ID,
   },
 
   maps: {

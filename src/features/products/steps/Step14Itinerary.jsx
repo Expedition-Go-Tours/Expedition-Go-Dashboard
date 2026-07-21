@@ -27,7 +27,7 @@ export default function Step13Itinerary() {
   const removeItineraryEntry = useProductBuilderStore((s) => s.removeItineraryEntry)
   const reorderItineraryEntry = useProductBuilderStore((s) => s.reorderItineraryEntry)
   const insertItineraryEntry = useProductBuilderStore((s) => s.insertItineraryEntry)
-  const errors = useStepErrors(13)
+  const errors = useStepErrors(14)
 
   const [activeLocSearch, setActiveLocSearch] = useState(null)
   const [locSearchQueries, setLocSearchQueries] = useState({})

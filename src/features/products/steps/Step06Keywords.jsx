@@ -3,6 +3,28 @@ import { toast } from 'sonner'
 import { useProductBuilderStore } from '@/features/products/productBuilderStore'
 import { requestKeyword as requestKeywordApi } from '@/features/products/api'
 import { SUGGESTED_KEYWORDS } from '@/constants/keywords'
+import { KEYWORD_CATEGORIES, CATEGORY_NAMES } from '@/constants/keywordCategories'
+
+function KeywordChip({ kw, selected, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[13px] font-medium border transition-colors cursor-pointer ${
+        selected
+          ? 'bg-emerald-500 text-white border-emerald-500'
+          : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
+      }`}
+    >
+      {kw}
+      {selected && (
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+          <path d="M2.5 6L5 8.5L9.5 3.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      )}
+    </button>
+  )
+}
 
 export default function Step06Keywords() {
   const keywords = useProductBuilderStore((s) => s.keywords)
@@ -13,12 +35,17 @@ export default function Step06Keywords() {
   const [requesting, setRequesting] = useState(false)
   const inputRef = useRef(null)
 
+  const [advancedMode, setAdvancedMode] = useState(false)
+  const [selectedCategory, setSelectedCategory] = useState(null)
+  const [categorySearch, setCategorySearch] = useState('')
+  const categorySearchRef = useRef(null)
+
   const filteredSuggestions = useMemo(() => {
-    if (!query.trim()) return SUGGESTED_KEYWORDS.slice(0, 20)
+    if (!query.trim()) return SUGGESTED_KEYWORDS
     const q = query.toLowerCase()
     return SUGGESTED_KEYWORDS.filter(
       (kw) => kw.toLowerCase().includes(q) && !keywords.includes(kw),
-    ).slice(0, 20)
+    ).slice(0, 50)
   }, [query, keywords])
 
   const trimmedQuery = query.trim()
@@ -27,12 +54,25 @@ export default function Step06Keywords() {
     !SUGGESTED_KEYWORDS.some((kw) => kw.toLowerCase() === trimmedQuery.toLowerCase()) &&
     !keywords.includes(trimmedQuery)
 
+  const filteredCategories = useMemo(() => {
+    if (!categorySearch.trim()) return CATEGORY_NAMES
+    const q = categorySearch.toLowerCase()
+    return CATEGORY_NAMES.filter((name) =>
+      name.toLowerCase().includes(q) ||
+      KEYWORD_CATEGORIES[name].some((kw) => kw.toLowerCase().includes(q)),
+    )
+  }, [categorySearch])
+
+  const currentKeywords = useMemo(() => {
+    if (!selectedCategory) return []
+    return KEYWORD_CATEGORIES[selectedCategory] || []
+  }, [selectedCategory])
+
   function selectKeyword(kw) {
     if (keywords.length >= 15) return
     addKeyword(kw)
     setQuery('')
     setShowSuggestions(false)
-    inputRef.current?.focus()
   }
 
   function handleRequest() {
@@ -46,7 +86,7 @@ export default function Step06Keywords() {
         toast.success(`"${kw}" added. It will be reviewed by the team.`)
         setQuery('')
         setShowSuggestions(false)
-        inputRef.current?.focus()
+        if (!advancedMode) inputRef.current?.focus()
       })
       .catch((err) => {
         toast.error(err.response?.data?.message || err.message || 'Failed to request keyword')
@@ -65,8 +105,10 @@ export default function Step06Keywords() {
       const isPreApproved = SUGGESTED_KEYWORDS.some((kw) => kw.toLowerCase() === val.toLowerCase())
       if (isPreApproved) {
         selectKeyword(val)
+        setTimeout(() => inputRef.current?.focus(), 0)
       } else {
         handleRequest()
+        setTimeout(() => inputRef.current?.focus(), 0)
       }
     }
     if (e.key === 'Escape') {
@@ -79,17 +121,16 @@ export default function Step06Keywords() {
       removeKeyword(keywords.indexOf(kw))
     } else if (keywords.length < 15) {
       selectKeyword(kw)
+      setQuery('')
     }
   }
 
   return (
     <div className="max-w-[720px]">
-      <label className="block text-sm font-semibold mb-2 text-slate-800">
-        Keywords <span className="font-normal text-slate-400">({keywords.length}/15)</span>
-      </label>
       <p className="text-[13px] text-slate-500 mb-4 leading-relaxed">
+        <span className="font-normal text-slate-400">({keywords.length}/15)</span>{' '}
         Search suggested keywords or request a new one to help customers find your product.
-        Think about theme, timing, who it's for, and what makes it unique.
+        Think about theme, timing, who it&apos;s for, and what makes it unique.
       </p>
 
       {/* Selected keywords as chips */}
@@ -106,7 +147,7 @@ export default function Step06Keywords() {
                 type="button"
                 className="bg-transparent border-0 cursor-pointer text-xs text-emerald-500 hover:text-red-500 p-0 leading-none"
               >
-                ✕
+                {'\u2715'}
               </button>
             </span>
           ))}
@@ -150,7 +191,7 @@ export default function Step06Keywords() {
                 Suggested keywords
               </div>
             )}
-            <div className="max-h-[240px] overflow-y-auto">
+            <div className="max-h-[320px] overflow-y-auto">
               {filteredSuggestions.map((kw) => (
                 <button
                   key={kw}
@@ -177,7 +218,6 @@ export default function Step06Keywords() {
               ))}
             </div>
 
-            {/* Request custom keyword row */}
             {isCustom && (
               <>
                 {filteredSuggestions.length > 0 && (
@@ -194,7 +234,7 @@ export default function Step06Keywords() {
                     +
                   </span>
                   <span>
-                    Request <strong className="text-slate-800">"{trimmedQuery}"</strong> as a keyword
+                    Request <strong className="text-slate-800">&quot;{trimmedQuery}&quot;</strong> as a keyword
                   </span>
                   {requesting && (
                     <svg className="animate-spin h-4 w-4 text-slate-400 ml-auto" viewBox="0 0 24 24">
@@ -209,28 +249,137 @@ export default function Step06Keywords() {
         )}
       </div>
 
-      {/* Quick select row - common categories as pills */}
+      {/* Quick select row */}
       <div>
         <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2">
           Quick add by category
         </p>
         <div className="flex flex-wrap gap-1.5">
-          {['Adventure', 'Cultural', 'Nature', 'Food & drink', 'Walking', 'Photography', 'Sunset', 'Family friendly', 'Private tour', 'Small group'].map((kw) => (
+          {CATEGORY_NAMES.map((name) => (
             <button
-              key={kw}
+              key={name}
               type="button"
-              onClick={() => toggleKeyword(kw)}
+              onClick={() => toggleKeyword(name)}
               className={`px-2.5 py-1 rounded-full text-[12px] font-medium border transition-colors ${
-                keywords.includes(kw)
+                keywords.includes(name)
                   ? 'bg-emerald-50 border-emerald-300 text-emerald-700'
                   : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'
               }`}
             >
-              {kw}
+              {name}
             </button>
           ))}
         </div>
       </div>
+
+      {/* Separator */}
+      <div className="border-t border-slate-100 my-5" />
+
+      {/* Toggle - bottom-right */}
+      <div className="flex justify-end items-center gap-3 mb-4">
+        <span className="text-[13px] text-slate-500">Advanced search</span>
+        <button
+          type="button"
+          onClick={() => {
+            const next = !advancedMode
+            setAdvancedMode(next)
+            setShowSuggestions(false)
+            if (next && !selectedCategory) {
+              setSelectedCategory(CATEGORY_NAMES[0])
+            }
+          }}
+          className={`relative w-10 h-5 rounded-full transition-colors border-0 cursor-pointer ${
+            advancedMode ? 'bg-[#0071eb]' : 'bg-slate-300'
+          }`}
+        >
+          <span
+            className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${
+              advancedMode ? 'translate-x-5' : 'translate-x-0'
+            }`}
+          />
+        </button>
+      </div>
+
+      {advancedMode && (
+        <div className="border border-slate-200 rounded">
+          <div className="flex min-h-[400px]">
+            {/* Left: categories */}
+            <div className="w-[200px] shrink-0 flex flex-col bg-slate-50">
+              <div className="p-2">
+                <input
+                  ref={categorySearchRef}
+                  className="w-full h-8 border border-slate-200 bg-white px-2.5 text-[13px] outline-none focus:border-blue-500 transition-colors"
+                  type="text"
+                  placeholder="Filter categories..."
+                  value={categorySearch}
+                  onChange={(e) => {
+                    setCategorySearch(e.target.value)
+                    if (!selectedCategory || !CATEGORY_NAMES.includes(selectedCategory) || !filteredCategories.includes(selectedCategory)) {
+                      setSelectedCategory(filteredCategories.length > 0 ? filteredCategories[0] : null)
+                    }
+                  }}
+                />
+              </div>
+              <div className="flex-1 overflow-y-auto">
+                {filteredCategories.map((name) => {
+                  const count = KEYWORD_CATEGORIES[name].length
+                  const isActive = selectedCategory === name
+                  return (
+                    <button
+                      key={name}
+                      type="button"
+                      onClick={() => setSelectedCategory(name)}
+                      className={`w-full flex items-center justify-between px-3 py-2.5 text-left text-[13px] transition-colors border-0 cursor-pointer ${
+                        isActive
+                          ? 'bg-white text-slate-900 font-medium shadow-sm'
+                          : 'bg-transparent text-slate-600 hover:bg-slate-100'
+                      } ${isActive ? '' : 'border-b border-slate-100'}`}
+                    >
+                      <span className="truncate">{name}</span>
+                      <span className={`shrink-0 ml-2 text-[11px] font-medium px-1.5 py-0.5 rounded-full ${
+                        isActive ? 'bg-[#0071eb] text-white' : 'bg-slate-200 text-slate-500'
+                      }`}>
+                        {count}
+                      </span>
+                    </button>
+                  )
+                })}
+                {filteredCategories.length === 0 && (
+                  <div className="px-3 py-6 text-[13px] text-slate-400 text-center">
+                    No categories match
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Separator */}
+            <div className="w-px bg-slate-200" />
+
+            {/* Right: keywords */}
+            <div className="flex-1 p-5 overflow-y-auto">
+              {selectedCategory ? (
+                <>
+                  <h3 className="text-sm font-semibold text-slate-800 mb-4">{selectedCategory}</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {currentKeywords.map((kw) => (
+                      <KeywordChip
+                        key={kw}
+                        kw={kw}
+                        selected={keywords.includes(kw)}
+                        onClick={() => toggleKeyword(kw)}
+                      />
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div className="flex items-center justify-center h-full text-[13px] text-slate-400">
+                  Select a category to view keywords
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

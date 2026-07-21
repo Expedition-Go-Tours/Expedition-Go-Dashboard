@@ -11,13 +11,17 @@ async function fetchSupplierProfile(authToken) {
     return null;
   }
 
-  const response = await api.get("/suppliers/application/status", {
-    skipGlobalErrorHandler: true,
-    headers: {
-      Authorization: `Bearer ${authToken}`,
-    },
-  });
-  return response.data?.data?.supplierProfile || response.data?.data || null;
+  try {
+    const response = await api.get("/suppliers/application/status", {
+      skipGlobalErrorHandler: true,
+      headers: {
+        Authorization: `Bearer ${authToken}`,
+      },
+    });
+    return response.data?.data?.supplierProfile || response.data?.data || null;
+  } catch {
+    return null;
+  }
 }
 
 export async function loadSupplierProfile(authToken = getAuthToken()) {
@@ -113,6 +117,13 @@ export function showSupplierLoginToast(supplierProfile, user) {
   } else {
     toast.info(message);
   }
+}
+
+export async function loginWithGoogleOneTap(credential) {
+  const response = await api.post("/auth/google/onetap", { credential }, {
+    skipGlobalErrorHandler: true,
+  });
+  return response.data?.data || response.data;
 }
 
 export function getLoginErrorMessage(error) {

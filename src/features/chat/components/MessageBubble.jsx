@@ -39,6 +39,7 @@ export default function MessageBubble({ message, isOwn, status, showAvatar, send
             <img
               src={senderAvatar}
               alt=""
+              loading="lazy"
               className="absolute inset-0 h-full w-full object-cover"
               onError={(e) => { e.target.style.display = "none"; }}
             />
@@ -62,6 +63,7 @@ export default function MessageBubble({ message, isOwn, status, showAvatar, send
               <img
                 src={message.attachmentUrl}
                 alt=""
+                loading="lazy"
                 className="max-w-full object-cover"
                 onError={(e) => { e.target.style.display = "none"; }}
               />
