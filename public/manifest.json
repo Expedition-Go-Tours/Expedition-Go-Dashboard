@@ -1,7 +1,7 @@
 {
-  "name": "ExpeditionGo Supplier Dashboard",
+  "name": "TravioAfrica Supplier Dashboard",
   "short_name": "Supplier Hub",
-  "description": "Manage your tours, bookings, and supplier profile on ExpeditionGo",
+  "description": "Manage your tours, bookings, and supplier profile on TravioAfrica",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

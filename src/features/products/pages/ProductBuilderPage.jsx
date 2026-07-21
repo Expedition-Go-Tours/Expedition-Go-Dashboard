@@ -24,7 +24,6 @@ import Step12MeetingPoint from '@/features/products/steps/Step12MeetingPoint'
 import Step13PricingAvailability from '@/features/products/steps/Step13PricingAvailability'
 import Step14Itinerary from '@/features/products/steps/Step14Itinerary'
 import { safeId } from '@/lib/utils'
-import { safeId } from '@/lib/utils'
 
 const STEP_COMPONENTS = {
   1: Step01Language,
