@@ -85,14 +85,12 @@ export function handleApiError(error, customMessage) {
     });
   }
 
-  // Show toast notification
-  toast.error(message, {
-    duration: 5000,
-    action: errorType === ErrorType.NETWORK ? {
-      label: 'Retry',
-      onClick: () => window.location.reload(),
-    } : undefined,
-  });
+  // Show toast notification (skip for network errors)
+  if (errorType !== ErrorType.NETWORK) {
+    toast.error(message, {
+      duration: 5000,
+    });
+  }
 
   // Log to monitoring service
   logError(error, { type: errorType, message });

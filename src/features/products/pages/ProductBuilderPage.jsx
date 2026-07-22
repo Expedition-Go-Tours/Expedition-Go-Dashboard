@@ -118,7 +118,7 @@ function tourToProduct(tour) {
       const url = typeof p === 'string' ? p : p.url || '';
       return { id: safeId(), url };
     }),
-    copyrightConfirmed: true,
+    copyrightConfirmed: !!content.copyrightConfirmed,
     coverPhoto: tour.coverPhoto || '',
     options: content.options || [],
     meetingMode: content.meetingMode || 'meeting_point',
@@ -152,11 +152,13 @@ function tourToProduct(tour) {
     pricingModel: td.pricingModel || 'perPerson',
     pricingApproach: td.pricingApproach || 'dependsOnAge',
     uniformPrice: td.uniformPrice ?? (td.pricingApproach === 'sameForEveryone'
-      ? (Array.isArray(td.ageGroups) && td.ageGroups[0]?.price != null ? td.ageGroups[0].price : null)
+      ? ((Array.isArray(td.pricingCategories) && td.pricingCategories[0]?.price != null) || (Array.isArray(td.ageGroups) && td.ageGroups[0]?.price != null) ? (td.pricingCategories || td.ageGroups)[0].price : null)
       : null),
-    ageGroups: Array.isArray(td.ageGroups) && td.ageGroups.length > 0
-      ? td.ageGroups
-      : [{ name: 'Adult', price: null, minAge: 13, maxAge: 99, notAllowed: false, ticketNotRequired: false, needsAdult: false }],
+    pricingCategories: (Array.isArray(td.pricingCategories) && td.pricingCategories.length > 0)
+      ? td.pricingCategories
+      : (Array.isArray(td.ageGroups) && td.ageGroups.length > 0)
+        ? td.ageGroups
+        : [{ name: 'Adult', price: null, minAge: 13, maxAge: 99, notAllowed: false, ticketNotRequired: false, needsAdult: false, idRequired: false, idType: '' }],
     minParticipants: td.minParticipants ?? 1,
     maxParticipants: td.maxParticipants ?? 10,
     pricingTiers: Array.isArray(td.pricingTiers) ? td.pricingTiers : [],
@@ -174,8 +176,6 @@ function tourToProduct(tour) {
     operatingHoursStart: avail.operatingHoursStart || '09:00',
     operatingHoursEnd: avail.operatingHoursEnd || '17:00',
     dateExceptions: Array.isArray(schedule.dateExceptions) ? schedule.dateExceptions : [],
-    primaryTheme: theme.primaryTheme || '',
-    secondaryThemes: Array.isArray(theme.secondary) ? theme.secondary : [],
     metaTitle: tour.metaTitle || '',
     metaDescription: tour.metaDescription || '',
   }
@@ -294,6 +294,13 @@ export default function ProductBuilderPage() {
   const [saving, setSaving] = useState(false)
   const [savedProductId, setSavedProductId] = useState(id && id !== 'new' ? id : null)
 
+  function normalizeLocationPoint(loc) {
+    if (!loc || typeof loc !== 'object') return null
+    if (loc.lat == null || loc.lng == null) return null
+    if (!loc.name || !loc.address) return null
+    return loc
+  }
+
   async function handleSave() {
     const state = useProductBuilderStore.getState()
 
@@ -301,6 +308,17 @@ export default function ProductBuilderPage() {
       ...state,
       photos: (state.photos || []).map((p) => (typeof p === 'string' ? p : p.url || p)),
       existingPhotos: (state.photos || []).map((p) => (typeof p === 'string' ? p : p.url || p)),
+      meetingPoint: normalizeLocationPoint(state.meetingPoint),
+      dropoffLocation: normalizeLocationPoint(state.dropoffLocation),
+      options: (state.options || []).filter((o) => o.title && o.languages?.length),
+      itinerary: (state.itinerary || [])
+        .filter((e) => e.description)
+        .map((e) => ({
+          ...e,
+          type: ['activity', 'transfer'].includes(e.type) ? e.type : 'activity',
+          duration: typeof e.duration === 'number' ? e.duration : 1,
+          durationUnit: ['minute', 'hour', 'day'].includes(e.durationUnit) ? e.durationUnit : 'hour',
+        })),
     }
 
     delete payload._pendingFiles

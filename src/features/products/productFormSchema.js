@@ -201,16 +201,18 @@ export const stepSchemas = {
       .optional(),
     pricingApproach: z.enum(['sameForEveryone', 'dependsOnAge']).optional(),
     uniformPrice: z.number().min(0).nullable().optional(),
-    ageGroups: z
+    pricingCategories: z
       .array(
         z.object({
-          name: z.string().min(1, 'Age group name is required'),
+          name: z.string().min(1, 'Category name is required'),
           price: z.number().min(0, 'Price must be 0 or greater').nullable().optional(),
           minAge: z.number().min(0, 'Min age must be 0 or greater'),
           maxAge: z.number().min(0, 'Max age must be 0 or greater'),
           notAllowed: z.boolean().optional(),
           ticketNotRequired: z.boolean().optional(),
           needsAdult: z.boolean().optional(),
+          idRequired: z.boolean().optional(),
+          idType: z.string().optional(),
         }),
       )
       .optional(),
@@ -240,13 +242,14 @@ export const stepSchemas = {
         }
       }
       if (data.pricingApproach === 'dependsOnAge') {
-        if (!data.ageGroups || data.ageGroups.length === 0) {
-          ctx.addIssue({ code: 'custom', path: ['ageGroups'], message: 'Add at least one age group' })
+        const cats = data.pricingCategories
+        if (!cats || cats.length === 0) {
+          ctx.addIssue({ code: 'custom', path: ['pricingCategories'], message: 'Add at least one pricing category' })
         }
-        if (Array.isArray(data.ageGroups)) {
-          data.ageGroups.forEach((g, i) => {
+        if (Array.isArray(cats)) {
+          cats.forEach((g, i) => {
             if (g.maxAge <= g.minAge) {
-              ctx.addIssue({ code: 'custom', path: [`ageGroups.${i}.maxAge`], message: 'Max age must be greater than min age' })
+              ctx.addIssue({ code: 'custom', path: [`pricingCategories.${i}.maxAge`], message: 'Max age must be greater than min age' })
             }
           })
         }

@@ -6,7 +6,7 @@ import {
   Clock, Users, Star, Globe, Calendar,
   Check, X as XIcon, Camera, ChevronLeft, ChevronRight,
   Eye, Shield, Activity, Navigation, MoreHorizontal,
-  Tag, Award, Percent, DollarSign, MessageSquare, Pencil,
+  Tag, Percent, DollarSign, MessageSquare, Pencil,
   MapPin,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -1125,19 +1125,15 @@ export default function ProductDetailPage() {
                 <DetailRow icon={Activity} label="Difficulty" value={categorization.difficulty} />
                 <DetailRow icon={Users} label="Group Size" value={categorization.groupSize ? `${categorization.groupSize.min || 1}\u2013${categorization.groupSize.max}` : null} />
                 <DetailRow icon={Shield} label="Age Requirement" value={categorization.ageRequirement} />
-                <DetailRow icon={Award} label="Theme" value={tour.theme?.primaryTheme || tour.primaryTheme} />
-                {(() => {
-                  const secondary = tour.theme?.secondaryThemes || tour.secondaryThemes;
-                  return secondary?.length > 0 ? (
-                    <DetailRow icon={Award} label="Themes" value={secondary.join(", ")} />
-                  ) : null;
-                })()}
                 <DetailRow icon={Navigation} label="Transport" value={categorization.transportMode && Object.keys(categorization.transportMode).length > 0 ? Object.entries(categorization.transportMode).map(([mode, items]) => items?.length ? `${mode}: ${items.join(", ")}` : "").filter(Boolean).join(" | ") : null} />
                 <DetailRow icon={Users} label="Group Type" value={content.isPrivateActivity ? "Private" : "Group"} />
                 <DetailRow icon={DollarSign} label="Pricing" value={schedules.travelerDetails?.pricingModel === "perPerson" ? "Per person" : "Per group"} />
-                {schedules.travelerDetails?.ageGroups?.filter(ag => ag.enabled)?.length > 0 && (
-                  <DetailRow icon={Users} label="Ages" value={schedules.travelerDetails.ageGroups.filter(ag => ag.enabled).map(ag => `${ag.name} (${ag.minAge}–${ag.maxAge})`).join(", ")} />
-                )}
+                {(() => {
+                  const cats = schedules.travelerDetails?.pricingCategories || schedules.travelerDetails?.ageGroups || []
+                  const enabled = cats.filter(c => c.enabled !== false)
+                  if (enabled.length === 0) return null
+                  return <DetailRow icon={Users} label="Pricing categories" value={enabled.map(c => c.idRequired ? `${c.name} (${c.minAge}–${c.maxAge}, ${c.idType || 'ID required'})` : `${c.name} (${c.minAge}–${c.maxAge})`).join(", ")} />
+                })()}
               </div>
             </motion.div>
 

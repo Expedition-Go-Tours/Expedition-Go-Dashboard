@@ -54,7 +54,7 @@ export default function WizardNavFooter({ currentStep, totalSteps, onBack, onNex
       <div className="flex items-center gap-3">
         {!isFirstStep && (
           <button className="px-4 py-2.5 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors" onClick={onBack} type="button">
-            ← Back
+            Back
           </button>
         )}
       </div>
@@ -84,7 +84,7 @@ export default function WizardNavFooter({ currentStep, totalSteps, onBack, onNex
             disabled={hasErrors || saving}
             type="button"
           >
-            {saving ? 'Saving...' : 'Save & Continue →'}
+            {saving ? 'Saving...' : 'Save & Continue'}
           </button>
         ) : (
           <button

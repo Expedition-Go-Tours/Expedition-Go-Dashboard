@@ -81,7 +81,7 @@ const INITIAL_FORM = {
   dateExceptions: [],
   pricingApproach: 'dependsOnAge',
   uniformPrice: null,
-  ageGroups: [{ name: 'Adult', price: null, minAge: 13, maxAge: 99, notAllowed: false, ticketNotRequired: false, needsAdult: false }],
+  pricingCategories: [{ name: 'Adult', price: null, minAge: 13, maxAge: 99, notAllowed: false, ticketNotRequired: false, needsAdult: false, idRequired: false, idType: '' }],
   minParticipants: 1,
   maxParticipants: 10,
   pricingTiers: [],
@@ -91,8 +91,6 @@ const INITIAL_FORM = {
   maxGroupsPerTimeSlot: 1,
   itinerary: [],
   cutoffHours: 0,
-  primaryTheme: '',
-  secondaryThemes: [],
   metaTitle: '',
   metaDescription: '',
 }
@@ -330,19 +328,19 @@ export const useProductBuilderStore = create(
           return { itinerary: entries, isDirty: true }
         }),
 
-      addAgeGroup: () =>
+      addPricingCategory: () =>
         set((s) => ({
-          ageGroups: [...s.ageGroups, { name: '', price: null, minAge: 1, maxAge: 99, notAllowed: false, ticketNotRequired: false, needsAdult: false }],
+          pricingCategories: [...s.pricingCategories, { name: '', price: null, minAge: 1, maxAge: 99, notAllowed: false, ticketNotRequired: false, needsAdult: false, idRequired: false, idType: '' }],
           isDirty: true,
         })),
-      updateAgeGroup: (index, updates) =>
+      updatePricingCategory: (index, updates) =>
         set((s) => ({
-          ageGroups: s.ageGroups.map((g, i) => (i === index ? { ...g, ...updates } : g)),
+          pricingCategories: s.pricingCategories.map((g, i) => (i === index ? { ...g, ...updates } : g)),
           isDirty: true,
         })),
-      removeAgeGroup: (index) =>
+      removePricingCategory: (index) =>
         set((s) => ({
-          ageGroups: s.ageGroups.filter((_, i) => i !== index),
+          pricingCategories: s.pricingCategories.filter((_, i) => i !== index),
           isDirty: true,
         })),
 

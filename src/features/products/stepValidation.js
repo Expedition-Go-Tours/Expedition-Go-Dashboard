@@ -65,7 +65,7 @@ const STEP_FIELDS = {
      'dateExceptions',
       'pricingApproach',
       'uniformPrice',
-      'ageGroups',
+      'pricingCategories',
      'minParticipants',
      'maxParticipants',
      'pricingTiers',
