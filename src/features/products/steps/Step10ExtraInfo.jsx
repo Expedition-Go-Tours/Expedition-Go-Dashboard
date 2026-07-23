@@ -29,7 +29,7 @@ function TagList({ items, onAdd, onRemove, placeholder, suggestions = [] }) {
         {items.map((item, i) => (
           <span
             key={i}
-            className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 rounded-full text-[13px] font-semibold"
+            className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 rounded-full text-[13px] font-semibold"
           >
             {item}
             <button
@@ -117,7 +117,7 @@ export default function Step09ExtraInfo() {
         All fields on this page are optional.
       </p>
 
-      <div className="mb-5">
+      <div className="mb-5" data-field="notSuitableFor">
         <label className="block text-sm font-semibold mb-2 text-slate-800">
           Who is this activity not suitable for?
         </label>
@@ -130,7 +130,7 @@ export default function Step09ExtraInfo() {
         />
       </div>
 
-      <div className="mb-5">
+      <div className="mb-5" data-field="notAllowed">
         <label className="block text-sm font-semibold mb-2 text-slate-800">
           What's not allowed?
         </label>
@@ -151,12 +151,13 @@ export default function Step09ExtraInfo() {
             checked={petFriendly}
             onChange={(e) => setField('petFriendly', e.target.checked)}
             className="w-[18px] h-[18px] cursor-pointer"
+            data-field="petFriendly"
           />
           <span>Pets are allowed</span>
         </label>
       </div>
 
-      <div className="mb-5">
+      <div className="mb-5" data-field="mandatoryItems">
         <label className="block text-sm font-semibold mb-2 text-slate-800">
           What mandatory items must the customer bring?
         </label>
@@ -177,6 +178,7 @@ export default function Step09ExtraInfo() {
           value={knowBeforeYouGo}
           onChange={(e) => setField('knowBeforeYouGo', e.target.value)}
           placeholder="Insurance requirements, appropriate clothing, necessary documents..."
+          data-field="knowBeforeYouGo"
         />
       </div>
 
@@ -189,6 +191,7 @@ export default function Step09ExtraInfo() {
             value={emergencyCountryCode}
             onChange={(e) => setField('emergencyCountryCode', e.target.value)}
             placeholder="Country code"
+            data-field="emergencyCountryCode"
           />
           <input
             className="min-h-[46px] rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm transition-all focus-ring flex-1"
@@ -196,6 +199,7 @@ export default function Step09ExtraInfo() {
             value={emergencyPhone}
             onChange={(e) => setField('emergencyPhone', e.target.value)}
             placeholder="Phone number"
+            data-field="emergencyPhone"
           />
         </div>
         <p className="text-[13px] text-slate-500 mt-1.5 leading-relaxed">
@@ -211,6 +215,7 @@ export default function Step09ExtraInfo() {
           value={voucherInfo}
           onChange={(e) => setField('voucherInfo', e.target.value)}
           placeholder="Any additional information customers need after booking..."
+          data-field="voucherInfo"
         />
       </div>
     </div>

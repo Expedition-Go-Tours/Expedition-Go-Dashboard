@@ -580,7 +580,7 @@ export default function ProductDetailPage() {
               )}
               {tour._count?.reviews > 0 && (
                 <div className="flex items-center gap-3 bg-white rounded-xl border border-slate-100 px-4 py-3.5 shadow-sm shadow-slate-900/5 hover:shadow-md hover:border-slate-200 transition-all duration-200">
-                  <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 ring-1 ring-blue-200/50"><MessageSquare size={17} /></div>
+                  <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 ring-1 ring-emerald-200/50"><MessageSquare size={17} /></div>
                   <div><p className="text-base font-bold text-slate-800 leading-none tabular-nums">{tour._count.reviews}</p><p className="text-xs text-slate-400 font-medium leading-tight mt-1">Reviews</p></div>
                 </div>
               )}

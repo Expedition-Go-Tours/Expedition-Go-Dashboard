@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { safeId } from '@/lib/utils'
 import { GYG_STEPS } from './gygSteps'
+import { validateStep } from './stepValidation'
 
 function getSectionStep(index) {
   const step = GYG_STEPS[index]
@@ -22,7 +23,7 @@ const INITIAL_FORM = {
   referenceCode: '',
   shortDescription: '',
   fullDescription: '',
-  highlights: [],
+  highlights: ['', '', ''],
   locations: [],
   attractions: [],
   keywords: [],
@@ -33,8 +34,9 @@ const INITIAL_FORM = {
   guideType: 'tour-guide',
   guideMaterials: { audioGuide: false, infoBooklet: false },
   foodProvided: false,
-  mealType: '',
+  meals: [],
   drinksIncluded: false,
+  showDietaryRestrictions: false,
   dietaryOptions: [],
   transportationProvided: false,
   transportationType: '',
@@ -69,19 +71,29 @@ const INITIAL_FORM = {
   dropoffLocation: null,
   dropoffDescription: '',
   pricingModel: 'perPerson',
-  currency: '',
-  scheduleType: 'fixedTimeSlot',
+  currency: 'USD',
+  schedules: [],
+  currentScheduleStep: 1,
+  editingScheduleIndex: null,
+  scheduleType: 'operatingHours',
   scheduleName: '',
   scheduleStartDate: '',
   scheduleHasEndDate: false,
   scheduleEndDate: '',
-  timeSlots: [],
-  operatingHoursStart: '09:00',
-  operatingHoursEnd: '17:00',
+  weeklySchedule: {
+    Monday: [],
+    Tuesday: [],
+    Wednesday: [],
+    Thursday: [],
+    Friday: [],
+    Saturday: [],
+    Sunday: [],
+  },
   dateExceptions: [],
   pricingApproach: 'dependsOnAge',
   uniformPrice: null,
-  pricingCategories: [{ name: 'Adult', price: null, minAge: 13, maxAge: 99, notAllowed: false, ticketNotRequired: false, needsAdult: false, idRequired: false, idType: '' }],
+  pricingCategories: [{ name: 'Child', price: null, minAge: 0, maxAge: 17, notAllowed: false, ticketNotRequired: false, needsAdult: false, idRequired: false, idType: '' }, { name: 'Adult', price: null, minAge: 18, maxAge: 99, notAllowed: false, ticketNotRequired: false, needsAdult: false, idRequired: false, idType: '' }],
+  showAdvancedCategorySettings: false,
   minParticipants: 1,
   maxParticipants: 10,
   pricingTiers: [],
@@ -104,12 +116,14 @@ export const useProductBuilderStore = create(
       currentSectionId: 'getting-started',
       currentStepId: 'language',
       completedStepIds: [],
+      stepErrors: {},
 
       isDirty: false,
       isSaving: false,
       isSubmitting: false,
       lastSaved: null,
       hasHydrated: false,
+      savedProductId: null,
 
       setHasHydrated: (val) => set({ hasHydrated: val }),
 
@@ -117,6 +131,11 @@ export const useProductBuilderStore = create(
 
       addHighlight: (item) =>
         set((s) => ({ highlights: [...s.highlights, item], isDirty: true })),
+      updateHighlight: (index, value) =>
+        set((s) => ({
+          highlights: s.highlights.map((h, i) => (i === index ? value : h)),
+          isDirty: true,
+        })),
       removeHighlight: (index) =>
         set((s) => ({ highlights: s.highlights.filter((_, i) => i !== index), isDirty: true })),
 
@@ -165,6 +184,21 @@ export const useProductBuilderStore = create(
         set((s) => ({ [field]: [...s[field], item], isDirty: true })),
       removeInclusionItem: (field, index) =>
         set((s) => ({ [field]: s[field].filter((_, i) => i !== index), isDirty: true })),
+      updateInclusionItem: (field, index, value) =>
+        set((s) => ({
+          [field]: s[field].map((item, i) => (i === index ? value : item)),
+          isDirty: true,
+        })),
+
+      addMeal: () =>
+        set((s) => ({ meals: [...s.meals, { type: '', format: '' }], isDirty: true })),
+      updateMeal: (index, field, value) =>
+        set((s) => ({
+          meals: s.meals.map((m, i) => (i === index ? { ...m, [field]: value } : m)),
+          isDirty: true,
+        })),
+      removeMeal: (index) =>
+        set((s) => ({ meals: s.meals.filter((_, i) => i !== index), isDirty: true })),
 
       addDietaryOption: (opt) =>
         set((s) => ({ dietaryOptions: [...s.dietaryOptions, opt], isDirty: true })),
@@ -228,7 +262,7 @@ export const useProductBuilderStore = create(
             {
               id: safeId(),
               title: '',
-              refCode: '',
+              refCode: 'default',
               description: '',
               languages: [],
               isPrivate: false,
@@ -392,6 +426,140 @@ export const useProductBuilderStore = create(
           isDirty: true,
         })),
 
+      addWeeklyHours: (day) =>
+        set((s) => ({
+          weeklySchedule: {
+            ...s.weeklySchedule,
+            [day]: [...(s.weeklySchedule[day] || []), { startTime: '08:00', endTime: '18:00' }],
+          },
+          isDirty: true,
+        })),
+      updateWeeklyHours: (day, index, updates) =>
+        set((s) => ({
+          weeklySchedule: {
+            ...s.weeklySchedule,
+            [day]: s.weeklySchedule[day].map((h, i) => (i === index ? { ...h, ...updates } : h)),
+          },
+          isDirty: true,
+        })),
+      removeWeeklyHours: (day, index) =>
+        set((s) => ({
+          weeklySchedule: {
+            ...s.weeklySchedule,
+            [day]: s.weeklySchedule[day].filter((_, i) => i !== index),
+          },
+          isDirty: true,
+        })),
+      copyDayToRemaining: (sourceDay) =>
+        set((s) => {
+          const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+          const sourceHours = s.weeklySchedule[sourceDay] || []
+          const newSchedule = { ...s.weeklySchedule }
+          const sourceIndex = days.indexOf(sourceDay)
+          for (let i = sourceIndex + 1; i < days.length; i++) {
+            newSchedule[days[i]] = sourceHours.map((h) => ({ ...h }))
+          }
+          return { weeklySchedule: newSchedule, isDirty: true }
+        }),
+      removeAllWeeklyHours: () =>
+        set((s) => {
+          const newSchedule = {}
+          Object.keys(s.weeklySchedule).forEach((day) => { newSchedule[day] = [] })
+          return { weeklySchedule: newSchedule, isDirty: true }
+        }),
+      copyWeeklyHoursFromException: (exceptionIndex, day) =>
+        set((s) => {
+          const exception = s.dateExceptions[exceptionIndex]
+          if (!exception) return s
+          return {
+            weeklySchedule: {
+              ...s.weeklySchedule,
+              [day]: (exception.overrideTimes || []).map((t) => ({ ...t })),
+            },
+            isDirty: true,
+          }
+        }),
+
+      saveSchedule: () =>
+        set((s) => {
+          const schedule = {
+            name: s.scheduleName,
+            type: s.scheduleType,
+            startDate: s.scheduleStartDate,
+            hasEndDate: s.scheduleHasEndDate,
+            endDate: s.scheduleEndDate,
+            weeklySchedule: JSON.parse(JSON.stringify(s.weeklySchedule)),
+            dateExceptions: [...s.dateExceptions],
+            pricingModel: s.pricingModel,
+            currency: 'USD',
+            pricingApproach: s.pricingApproach,
+            uniformPrice: s.uniformPrice,
+            pricingCategories: JSON.parse(JSON.stringify(s.pricingCategories)),
+            minParticipants: s.minParticipants,
+            maxParticipants: s.maxParticipants,
+            pricingTiers: JSON.parse(JSON.stringify(s.pricingTiers)),
+          }
+          const newSchedules = [...s.schedules]
+          if (s.editingScheduleIndex !== null) {
+            newSchedules[s.editingScheduleIndex] = schedule
+          } else {
+            newSchedules.push(schedule)
+          }
+          return {
+            schedules: newSchedules,
+            editingScheduleIndex: null,
+            currentScheduleStep: 1,
+            isDirty: true,
+          }
+        }),
+      editSchedule: (index) =>
+        set((s) => {
+          const schedule = s.schedules[index]
+          if (!schedule) return s
+          return {
+            editingScheduleIndex: index,
+            currentScheduleStep: 1,
+            scheduleName: schedule.name,
+            scheduleType: schedule.type,
+            scheduleStartDate: schedule.startDate,
+            scheduleHasEndDate: schedule.hasEndDate,
+            scheduleEndDate: schedule.endDate,
+            weeklySchedule: JSON.parse(JSON.stringify(schedule.weeklySchedule)),
+            dateExceptions: [...schedule.dateExceptions],
+            pricingModel: schedule.pricingModel,
+            currency: schedule.currency || 'USD',
+            pricingApproach: schedule.pricingApproach,
+            uniformPrice: schedule.uniformPrice,
+            pricingCategories: JSON.parse(JSON.stringify(schedule.pricingCategories)),
+            minParticipants: schedule.minParticipants,
+            maxParticipants: schedule.maxParticipants,
+            pricingTiers: JSON.parse(JSON.stringify(schedule.pricingTiers)),
+          }
+        }),
+      removeSchedule: (index) =>
+        set((s) => ({
+          schedules: s.schedules.filter((_, i) => i !== index),
+          isDirty: true,
+        })),
+      resetScheduleForm: () =>
+        set({
+          currentScheduleStep: 1,
+          editingScheduleIndex: null,
+          scheduleName: '',
+          scheduleType: 'operatingHours',
+          scheduleStartDate: '',
+          scheduleHasEndDate: false,
+          scheduleEndDate: '',
+          weeklySchedule: { Monday: [], Tuesday: [], Wednesday: [], Thursday: [], Friday: [], Saturday: [], Sunday: [] },
+          dateExceptions: [],
+          pricingApproach: 'dependsOnAge',
+          uniformPrice: null,
+          pricingCategories: [{ name: 'Child', price: null, minAge: 0, maxAge: 17, notAllowed: false, ticketNotRequired: false, needsAdult: false, idRequired: false, idType: '' }, { name: 'Adult', price: null, minAge: 18, maxAge: 99, notAllowed: false, ticketNotRequired: false, needsAdult: false, idRequired: false, idType: '' }],
+          minParticipants: 1,
+          maxParticipants: 10,
+          pricingTiers: [],
+        }),
+
       addPickupArea: (name) =>
         set((s) => ({
           pickupAreas: [...s.pickupAreas, { name, time: '' }],
@@ -435,7 +603,7 @@ export const useProductBuilderStore = create(
         const { currentStep, completedStepIds } = get()
         const mapping = getSectionStep(currentStep)
         const newCompleted = [...new Set([...completedStepIds, mapping.stepId])]
-        const next = Math.min(currentStep + 1, 12)
+        const next = Math.min(currentStep + 1, 13)
         const nextMapping = getSectionStep(next)
         set({
           currentStep: next,
@@ -454,7 +622,7 @@ export const useProductBuilderStore = create(
       },
 
       goToStep: (step) => {
-        const idx = Math.max(0, Math.min(step, 12))
+        const idx = Math.max(0, Math.min(step, 13))
         const mapping = getSectionStep(idx)
         set({ currentStep: idx, currentSectionId: mapping.sectionId, currentStepId: mapping.stepId })
       },
@@ -470,13 +638,18 @@ export const useProductBuilderStore = create(
       },
 
       getOverallProgress: () => {
-        return Math.round((get().completedStepIds.length / 13) * 100)
+        return Math.round((get().completedStepIds.length / 14) * 100)
       },
 
       setSaving: (val) => set({ isSaving: val }),
       setSubmitting: (val) => set({ isSubmitting: val }),
+      setSavedProductId: (id) => set({ savedProductId: id }),
 
       markSaved: () => set({ isDirty: false, lastSaved: new Date().toISOString() }),
+      completeStep: (stepId) =>
+        set((s) => ({
+          completedStepIds: [...new Set([...s.completedStepIds, stepId])],
+        })),
 
       loadDraft: (data) => {
         set((s) => ({
@@ -490,6 +663,17 @@ export const useProductBuilderStore = create(
         }))
       },
 
+      setStepErrors: (stepIndex, errors) =>
+        set((s) => ({
+          stepErrors: { ...s.stepErrors, [stepIndex]: errors },
+        })),
+      clearStepErrors: (stepIndex) =>
+        set((s) => {
+          const { [stepIndex]: _, ...rest } = s.stepErrors
+          return { stepErrors: rest }
+        }),
+      clearAllStepErrors: () => set({ stepErrors: {} }),
+
       reset: () => {
         const mapping = getSectionStep(0)
         set({
@@ -498,10 +682,12 @@ export const useProductBuilderStore = create(
           currentSectionId: mapping.sectionId,
           currentStepId: mapping.stepId,
           completedStepIds: [],
+          stepErrors: {},
           isDirty: false,
           isSaving: false,
           isSubmitting: false,
           lastSaved: null,
+          savedProductId: null,
         })
       },
     }),

@@ -12,6 +12,7 @@ export default function Step03Title() {
       <div className="mb-5">
         <label className="block text-sm font-semibold mb-2 text-slate-800">Product title *</label>
         <input
+          data-field="title"
           className="w-full min-h-[46px] rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm transition-all focus-ring"
           type="text"
           value={title}
@@ -27,6 +28,7 @@ export default function Step03Title() {
       <div className="mb-5">
         <label className="block text-sm font-semibold mb-2 text-slate-800">Product reference code</label>
         <input
+          data-field="referenceCode"
           className="w-full min-h-[46px] rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm transition-all focus-ring"
           type="text"
           value={referenceCode}

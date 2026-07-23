@@ -238,13 +238,13 @@ export default function ProductsListPage() {
           {[
             { label: "Active", value: stats.active, icon: Package, accent: "emerald" },
             { label: "Pending Approval", value: stats.pending, icon: TrendingUp, accent: "amber" },
-            { label: "Drafts", value: stats.draft, icon: Edit, accent: "blue" },
+            { label: "Drafts", value: stats.draft, icon: Edit, accent: "emerald" },
             { label: "Total Bookings", value: stats.totalBookings, icon: ShoppingBag, accent: "emerald" },
           ].map((s) => {
             const accentMap = {
               emerald: "bg-emerald-50 text-emerald-600 border-emerald-200/50",
               amber: "bg-amber-50 text-amber-600 border-amber-200/50",
-              blue: "bg-blue-50 text-blue-600 border-blue-200/50",
+              emerald: "bg-emerald-50 text-emerald-600 border-emerald-200/50",
             };
             return (
               <div key={s.label} className="bg-white border border-slate-100 rounded-xl p-4 hover:shadow-sm hover:border-slate-200 transition-all">
@@ -493,7 +493,7 @@ export default function ProductsListPage() {
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
                           onClick={() => navigate(`/products/${product.id}`)}
-                          className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
                           title="View"
                         >
                           <Eye size={14} />
@@ -590,7 +590,7 @@ export default function ProductsListPage() {
                       <td className="px-4 py-3 text-xs text-slate-500">{formatDate(product.updatedAt)}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1">
-                          <button onClick={() => navigate(`/products/${product.id}`)} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="View"><Eye size={14} /></button>
+                          <button onClick={() => navigate(`/products/${product.id}`)} className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" title="View"><Eye size={14} /></button>
                           {usingSupplierEndpoint && (
                             <>
                               <button onClick={() => navigate(`/products/build/${product.id}/type`)} className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" title="Edit"><Edit size={14} /></button>

@@ -68,6 +68,7 @@ export const getMyProduct = async (id) => {
 export const uploadPhotos = (formData) =>
   api.post('/tours/upload-photos', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
+    skipGlobalErrorHandler: true,
   });
 
 /**

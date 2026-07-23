@@ -1,14 +1,18 @@
 import { z } from 'zod'
 
 export const locationSchema = z.object({
-  name: z.string().min(1, 'Location name is required'),
-  visitType: z.string().min(1, 'Visit type is required'),
-  address: z.string().optional(),
+  name: z.string().min(1, 'Location name is required').max(200),
+  visitType: z.string().min(1, 'Visit type is required').max(50),
+  address: z.string().max(300).optional(),
   lat: z.number().optional(),
   lng: z.number().optional(),
-  city: z.string().optional(),
-  country: z.string().optional(),
-  region: z.string().optional(),
+  city: z.string().max(100).optional(),
+  country: z.string().max(100).optional(),
+  region: z.string().max(100).optional(),
+  description: z.string().max(500).optional(),
+  timeSpent: z.number().nullable().optional(),
+  timeSpentUnit: z.enum(['minutes', 'hours']).optional(),
+  admissionIncluded: z.enum(['yes', 'no', 'na']).optional(),
 })
 
 export const locationPointSchema = z.object({
@@ -70,7 +74,7 @@ export const itineraryEntrySchema = z.object({
   duration: z.number().min(0, 'Duration is required'),
   durationUnit: z.enum(['minute', 'hour', 'day']),
   title: z.string().optional(),
-  description: z.string().min(1, 'Description is required'),
+  description: z.string().min(1, 'Description is required').max(2000),
   isOptional: z.boolean().optional(),
   additionalFee: z.boolean().optional(),
 })
@@ -85,8 +89,6 @@ export const stepSchemas = {
      difficulty: z.string().min(1, 'Select a difficulty level'),
      duration: z.number({ invalid_type_error: 'Duration is required' }).min(0.5, 'Duration must be at least 0.5').nullable().optional(),
      durationUnit: z.enum(['minutes', 'hours', 'days']).optional(),
-     activitiesIncluded: z.array(z.string()).optional(),
-     pickupTransportTypes: z.array(z.string()).optional(),
    }),
    3: z.object({
     title: z.string().min(1, 'Title is required'),
@@ -95,12 +97,14 @@ export const stepSchemas = {
   4: z.object({
     shortDescription: z
       .string()
-      .min(10, 'Short description must be at least 10 characters'),
+      .min(10, 'Short description must be at least 10 characters')
+      .max(200, 'Short description must be at most 200 characters'),
     fullDescription: z
       .string()
-      .min(20, 'Full description must be at least 20 characters'),
+      .min(500, 'Full description must be at least 500 characters')
+      .max(3000, 'Full description must be at most 3000 characters'),
     highlights: z
-      .array(z.string().min(1))
+      .array(z.string().min(1).max(80, 'Each highlight must be 80 characters or fewer'))
       .min(3, 'Add at least 3 highlights')
       .max(5, 'Maximum 5 highlights'),
   }),
@@ -108,7 +112,6 @@ export const stepSchemas = {
     locations: z
       .array(locationSchema)
       .min(1, 'Add at least one location'),
-    attractions: z.array(attractionSchema).optional(),
   }),
   6: z.object({
     keywords: z.array(z.string()).max(15, 'Maximum 15 keywords'),
@@ -119,8 +122,12 @@ export const stepSchemas = {
     activitiesIncluded: z.array(z.string()).optional(),
     pickupTransportTypes: z.array(z.string()).optional(),
     foodProvided: z.boolean(),
-    mealType: z.string().optional(),
+    meals: z.array(z.object({
+      type: z.string().min(1, 'Select a meal type'),
+      format: z.string().min(1, 'Select a format'),
+    })).optional(),
     drinksIncluded: z.boolean().optional(),
+    showDietaryRestrictions: z.boolean().optional(),
     dietaryOptions: z.array(z.string()).optional(),
     transportationProvided: z.boolean(),
     transportationType: z.string().optional(),
@@ -135,7 +142,7 @@ export const stepSchemas = {
   9: z.object({
     photos: z
       .array(z.object({ id: z.string(), url: z.string() }))
-      .min(7, 'Upload at least 7 photos'),
+      .min(4, 'Upload at least 4 photos'),
     copyrightConfirmed: z.literal(true, {
       message: 'You must confirm copyright ownership',
     }),
@@ -145,10 +152,10 @@ export const stepSchemas = {
     notAllowed: z.array(z.string()).optional(),
     petFriendly: z.boolean().optional(),
     mandatoryItems: z.array(z.string()).optional(),
-    knowBeforeYouGo: z.string().optional(),
-    emergencyCountryCode: z.string().optional(),
-    emergencyPhone: z.string().optional(),
-    voucherInfo: z.string().optional(),
+    knowBeforeYouGo: z.string().max(2000).optional(),
+    emergencyCountryCode: z.string().max(5).optional(),
+    emergencyPhone: z.string().max(20).optional(),
+    voucherInfo: z.string().max(500).optional(),
   }),
   11: z.object({
     options: z
@@ -167,73 +174,20 @@ export const stepSchemas = {
     pickupTiming: z.enum(['at_start', 'before_start']).optional(),
     pickupFinalLocationTiming: z.enum(['day_before', 'after_selection']).optional(),
     referenceStartTime: z.string().optional(),
-    pickupAreas: z.array(z.object({ name: z.string(), time: z.string() })).optional(),
+    pickupAreas: z.array(z.object({ name: z.string().min(1, 'Pickup area name is required'), time: z.string().min(1, 'Pickup time is required') })).optional(),
     pickupLocations: z.array(locationPointSchema).optional(),
     pickupGeoshape: z.any().nullable().optional(),
     dropoffOption: z.enum(['same_location', 'different_location', 'none', 'service']).optional(),
     dropoffLocation: locationPointSchema.nullable().optional(),
     dropoffDescription: z.string().optional(),
   }),
-  13: z.object({
+   13: z.object({
     pricingModel: z.enum(['perPerson', 'perGroup'], {
       errorMap: () => ({ message: 'Select a pricing model' }),
     }),
     currency: z.string().min(1, 'Select a currency'),
     scheduleType: z.enum(['fixedTimeSlot', 'operatingHours']),
-    scheduleName: z.string().min(1, 'Schedule name is required'),
-    scheduleStartDate: z.string().min(1, 'Start date is required'),
-    scheduleHasEndDate: z.boolean().optional(),
-    scheduleEndDate: z.string().optional(),
-    timeSlots: z
-      .array(z.object({ id: z.string(), startTime: z.string().min(1, 'Start time is required'), cutoff: z.number().min(0).optional() }))
-      .optional(),
-    operatingHoursStart: z.string().optional(),
-    operatingHoursEnd: z.string().optional(),
-    dateExceptions: z
-      .array(
-        z.object({
-          id: z.string(),
-          date: z.string(),
-          type: z.enum(['closed', 'override']),
-          overrideTimes: z.array(z.string()).optional(),
-        }),
-      )
-      .optional(),
-    pricingApproach: z.enum(['sameForEveryone', 'dependsOnAge']).optional(),
-    uniformPrice: z.number().min(0).nullable().optional(),
-    pricingCategories: z
-      .array(
-        z.object({
-          name: z.string().min(1, 'Category name is required'),
-          price: z.number().min(0, 'Price must be 0 or greater').nullable().optional(),
-          minAge: z.number().min(0, 'Min age must be 0 or greater'),
-          maxAge: z.number().min(0, 'Max age must be 0 or greater'),
-          notAllowed: z.boolean().optional(),
-          ticketNotRequired: z.boolean().optional(),
-          needsAdult: z.boolean().optional(),
-          idRequired: z.boolean().optional(),
-          idType: z.string().optional(),
-        }),
-      )
-      .optional(),
-    minParticipants: z.number().min(1).optional(),
-    maxParticipants: z.number().min(1, 'Max participants must be at least 1').optional(),
-    pricingTiers: z
-      .array(
-        z.object({
-          id: z.string(),
-          from: z.number().min(1).nullable(),
-          to: z.number().min(1).nullable(),
-          pricePerPerson: z.number().min(0).nullable(),
-        }),
-      )
-      .optional(),
-    groupSizes: z
-      .array(z.object({ id: z.string(), size: z.number().min(1).nullable(), price: z.number().min(0).nullable() }))
-      .optional(),
-    additionalPersonsEnabled: z.boolean().optional(),
-    additionalPersonPrice: z.number().min(0).nullable().optional(),
-    maxGroupsPerTimeSlot: z.number().min(1).optional(),
+    schedules: z.array(z.any()).min(1, 'Add at least one schedule'),
   }).superRefine((data, ctx) => {
     if (data.pricingModel === 'perPerson') {
       if (data.pricingApproach === 'sameForEveryone') {

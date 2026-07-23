@@ -2,6 +2,13 @@ import { useMemo, useRef, useState } from 'react'
 import { useProductBuilderStore } from '@/features/products/productBuilderStore'
 import { useStepErrors } from '@/features/products/useStepErrors'
 import { useGeocoding } from '@/hooks/useGeocoding'
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/ui/select'
 import { GripVertical, Clock, MapPin, MoreVertical, Navigation, Info, Search, X } from 'lucide-react'
 import {
   DropdownMenu,
@@ -199,7 +206,7 @@ export default function Step13Itinerary() {
           </button>
         </div>
       ) : (
-        <div>
+        <div data-field="itinerary">
           {/* Days wrapper with timeline rail */}
           <div className="relative">
             <div className="absolute left-[23px] top-0 bottom-0 w-0.5 bg-linear-to-b from-emerald-300 via-emerald-400 to-emerald-300 rounded-full opacity-60" />
@@ -325,15 +332,19 @@ export default function Step13Itinerary() {
                               placeholder="0"
                               onChange={(e) => updateItineraryEntry(entry._index, { duration: e.target.value ? Number(e.target.value) : null })}
                             />
-                            <select
-                              className="min-h-[36px] rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm transition-all focus-ring"
+                            <Select
                               value={entry.durationUnit || 'hour'}
-                              onChange={(e) => updateItineraryEntry(entry._index, { durationUnit: e.target.value })}
+                              onValueChange={(v) => updateItineraryEntry(entry._index, { durationUnit: v })}
                             >
-                              <option value="minute">min</option>
-                              <option value="hour">hr</option>
-                              <option value="day">day</option>
-                            </select>
+                              <SelectTrigger className="min-h-[36px] h-9 text-sm px-2 border-slate-200 rounded-lg">
+                                <SelectValue placeholder="Unit" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="minute">min</SelectItem>
+                                <SelectItem value="hour">hr</SelectItem>
+                                <SelectItem value="day">day</SelectItem>
+                              </SelectContent>
+                            </Select>
                           </div>
 
                           {/* Location row */}

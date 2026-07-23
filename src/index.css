@@ -2,16 +2,17 @@
 @plugin "tailwindcss-animate";
 
 @layer utilities {
-  .focus-ring:focus {
+  .focus-ring {
     outline: none;
-    border-color: #044b3b;
-    outline: 2px solid rgba(4, 75, 59, 0.15);
-    outline-offset: -2px;
+  }
+  .focus-ring:focus {
+    outline: 2px solid #86efac;
+    outline-offset: -1px;
   }
 }
 
 @theme {
-  --font-sans: 'DM Sans', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-sans: 'GT Eesti Display Trial', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 
   --color-primary-50: #f0fdf4;
   --color-primary-100: #dcfce7;
@@ -95,7 +96,7 @@
 
 @layer base {
   body {
-    font-family: 'DM Sans', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-family: 'GT Eesti Display Trial', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     color: #1e293b;
     background-color: #ffffff;
     -webkit-font-smoothing: antialiased;
@@ -439,7 +440,7 @@
 
 @layer base {
   body {
-    font-family: 'DM Sans', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-family: 'GT Eesti Display Trial', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     color: #1e293b;
     background-color: #ffffff;
     -webkit-font-smoothing: antialiased;
@@ -787,3 +788,8 @@
 
 .scrollbar-none {-ms-overflow-style: none;scrollbar-width: none;}
 .scrollbar-none::-webkit-scrollbar {display: none;}
+
+/* Global focus outline reset — outside @layer to override Tailwind preflight */
+*:focus {
+  outline: none;
+}

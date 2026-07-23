@@ -1,7 +1,5 @@
 import { useProductBuilderStore } from './productBuilderStore'
-import { validateStep } from './stepValidation'
 
 export function useStepErrors(stepIndex) {
-  const state = useProductBuilderStore()
-  return validateStep(stepIndex, state)
+  return useProductBuilderStore((s) => s.stepErrors[stepIndex]) || {}
 }

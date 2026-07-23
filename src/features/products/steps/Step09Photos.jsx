@@ -1,9 +1,13 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useDropzone } from 'react-dropzone'
+import { HelpCircle, Upload, Image, ChevronUp, ChevronDown, Check, X } from 'lucide-react'
 import { useProductBuilderStore } from '@/features/products/productBuilderStore'
 import { useStepErrors } from '@/features/products/useStepErrors'
 import { uploadPhotos } from '@/features/products/api'
 import { safeId } from '@/lib/utils'
+import { transformImage } from '@/lib/image'
+
+const MIN_PHOTOS = 4
 
 export default function Step08Photos() {
   const photos = useProductBuilderStore((s) => s.photos)
@@ -20,6 +24,7 @@ export default function Step08Photos() {
 
   const [uploading, setUploading] = useState(new Set())
   const [uploadErrors, setUploadErrors] = useState({})
+  const [tipsOpen, setTipsOpen] = useState(true)
   const dragIndex = useRef(null)
   const blobUrls = useRef({})
 
@@ -31,7 +36,7 @@ export default function Step08Photos() {
 
   const getPreviewUrl = useCallback(
     (photo) => {
-      if (photo.url) return photo.url
+      if (photo.url) return transformImage(photo.url)
       const file = pendingFiles[photo.id]
       if (!file) return null
       if (!blobUrls.current[photo.id]) {
@@ -79,7 +84,7 @@ export default function Step08Photos() {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: { 'image/jpeg': ['.jpg', '.jpeg'], 'image/png': ['.png'] },
-    maxSize: 10 * 1024 * 1024,
+    maxSize: 7 * 1024 * 1024,
   })
 
   const handleRemove = (index) => {
@@ -94,139 +99,214 @@ export default function Step08Photos() {
     removePhoto(index)
   }
 
+  const emptySlots = Math.max(0, MIN_PHOTOS - photos.length)
+
   return (
-    <div className="max-w-[720px]">
-      <label className="block text-sm font-semibold mb-2 text-slate-800">Upload photos (at least 7)</label>
-      <p className="text-[13px] text-slate-500 mb-4 leading-relaxed">
-        Landscape format, 4:3 ratio, min 1280×960px. JPG or PNG. Color photos only. Drag photos to reorder.
-      </p>
+    <div className="flex gap-6">
+      {/* Main content */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-5">
+          <h2 className="text-lg font-bold text-slate-900">Product Photos</h2>
+          <HelpCircle className="w-5 h-5 text-slate-400" />
+        </div>
 
-      {errors.photos && <span className="text-[13px] text-red-600 font-medium mt-1 flex items-center gap-1">{errors.photos[0]}</span>}
-
-      <div
-        {...getRootProps()}
-        className={`border-2 border-dashed border-slate-300 rounded-2xl py-10 px-5 text-center cursor-pointer transition-all bg-slate-50 hover:border-emerald-500 hover:bg-emerald-50/5 mb-4 ${
-          isDragActive ? 'border-emerald-500 bg-emerald-50/5' : ''
-        }`}
-      >
-        <input {...getInputProps()} />
-        {isDragActive ? (
-          <p className="text-sm text-slate-500">Drop photos here...</p>
-        ) : (
-          <p className="text-sm text-slate-500">Drag & drop photos, or click to select</p>
-        )}
-      </div>
-
-      <div className="grid grid-cols-4 gap-3">
-        {photos.map((photo, i) => {
-          const src = getPreviewUrl(photo)
-          const isUploaded = !!photo.url
-          const isCover = isUploaded && coverPhoto === photo.url
-          const isUploading = uploading.has(photo.id)
-          const error = uploadErrors[photo.id]
-          const isPending = !isUploaded && !isUploading && !error && !!pendingFiles[photo.id]
-
-          return (
-            <div
-              key={photo.id}
-              className={`relative aspect-[4/3] rounded-xl overflow-hidden border transition-all ${
-                isCover ? 'border-emerald-500 ring-2 ring-emerald-500/30' : 'border-slate-200'
-              } ${isUploading || isPending ? 'opacity-80' : ''} ${error ? 'border-red-400' : ''}`}
-              draggable={!isUploading}
-              onDragStart={() => { dragIndex.current = i }}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={() => {
-                if (dragIndex.current !== null && dragIndex.current !== i) {
-                  reorderPhotos(dragIndex.current, i)
-                  dragIndex.current = null
-                }
-              }}
+        {/* Upload area */}
+        <div
+          {...getRootProps()}
+          className={`border border-slate-200 rounded-xl p-6 text-center cursor-pointer transition-all bg-white hover:border-emerald-400 ${
+            isDragActive ? 'border-emerald-500 bg-emerald-50' : ''
+          }`}
+          data-field="photos"
+        >
+          <input {...getInputProps()} />
+          <div className="flex items-center justify-center gap-3 mb-2">
+            <button
+              type="button"
+              className="inline-flex items-center gap-2 px-4 py-2 border border-slate-300 rounded-lg text-sm font-medium text-slate-700 bg-white hover:bg-slate-50 transition-colors"
             >
-              {src ? (
-                <img src={src} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full bg-slate-100 grid place-items-center text-slate-400 text-sm">
-                  No preview
-                </div>
-              )}
+              <Upload className="w-4 h-4" />
+              Upload photos
+            </button>
+            <span className="text-sm text-slate-500">or drag photos here</span>
+          </div>
+          <p className="text-xs text-slate-400">
+            JPG, JPEG, PNG &bull; Max 7MB each &bull; Minimum {MIN_PHOTOS} photos
+          </p>
+        </div>
 
-              {isCover && (
-                <span className="absolute top-1.5 left-1.5 bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-                  Cover
-                </span>
-              )}
+        {errors.photos && <span className="text-[13px] text-red-600 font-medium mt-2 flex items-center gap-1">{errors.photos[0]}</span>}
 
-              {isUploaded && !isCover && (
+        {/* Photo grid */}
+        <div className="grid grid-cols-2 gap-3 mt-4">
+          {photos.map((photo, i) => {
+            const src = getPreviewUrl(photo)
+            const isUploaded = !!photo.url
+            const isCover = isUploaded && coverPhoto === photo.url
+            const isUploading = uploading.has(photo.id)
+            const error = uploadErrors[photo.id]
+            const isPending = !isUploaded && !isUploading && !error && !!pendingFiles[photo.id]
+
+            return (
+              <div
+                key={photo.id}
+                className={`relative aspect-[4/3] rounded-xl overflow-hidden border transition-all ${
+                  isCover ? 'border-emerald-500 ring-2 ring-emerald-500/30' : 'border-slate-200'
+                } ${isUploading || isPending ? 'opacity-80' : ''} ${error ? 'border-red-400' : ''}`}
+                draggable={!isUploading}
+                onDragStart={() => { dragIndex.current = i }}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={() => {
+                  if (dragIndex.current !== null && dragIndex.current !== i) {
+                    reorderPhotos(dragIndex.current, i)
+                    dragIndex.current = null
+                  }
+                }}
+              >
+                {src ? (
+                  <img src={src} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full bg-slate-100 grid place-items-center text-slate-400">
+                    <Image className="w-8 h-8" />
+                  </div>
+                )}
+
+                {i === 0 && (
+                  <span className="absolute bottom-2 left-2 bg-white/90 text-emerald-700 text-xs font-semibold px-2.5 py-1 rounded-md">
+                    Main photo
+                  </span>
+                )}
+
                 <button
-                  className="absolute top-1.5 left-1.5 bg-white/80 text-emerald-700 text-[10px] font-semibold px-2 py-0.5 rounded-full border-0 cursor-pointer hover:bg-white"
-                  onClick={() => setCoverPhoto(photo.url)}
+                  className="absolute top-2 right-2 w-7 h-7 rounded-full border-0 bg-black/50 text-white cursor-pointer grid place-items-center text-xs hover:bg-black/70 transition-colors"
+                  onClick={() => handleRemove(i)}
                   type="button"
                 >
-                  Set as cover
+                  <X className="w-3.5 h-3.5" />
                 </button>
-              )}
 
-              <button
-                className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full border-0 bg-black/60 text-white cursor-pointer grid place-items-center text-xs hover:bg-black/80"
-                onClick={() => handleRemove(i)}
-                type="button"
-              >
-                ✕
-              </button>
+                {isUploading && (
+                  <div className="absolute inset-0 bg-black/30 grid place-items-center">
+                    <div className="w-8 h-8 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  </div>
+                )}
 
-              <span className="absolute bottom-1.5 left-1.5 bg-black/60 text-white text-[11px] font-bold px-2 py-0.5 rounded-full">
-                {i + 1}
-              </span>
+                {error && (
+                  <div className="absolute inset-0 bg-red-500/20 grid place-items-center">
+                    <button
+                      className="text-white text-xs font-semibold bg-red-600 px-3 py-1.5 rounded-lg border-0 cursor-pointer hover:bg-red-700"
+                      onClick={() => {
+                        const file = pendingFiles[photo.id]
+                        if (file) uploadFile(photo.id, file)
+                      }}
+                      type="button"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                )}
 
-              {isUploading && (
-                <div className="absolute inset-0 bg-black/20 grid place-items-center">
-                  <span className="text-white text-[11px] font-semibold bg-black/60 px-2 py-1 rounded-full flex items-center gap-1">
-                    <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                    Uploading
-                  </span>
-                </div>
-              )}
+                {isPending && (
+                  <div className="absolute inset-0 bg-black/20 grid place-items-center pointer-events-none">
+                    <div className="w-8 h-8 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  </div>
+                )}
+              </div>
+            )
+          })}
 
-              {error && (
-                <div className="absolute inset-0 bg-red-500/10 grid place-items-center">
-                  <button
-                    className="text-white text-[11px] font-semibold bg-red-600 px-2 py-1 rounded-full border-0 cursor-pointer hover:bg-red-700"
-                    onClick={() => {
-                      const file = pendingFiles[photo.id]
-                      if (file) uploadFile(photo.id, file)
-                    }}
-                    type="button"
-                  >
-                    Retry upload
-                  </button>
-                </div>
-              )}
-
-              {isPending && (
-                <div className="absolute inset-0 bg-black/20 grid place-items-center pointer-events-none">
-                  <span className="text-white text-[11px] font-semibold bg-black/60 px-2 py-1 rounded-full">
-                    Queued
-                  </span>
-                </div>
-              )}
+          {Array.from({ length: emptySlots }).map((_, i) => (
+            <div
+              key={`empty-${i}`}
+              className="aspect-[4/3] rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 grid place-items-center"
+            >
+              <Image className="w-8 h-8 text-slate-300" />
             </div>
-          )
-        })}
+          ))}
+        </div>
+
+        {/* Copyright confirmation */}
+        <label className="flex items-start gap-3 cursor-pointer mt-6">
+          <input
+            type="checkbox"
+            checked={copyrightConfirmed}
+            onChange={(e) => setField('copyrightConfirmed', e.target.checked)}
+            className="mt-1 w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+            data-field="copyrightConfirmed"
+          />
+          <span className="text-sm text-slate-600 leading-relaxed">
+            I confirm that I own the copyright for these pictures and have obtained model release forms for any recognizable faces depicted. I affirm that I have not used any trademarks, logos, or imagery from third parties without proper authorization. I understand that I am liable for any copyright or trademark infringement. For more information, please visit our{' '}
+            <a href="#" className="text-emerald-600 underline hover:text-emerald-700">terms and conditions</a>.
+          </span>
+        </label>
+        {errors.copyrightConfirmed && <span className="text-[13px] text-red-600 font-medium mt-1 flex items-center gap-1">{errors.copyrightConfirmed[0]}</span>}
       </div>
 
-      <label className="flex items-center gap-2 cursor-pointer text-sm mt-4">
-        <input
-          type="checkbox"
-          checked={copyrightConfirmed}
-          onChange={(e) => setField('copyrightConfirmed', e.target.checked)}
-          className="w-[18px] h-[18px] cursor-pointer"
-        />
-        <span>I confirm that I own the copyright for all uploaded photos</span>
-      </label>
-      {errors.copyrightConfirmed && <span className="text-[13px] text-red-600 font-medium mt-1 flex items-center gap-1">{errors.copyrightConfirmed[0]}</span>}
+      {/* Sidebar */}
+      <div className="w-[280px] shrink-0">
+        <div className="sticky top-4 space-y-5">
+          {/* Tips & requirements */}
+          <div>
+            <button
+              type="button"
+              onClick={() => setTipsOpen(!tipsOpen)}
+              className="flex items-center justify-between w-full text-left"
+            >
+              <h3 className="text-base font-bold text-slate-900">Tips & requirements</h3>
+              {tipsOpen ? (
+                <ChevronUp className="w-4 h-4 text-slate-400" />
+              ) : (
+                <ChevronDown className="w-4 h-4 text-slate-400" />
+              )}
+            </button>
+
+            {tipsOpen && (
+              <div className="mt-3 space-y-4">
+                <ul className="text-sm text-slate-600 space-y-2 list-disc pl-4">
+                  <li>Choose bright and colorful photos that show what the activity is about. The more the better.</li>
+                  <li>Put the best one first because it's shown in search results too.</li>
+                  <li>Use realistic photos to help manage expectations about crowds, group sizes, and any transport types used.</li>
+                </ul>
+
+                {/* Do */}
+                <div>
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-600 grid place-items-center">
+                      <Check className="w-3 h-3" />
+                    </span>
+                    <span className="text-sm font-bold text-emerald-700">Do</span>
+                  </div>
+                  <ul className="text-sm text-slate-600 space-y-1 list-disc pl-4">
+                    <li>Landscape photos</li>
+                    <li>Minimum of 1280 pixels wide</li>
+                    <li>JPG, JPEG, or PNG file types</li>
+                    <li>7MB maximum file size</li>
+                  </ul>
+                </div>
+
+                {/* Don't */}
+                <div>
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <span className="w-5 h-5 rounded-full bg-red-100 text-red-600 grid place-items-center">
+                      <X className="w-3 h-3" />
+                    </span>
+                    <span className="text-sm font-bold text-red-600">Don't</span>
+                  </div>
+                  <ul className="text-sm text-slate-600 space-y-1 list-disc pl-4">
+                    <li>Photographer or logo watermarks</li>
+                    <li>Readable license plates</li>
+                    <li>AI-generated images</li>
+                    <li>Photos of printed maps</li>
+                    <li>Branded bus routes</li>
+                    <li>Portrait/vertical format</li>
+                    <li>Black and white photos</li>
+                    <li>Selfies</li>
+                  </ul>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

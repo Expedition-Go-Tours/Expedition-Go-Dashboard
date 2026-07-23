@@ -155,7 +155,7 @@ export default function Step06Keywords() {
       )}
 
       {/* Search input with suggestions dropdown */}
-      <div className="relative mb-4">
+      <div className="relative mb-4" data-field="keywords">
         <div className="relative">
           <svg
             className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
@@ -308,7 +308,7 @@ export default function Step06Keywords() {
               <div className="p-2">
                 <input
                   ref={categorySearchRef}
-                  className="w-full h-8 border border-slate-200 bg-white px-2.5 text-[13px] outline-none focus:border-blue-500 transition-colors"
+                  className="w-full h-8 border border-slate-200 bg-white px-2.5 text-[13px] outline-none focus:border-emerald-500 transition-colors"
                   type="text"
                   placeholder="Filter categories..."
                   value={categorySearch}

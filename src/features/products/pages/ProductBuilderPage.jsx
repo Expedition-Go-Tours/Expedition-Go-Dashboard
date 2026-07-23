@@ -1,10 +1,11 @@
 import { useParams, useSearchParams, useNavigate, useBlocker } from 'react-router-dom'
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { Loader2, AlertCircle, X } from 'lucide-react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
 import { useProductBuilderStore } from '@/features/products/productBuilderStore'
 import { getMyProduct, createProduct, updateProduct } from '@/features/products/api'
+import { useAutoSave } from '@/features/products/useAutoSave'
 import { GYG_STEPS, GYG_SECTIONS } from '@/features/products/gygSteps'
 import ErrorBoundary from '@/components/shared/ErrorBoundary'
 import WizardSidebar from '@/features/products/WizardSidebar'
@@ -101,8 +102,10 @@ function tourToProduct(tour) {
     guideType: content.guideType || 'tour-guide',
     guideMaterials: content.guideMaterials || { audioGuide: false, infoBooklet: false },
     foodProvided: !!content.foodProvided,
-    mealType: content.mealType || '',
+    meals: Array.isArray(content.meals) ? content.meals :
+      (content.mealType ? [{ type: content.mealType, format: '' }] : []),
     drinksIncluded: !!content.drinksIncluded,
+    showDietaryRestrictions: !!content.showDietaryRestrictions,
     dietaryOptions: content.dietaryOptions || [],
     transportationProvided: !!content.transportationProvided,
     transportationType: content.transportationType || '',
@@ -166,8 +169,9 @@ function tourToProduct(tour) {
     additionalPersonsEnabled: !!td.additionalPersonsEnabled,
     additionalPersonPrice: td.additionalPersonPrice ?? null,
     maxGroupsPerTimeSlot: td.maxGroupsPerTimeSlot ?? 1,
-    currency: ps.currency || '',
+    currency: ps.currency || 'USD',
     scheduleType: avail.scheduleType || 'fixedTimeSlot',
+    weeklySchedule: avail.weeklySchedule || { Monday: [], Tuesday: [], Wednesday: [], Thursday: [], Friday: [], Saturday: [], Sunday: [] },
     scheduleName: schedule.name || '',
     scheduleStartDate: schedule.startDate || '',
     scheduleHasEndDate: !!schedule.hasEndDate,
@@ -197,9 +201,12 @@ export default function ProductBuilderPage() {
     reset,
   } = store
 
+  const contentRef = useRef(null)
+
   const [loadingProduct, setLoadingProduct] = useState(false)
   const [productError, setProductError] = useState(null)
   const [showExitWarning, setShowExitWarning] = useState(false)
+  const [stepDirection, setStepDirection] = useState(1)
 
   const gygStepNumber = currentStep + 1
   const StepComponent = STEP_COMPONENTS[gygStepNumber]
@@ -263,6 +270,45 @@ export default function ProductBuilderPage() {
   }, [currentStep, hasHydrated])
 
   useEffect(() => {
+    contentRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [currentStep])
+
+  const [showResumePrompt, setShowResumePrompt] = useState(false)
+
+  useEffect(() => {
+    if (id !== 'new' || !hasHydrated) return
+    if (sessionStorage.getItem('pb-draft-discarded') === 'true') {
+      reset()
+      return
+    }
+    try {
+      const raw = localStorage.getItem('product-builder-draft')
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        const hasData = Object.keys(parsed).some(
+          (k) => !['hasHydrated', 'currentStep', 'currentSectionId', 'currentStepId', 'completedStepIds', 'stepErrors', 'savedProductId'].includes(k)
+            && parsed[k] != null && parsed[k] !== '' && (!Array.isArray(parsed[k]) || parsed[k].length > 0)
+        )
+        if (hasData) {
+          setShowResumePrompt(true)
+          return
+        }
+      }
+    } catch {}
+    reset()
+  }, [id, hasHydrated])
+
+  function handleResumeDraft() {
+    setShowResumePrompt(false)
+  }
+
+  function handleDiscardDraft() {
+    sessionStorage.setItem('pb-draft-discarded', 'true')
+    setShowResumePrompt(false)
+    reset()
+  }
+
+  useEffect(() => {
     if (!id || id === 'new' || !hasHydrated) return
 
     let cancelled = false
@@ -292,7 +338,10 @@ export default function ProductBuilderPage() {
   }, [id, hasHydrated])
 
   const [saving, setSaving] = useState(false)
-  const [savedProductId, setSavedProductId] = useState(id && id !== 'new' ? id : null)
+  const savedProductId = useProductBuilderStore((s) => s.savedProductId)
+  const setStoreSavedProductId = useProductBuilderStore((s) => s.setSavedProductId)
+
+  useAutoSave()
 
   function normalizeLocationPoint(loc) {
     if (!loc || typeof loc !== 'object') return null
@@ -333,22 +382,32 @@ export default function ProductBuilderPage() {
     delete payload.isSubmitting
     delete payload.hasHydrated
     delete payload.lastSaved
+    delete payload.availableTimeSlots
+    delete payload.currentScheduleStep
+    delete payload.editingScheduleIndex
+    delete payload.schedules
 
+    if (!payload.copyrightConfirmed) delete payload.copyrightConfirmed
+
+    state.setSaving(true)
     setSaving(true)
     try {
       const res = savedProductId
         ? await updateProduct(savedProductId, payload)
         : await createProduct(payload)
       const newId = savedProductId || res.data?.data?.tour?._id
-      if (newId) setSavedProductId(newId)
+      if (newId) setStoreSavedProductId(newId)
+      state.markSaved()
       return res
     } finally {
+      state.setSaving(false)
       setSaving(false)
     }
   }
 
   function handleNext() {
     if (gygStepNumber < 14) {
+      setStepDirection(1)
       const storeState = useProductBuilderStore.getState()
       storeState.nextStep()
     }
@@ -356,6 +415,7 @@ export default function ProductBuilderPage() {
 
   function handleBack() {
     if (gygStepNumber > 1) {
+      setStepDirection(-1)
       const storeState = useProductBuilderStore.getState()
       storeState.prevStep()
     }
@@ -364,6 +424,7 @@ export default function ProductBuilderPage() {
   function handleSelectStep(stepId) {
     const gygStep = GYG_STEPS.find((s) => s.id === stepId)
     if (gygStep) {
+      setStepDirection(gygStep.id > gygStepNumber ? 1 : -1)
       navigateTo(gygStep.sectionId, gygStep.stepId)
     }
   }
@@ -408,13 +469,7 @@ export default function ProductBuilderPage() {
           <div className="flex items-center justify-between px-6 py-3 border-b border-slate-200 bg-white shrink-0">
             <div className="flex items-center gap-3">
               <button
-                onClick={() => {
-                  if (isDirty) {
-                    setShowExitWarning(true)
-                  } else {
-                    navigate('/products')
-                  }
-                }}
+                onClick={() => navigate('/products')}
                 className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors"
                 type="button"
               >
@@ -435,14 +490,30 @@ export default function ProductBuilderPage() {
           {/* Main area: sidebar + content */}
           <div className="flex-1 flex gap-0 min-h-0 px-6 py-5">
             <WizardSidebar currentStep={gygStepNumber} onSelectStep={handleSelectStep} />
-            <div className="flex-1 flex flex-col ml-6 bg-white rounded-[20px] border border-slate-200 shadow-sm overflow-hidden">
-              <div className="flex-1 p-8 overflow-y-auto">
+            <div className="flex-1 flex flex-col ml-6 bg-white overflow-hidden">
+              <div ref={contentRef} className="flex-1 p-8 overflow-y-auto">
                 <h2 className="text-xl font-bold mb-6 tracking-tight">{STEP_LABELS[gygStepNumber]}</h2>
-                {StepComponent && (
-                  <ErrorBoundary errorMessage="Something went wrong in this step. Try refreshing or contact support.">
-                    <StepComponent />
-                  </ErrorBoundary>
-                )}
+                <AnimatePresence mode="wait" custom={stepDirection}>
+                  {StepComponent && (
+                    <motion.div
+                      key={gygStepNumber}
+                      custom={stepDirection}
+                      variants={{
+                        initial: (d) => ({ opacity: 0, x: d * 24 }),
+                        animate: { opacity: 1, x: 0 },
+                        exit: (d) => ({ opacity: 0, x: d * -24 }),
+                      }}
+                      initial="initial"
+                      animate="animate"
+                      exit="exit"
+                      transition={{ duration: 0.2, ease: 'easeInOut' }}
+                    >
+                      <ErrorBoundary errorMessage="Something went wrong in this step. Try refreshing or contact support.">
+                        <StepComponent />
+                      </ErrorBoundary>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
               <WizardNavFooter
                 currentStep={gygStepNumber}
@@ -455,6 +526,32 @@ export default function ProductBuilderPage() {
             </div>
           </div>
         </div>
+
+        {/* Resume Draft Prompt */}
+        {showResumePrompt && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50">
+            <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full mx-4 p-6">
+              <h3 className="text-lg font-semibold text-slate-900 mb-2">Unsaved draft found</h3>
+              <p className="text-sm text-slate-600 mb-6">
+                You have an unsaved draft from your previous session. Would you like to resume editing or start fresh?
+              </p>
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={handleDiscardDraft}
+                  className="px-4 py-2 text-sm font-medium text-slate-600 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors"
+                >
+                  Discard draft
+                </button>
+                <button
+                  onClick={handleResumeDraft}
+                  className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-xl hover:bg-emerald-700 transition-colors"
+                >
+                  Resume editing
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Exit Warning Modal */}
         {showExitWarning && (

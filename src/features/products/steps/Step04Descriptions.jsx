@@ -1,6 +1,9 @@
 import { useState } from 'react'
+import { HelpCircle, Plus, X, Info } from 'lucide-react'
 import { useProductBuilderStore } from '@/features/products/productBuilderStore'
 import { useStepErrors } from '@/features/products/useStepErrors'
+
+const HIGHLIGHT_MAX = 80
 
 export default function Step04Descriptions() {
   const shortDescription = useProductBuilderStore((s) => s.shortDescription)
@@ -8,86 +11,127 @@ export default function Step04Descriptions() {
   const highlights = useProductBuilderStore((s) => s.highlights)
   const setField = useProductBuilderStore((s) => s.setField)
   const addHighlight = useProductBuilderStore((s) => s.addHighlight)
+  const updateHighlight = useProductBuilderStore((s) => s.updateHighlight)
   const removeHighlight = useProductBuilderStore((s) => s.removeHighlight)
   const errors = useStepErrors(4)
-  const [highlightInput, setHighlightInput] = useState('')
+  const [tipDismissed, setTipDismissed] = useState(false)
 
   function addHighlightItem() {
-    const val = highlightInput.trim()
-    if (val && highlights.length < 5 && !highlights.includes(val)) {
-      addHighlight(val)
-      setHighlightInput('')
+    if (highlights.length < 5) {
+      addHighlight('')
     }
   }
 
   return (
     <div className="max-w-[720px]">
       <div className="mb-5">
-        <label className="block text-sm font-semibold mb-2 text-slate-800">Short description *</label>
+        <label className="block text-sm font-semibold mb-2 text-slate-800">
+          Short description *
+          <span className="text-xs font-normal text-slate-400 ml-2">
+            Give the customer a taste of what they&rsquo;ll do in 2 or 3 sentences. This will be the first thing customers read after the title, and will inspire them to continue.
+          </span>
+        </label>
         <textarea
+          data-field="shortDescription"
           className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm transition-all focus-ring resize-vertical"
           rows={3}
           value={shortDescription}
           onChange={(e) => setField('shortDescription', e.target.value)}
-          placeholder="2-3 sentences about your product. Shown on landing pages."
+          placeholder="Describe the experience in 2-3 sentences. Shown on landing pages."
         />
-        {errors.shortDescription && <span className="text-[13px] text-red-600 font-medium mt-1 flex items-center gap-1">{errors.shortDescription[0]}</span>}
+        <div className="flex items-center justify-between mt-1">
+          {errors.shortDescription ? (
+            <span className="text-[13px] text-red-600 font-medium flex items-center gap-1">{errors.shortDescription[0]}</span>
+          ) : (
+            <span />
+          )}
+          <span className="text-[13px] text-slate-400">{shortDescription.length} / 200</span>
+        </div>
       </div>
 
       <div className="mb-5">
-        <label className="block text-sm font-semibold mb-2 text-slate-800">Full description *</label>
+        <label className="block text-sm font-semibold mb-2 text-slate-800">
+          Full description *
+          <span className="text-xs font-normal text-slate-400 ml-2">
+            Provide all the details about what the customer will see and experience during the activity, in the correct order. Bring the activity to life and write at least 500 characters.
+          </span>
+        </label>
         <textarea
+          data-field="fullDescription"
           className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm transition-all focus-ring resize-vertical"
           rows={8}
           value={fullDescription}
           onChange={(e) => setField('fullDescription', e.target.value)}
-          placeholder="Detailed description of the activity. Use descriptive language. Avoid listing a schedule."
+          placeholder="Detailed description of the activity. Use descriptive language and bring the experience to life."
         />
-        {errors.fullDescription && <span className="text-[13px] text-red-600 font-medium mt-1 flex items-center gap-1">{errors.fullDescription[0]}</span>}
+        <div className="flex items-center justify-between mt-1">
+          {errors.fullDescription ? (
+            <span className="text-[13px] text-red-600 font-medium flex items-center gap-1">{errors.fullDescription[0]}</span>
+          ) : (
+            <span />
+          )}
+          <span className="text-[13px] text-slate-400">{fullDescription.length} / 3000</span>
+        </div>
       </div>
 
       <div className="mb-5">
-        <label className="block text-sm font-semibold mb-2 text-slate-800">Highlights * (3-5)</label>
+        <div className="flex items-center gap-2 mb-2">
+          <h3 className="text-base font-semibold text-slate-900">Highlights</h3>
+          <HelpCircle className="w-4 h-4 text-slate-400" />
+        </div>
+        <p className="text-sm text-slate-500 mb-4">
+          Write 3-5 sentences explaining what makes your activity special and stand out from the competition. Customers will use these to compare between different activities.
+        </p>
+
+        <div className="space-y-3">
+          {highlights.map((item, i) => (
+            <div key={i}>
+              <input
+                data-field="highlights"
+                className="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-sm transition-all focus-ring"
+                type="text"
+                value={item}
+                maxLength={HIGHLIGHT_MAX}
+                onChange={(e) => updateHighlight(i, e.target.value)}
+                placeholder="Describe a highlight of your activity..."
+              />
+              <div className="flex justify-end mt-1">
+                <span className={`text-xs ${item.length >= HIGHLIGHT_MAX ? 'text-amber-600 font-medium' : 'text-slate-400'}`}>
+                  {item.length} / {HIGHLIGHT_MAX}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+
         {highlights.length < 5 && (
-          <div className="flex gap-2 mb-2.5">
-            <input
-              className="flex-1 min-h-[46px] rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm transition-all focus-ring"
-              type="text"
-              value={highlightInput}
-              onChange={(e) => setHighlightInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault()
-                  addHighlightItem()
-                }
-              }}
-              placeholder="Start with a verb: See, Visit, Enjoy, Explore..."
-            />
+          <button
+            type="button"
+            onClick={addHighlightItem}
+            className="flex items-center gap-1.5 mt-3 text-sm font-medium text-emerald-600 hover:text-emerald-700 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Add another highlight
+          </button>
+        )}
+
+        {errors.highlights && <span className="text-[13px] text-red-600 font-medium mt-2 flex items-center gap-1">{errors.highlights[0]}</span>}
+
+        {!tipDismissed && (
+          <div className="flex items-start gap-2.5 mt-4 p-3.5 bg-emerald-50 border border-emerald-100 rounded-lg">
+            <Info className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
+            <p className="text-sm text-slate-600 flex-1">
+              Tip: Summarize the most memorable/emotional moments of the activity, and avoid logistical information.
+            </p>
             <button
               type="button"
-              onClick={addHighlightItem}
-              disabled={!highlightInput.trim()}
-              className="px-4 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-medium hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+              onClick={() => setTipDismissed(true)}
+              className="text-slate-400 hover:text-slate-600 transition-colors shrink-0"
             >
-              Add
+              <X className="w-4 h-4" />
             </button>
           </div>
         )}
-        <ul className="list-none p-0 m-0 mb-2.5">
-          {highlights.map((item, i) => (
-            <li key={i} className="flex items-center justify-between px-3 py-2 mb-1 bg-slate-50 rounded-lg border border-slate-100 text-sm">
-              <span>{item}</span>
-              <button
-                className="bg-transparent border-0 text-red-500 cursor-pointer text-sm p-1 rounded-lg hover:bg-red-50"
-                onClick={() => removeHighlight(i)}
-                type="button"
-              >
-                ✕
-              </button>
-            </li>
-          ))}
-        </ul>
-        {errors.highlights && <span className="text-[13px] text-red-600 font-medium mt-1 flex items-center gap-1">{errors.highlights[0]}</span>}
       </div>
     </div>
   )
