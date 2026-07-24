@@ -1,0 +1,140 @@
+import { useState } from 'react'
+import { Info, X } from 'lucide-react'
+import { useProductBuilderStore } from '@/features/products/productBuilderStore'
+import { useStepErrors } from '@/features/products/useStepErrors'
+
+const CUTOFF_OPTIONS = [
+  { group: 'Minutes', items: [5, 10, 15, 20, 30, 45, 60, 90, 120] },
+]
+
+function formatCutoffLabel(minutes) {
+  if (minutes < 60) return `${minutes} Minutes`
+  const h = minutes / 60
+  return `${h} ${h === 1 ? 'Hour' : 'Hours'}`
+}
+
+export default function Step15Cutoff() {
+  const cutoffMinutes = useProductBuilderStore((s) => s.cutoffMinutes)
+  const lastMinuteBookings = useProductBuilderStore((s) => s.lastMinuteBookings)
+  const perSlotCutoff = useProductBuilderStore((s) => s.perSlotCutoff)
+  const setField = useProductBuilderStore((s) => s.setField)
+  const errors = useStepErrors(14)
+
+  const [showBanner, setShowBanner] = useState(true)
+
+  return (
+    <div className="max-w-[720px] space-y-6">
+      <div>
+        <h2 className="text-xl font-bold text-slate-900 mb-1">Set your cut-off time</h2>
+        <p className="text-sm text-slate-500 leading-relaxed">
+          The cut-off time is the very latest you accept new bookings before the start time or end of opening hours.{' '}
+          <a href="#" className="text-blue-600 hover:underline font-medium">Learn more</a>
+        </p>
+      </div>
+
+      {/* Cutoff dropdown */}
+      <div data-field="cutoffMinutes">
+        <label className="block text-sm font-semibold text-slate-800 mb-1.5">
+          How far in advance do you stop accepting new bookings? This is your default cut-off time.
+        </label>
+        <select
+          value={cutoffMinutes}
+          onChange={(e) => setField('cutoffMinutes', Number(e.target.value))}
+          className="w-full min-h-[42px] rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+        >
+          {CUTOFF_OPTIONS.map((group) => (
+            <optgroup key={group.group} label={group.group}>
+              {group.items.map((mins) => (
+                <option key={mins} value={mins}>{formatCutoffLabel(mins)}</option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
+        <p className="text-[13px] text-slate-400 mt-1.5">
+          Example: When the activity start time is 10:00, bookings will be stopped at {formatCutoffLabel(cutoffMinutes).toLowerCase()} before.
+        </p>
+        {errors.cutoffMinutes && <span className="text-[13px] text-red-600 font-medium mt-1">{errors.cutoffMinutes[0]}</span>}
+      </div>
+
+      {/* Info banner */}
+      {showBanner && (
+        <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+          <Info size={18} className="text-blue-600 shrink-0 mt-0.5" />
+          <p className="text-sm text-blue-800 flex-1">
+            Setting a lower cut-off time can capture last minute bookings and drive more sales for your product.
+          </p>
+          <button
+            type="button"
+            onClick={() => setShowBanner(false)}
+            className="p-0.5 text-blue-400 hover:text-blue-600"
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
+
+      {/* Last-minute bookings checkbox */}
+      <div data-field="lastMinuteBookings">
+        <label className="flex items-start gap-3 cursor-pointer group">
+          <div className="relative mt-0.5">
+            <input
+              type="checkbox"
+              checked={lastMinuteBookings}
+              onChange={(e) => setField('lastMinuteBookings', e.target.checked)}
+              className="peer sr-only"
+            />
+            <div className="w-[18px] h-[18px] rounded border-2 border-slate-300 peer-checked:border-emerald-600 peer-checked:bg-emerald-600 transition-all duration-150 grid place-items-center shrink-0">
+              {lastMinuteBookings && (
+                <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                  <path d="M1 4l2.5 2.5L9 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              )}
+            </div>
+          </div>
+          <div>
+            <span className="text-sm text-slate-700 group-hover:text-slate-900 font-medium">
+              Enable last-minute bookings after the first booking (optional)
+            </span>
+            <p className="text-[13px] text-slate-400 mt-0.5 leading-relaxed">
+              After the first booking is made for a time slot, the cut-off time is removed. This encourages more bookings right up until the start time.
+            </p>
+          </div>
+        </label>
+      </div>
+
+      <hr className="border-slate-100" />
+
+      {/* Per-slot cutoff radio */}
+      <div data-field="perSlotCutoff">
+        <label className="block text-sm font-semibold text-slate-800 mb-1">
+          Do you want your time slots to have different cut-off times?
+        </label>
+        <p className="text-[13px] text-slate-500 mb-3">
+          You can override the default cut-off time with a different value for each time slot.
+        </p>
+        <div className="space-y-2">
+          <label className="flex items-center gap-3 cursor-pointer group">
+            <input
+              type="radio"
+              name="perSlotCutoff"
+              checked={perSlotCutoff === false}
+              onChange={() => setField('perSlotCutoff', false)}
+              className="w-4 h-4 text-emerald-600 border-slate-300 focus:ring-emerald-500"
+            />
+            <span className="text-sm text-slate-700 group-hover:text-slate-900">No</span>
+          </label>
+          <label className="flex items-center gap-3 cursor-pointer group">
+            <input
+              type="radio"
+              name="perSlotCutoff"
+              checked={perSlotCutoff === true}
+              onChange={() => setField('perSlotCutoff', true)}
+              className="w-4 h-4 text-emerald-600 border-slate-300 focus:ring-emerald-500"
+            />
+            <span className="text-sm text-slate-700 group-hover:text-slate-900">Yes</span>
+          </label>
+        </div>
+      </div>
+    </div>
+  )
+}

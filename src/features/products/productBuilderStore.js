@@ -28,6 +28,8 @@ const INITIAL_FORM = {
   attractions: [],
   keywords: [],
   activitiesIncluded: [],
+  transportModes: [],
+  transportServices: [],
   pickupTransportTypes: [],
   whatsIncluded: [],
   whatsNotIncluded: [],
@@ -40,6 +42,10 @@ const INITIAL_FORM = {
   dietaryOptions: [],
   transportationProvided: false,
   transportationType: '',
+  crossCityTravel: false,
+  cutoffMinutes: 20,
+  lastMinuteBookings: false,
+  perSlotCutoff: false,
   notSuitableFor: [],
   notAllowed: [],
   petFriendly: false,
@@ -67,6 +73,8 @@ const INITIAL_FORM = {
   pickupAreas: [],
   pickupLocations: [],
   pickupGeoshape: null,
+  planPickupTimes: false,
+  pickupStartTime: '08:00',
   dropoffOption: 'none',
   dropoffLocation: null,
   dropoffDescription: '',
@@ -92,11 +100,10 @@ const INITIAL_FORM = {
   dateExceptions: [],
   pricingApproach: 'dependsOnAge',
   uniformPrice: null,
-  pricingCategories: [{ name: 'Child', price: null, minAge: 0, maxAge: 17, notAllowed: false, ticketNotRequired: false, needsAdult: false, idRequired: false, idType: '' }, { name: 'Adult', price: null, minAge: 18, maxAge: 99, notAllowed: false, ticketNotRequired: false, needsAdult: false, idRequired: false, idType: '' }],
+  pricingCategories: [{ name: 'Child', price: null, minAge: 0, maxAge: 17, notAllowed: false, ticketNotRequired: false, needsAdult: false, idRequired: false, idType: '', tiers: [] }, { name: 'Adult', price: null, minAge: 18, maxAge: 99, notAllowed: false, ticketNotRequired: false, needsAdult: false, idRequired: false, idType: '', tiers: [] }],
   showAdvancedCategorySettings: false,
   minParticipants: 1,
   maxParticipants: 10,
-  pricingTiers: [],
   groupSizes: [],
   additionalPersonsEnabled: false,
   additionalPersonPrice: null,
@@ -105,6 +112,13 @@ const INITIAL_FORM = {
   cutoffHours: 0,
   metaTitle: '',
   metaDescription: '',
+  contactPhone: null,
+  isPrivateActivity: false,
+  passportRequired: false,
+  flightInfoRequired: false,
+  shipInfoRequired: false,
+  trainInfoRequired: false,
+  hotelInfoRequired: false,
 }
 
 export const useProductBuilderStore = create(
@@ -322,7 +336,7 @@ export const useProductBuilderStore = create(
           return {
             itinerary: [
               ...s.itinerary,
-              { day: maxDay + 1, time: '09:00', duration: 1, durationUnit: 'hour', title: '', description: '', type: 'activity', locationName: '', locationAddress: '', locationLat: null, locationLng: null, isCustomLocation: false },
+              { day: maxDay + 1, time: '09:00', duration: 1, durationUnit: 'hour', title: '', description: '', type: 'activity', visitType: 'visit', locationName: '', locationAddress: '', locationLat: null, locationLng: null, isCustomLocation: false },
             ],
             isDirty: true,
           }
@@ -332,7 +346,7 @@ export const useProductBuilderStore = create(
         set((s) => ({
           itinerary: [
             ...s.itinerary,
-            { day: dayNumber, time: '09:00', duration: 1, durationUnit: 'hour', title: '', description: '', type: 'activity', locationName: '', locationAddress: '', locationLat: null, locationLng: null, isCustomLocation: false },
+            { day: dayNumber, time: '09:00', duration: 1, durationUnit: 'hour', title: '', description: '', type: 'activity', visitType: 'visit', locationName: '', locationAddress: '', locationLat: null, locationLng: null, isCustomLocation: false },
           ],
           isDirty: true,
         })),
@@ -362,9 +376,9 @@ export const useProductBuilderStore = create(
           return { itinerary: entries, isDirty: true }
         }),
 
-      addPricingCategory: () =>
+      addPricingCategory: (template) =>
         set((s) => ({
-          pricingCategories: [...s.pricingCategories, { name: '', price: null, minAge: 1, maxAge: 99, notAllowed: false, ticketNotRequired: false, needsAdult: false, idRequired: false, idType: '' }],
+          pricingCategories: [...s.pricingCategories, template || { name: '', price: null, minAge: 1, maxAge: 99, notAllowed: false, ticketNotRequired: false, needsAdult: false, idRequired: false, idType: '', tiers: [] }],
           isDirty: true,
         })),
       updatePricingCategory: (index, updates) =>
@@ -378,19 +392,25 @@ export const useProductBuilderStore = create(
           isDirty: true,
         })),
 
-      addPricingTier: () =>
+      addCategoryTier: (catIndex) =>
         set((s) => ({
-          pricingTiers: [...s.pricingTiers, { id: safeId(), from: null, to: null, pricePerPerson: null }],
+          pricingCategories: s.pricingCategories.map((c, i) =>
+            i === catIndex ? { ...c, tiers: [...(c.tiers || []), { id: safeId(), from: null, to: null, pricePerPerson: null }] } : c
+          ),
           isDirty: true,
         })),
-      updatePricingTier: (index, updates) =>
+      updateCategoryTier: (catIndex, tierIndex, updates) =>
         set((s) => ({
-          pricingTiers: s.pricingTiers.map((t, i) => (i === index ? { ...t, ...updates } : t)),
+          pricingCategories: s.pricingCategories.map((c, i) =>
+            i === catIndex ? { ...c, tiers: (c.tiers || []).map((t, j) => j === tierIndex ? { ...t, ...updates } : t) } : c
+          ),
           isDirty: true,
         })),
-      removePricingTier: (index) =>
+      removeCategoryTier: (catIndex, tierIndex) =>
         set((s) => ({
-          pricingTiers: s.pricingTiers.filter((_, i) => i !== index),
+          pricingCategories: s.pricingCategories.map((c, i) =>
+            i === catIndex ? { ...c, tiers: (c.tiers || []).filter((_, j) => j !== tierIndex) } : c
+          ),
           isDirty: true,
         })),
 
@@ -497,7 +517,6 @@ export const useProductBuilderStore = create(
             pricingCategories: JSON.parse(JSON.stringify(s.pricingCategories)),
             minParticipants: s.minParticipants,
             maxParticipants: s.maxParticipants,
-            pricingTiers: JSON.parse(JSON.stringify(s.pricingTiers)),
           }
           const newSchedules = [...s.schedules]
           if (s.editingScheduleIndex !== null) {
@@ -530,10 +549,9 @@ export const useProductBuilderStore = create(
             currency: schedule.currency || 'USD',
             pricingApproach: schedule.pricingApproach,
             uniformPrice: schedule.uniformPrice,
-            pricingCategories: JSON.parse(JSON.stringify(schedule.pricingCategories)),
+            pricingCategories: JSON.parse(JSON.stringify(schedule.pricingCategories || [])).map((c) => ({ ...c, tiers: c.tiers || [] })),
             minParticipants: schedule.minParticipants,
             maxParticipants: schedule.maxParticipants,
-            pricingTiers: JSON.parse(JSON.stringify(schedule.pricingTiers)),
           }
         }),
       removeSchedule: (index) =>
@@ -554,10 +572,9 @@ export const useProductBuilderStore = create(
           dateExceptions: [],
           pricingApproach: 'dependsOnAge',
           uniformPrice: null,
-          pricingCategories: [{ name: 'Child', price: null, minAge: 0, maxAge: 17, notAllowed: false, ticketNotRequired: false, needsAdult: false, idRequired: false, idType: '' }, { name: 'Adult', price: null, minAge: 18, maxAge: 99, notAllowed: false, ticketNotRequired: false, needsAdult: false, idRequired: false, idType: '' }],
+          pricingCategories: [{ name: 'Child', price: null, minAge: 0, maxAge: 17, notAllowed: false, ticketNotRequired: false, needsAdult: false, idRequired: false, idType: '', tiers: [] }, { name: 'Adult', price: null, minAge: 18, maxAge: 99, notAllowed: false, ticketNotRequired: false, needsAdult: false, idRequired: false, idType: '', tiers: [] }],
           minParticipants: 1,
           maxParticipants: 10,
-          pricingTiers: [],
         }),
 
       addPickupArea: (name) =>
@@ -603,7 +620,7 @@ export const useProductBuilderStore = create(
         const { currentStep, completedStepIds } = get()
         const mapping = getSectionStep(currentStep)
         const newCompleted = [...new Set([...completedStepIds, mapping.stepId])]
-        const next = Math.min(currentStep + 1, 13)
+        const next = Math.min(currentStep + 1, 15)
         const nextMapping = getSectionStep(next)
         set({
           currentStep: next,
@@ -622,7 +639,7 @@ export const useProductBuilderStore = create(
       },
 
       goToStep: (step) => {
-        const idx = Math.max(0, Math.min(step, 13))
+        const idx = Math.max(0, Math.min(step, 15))
         const mapping = getSectionStep(idx)
         set({ currentStep: idx, currentSectionId: mapping.sectionId, currentStepId: mapping.stepId })
       },
@@ -638,7 +655,7 @@ export const useProductBuilderStore = create(
       },
 
       getOverallProgress: () => {
-        return Math.round((get().completedStepIds.length / 14) * 100)
+        return Math.round((get().completedStepIds.length / 16) * 100)
       },
 
       setSaving: (val) => set({ isSaving: val }),

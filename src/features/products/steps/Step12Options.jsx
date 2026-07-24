@@ -167,12 +167,12 @@ function DurationValidityBlock({ option, index, updateOption }) {
   const hasValidity = option.validityEnabled
 
   function toggleDuration(enabled) {
-    if (enabled) updateOption(index, { duration: 1, durationUnit: 'hours' })
+    if (enabled) updateOption(index, { duration: 1, durationUnit: 'hours', validityEnabled: false, validityType: 'date_picked', validity: null, validityUnit: null, validityStartDate: '', validityEndDate: '' })
     else updateOption(index, { duration: null, durationUnit: null })
   }
 
   function toggleValidity(enabled) {
-    if (enabled) updateOption(index, { validityEnabled: true, validityType: 'date_picked' })
+    if (enabled) updateOption(index, { validityEnabled: true, validityType: 'date_picked', duration: null, durationUnit: null })
     else updateOption(index, { validityEnabled: false, validityType: 'date_picked', validity: null, validityUnit: null, validityStartDate: '', validityEndDate: '' })
   }
 
@@ -641,7 +641,7 @@ function OptionEditorScreen({ option, index, updateOption, onBack, onRemove, err
   )
 }
 
-export default function Step11Options() {
+export default function Step12Options() {
   const options = useProductBuilderStore((s) => s.options)
   const addOption = useProductBuilderStore((s) => s.addOption)
   const updateOption = useProductBuilderStore((s) => s.updateOption)

@@ -1,20 +1,61 @@
+export const VISIT_TYPES = [
+  { value: 'visit', label: 'Visit' },
+  { value: 'pass_by', label: 'Pass by' },
+  { value: 'guided_tour', label: 'Guided tour' },
+  { value: 'free_time', label: 'Free time' },
+  { value: 'photo_stop', label: 'Photo stop' },
+]
+
+export const ACTIVITY_CATEGORIES = {
+  'Air Activities': ['Hot air balloon ride', 'Helicopter tour', 'Paragliding', 'Skydiving'],
+  'Classes/Lessons/Workshops': ['Cooking class', 'Art class', 'Dance lesson', 'Craft workshop', 'Photography tour'],
+  'Dining Experience': ['Food tasting tour', 'Wine tasting / winery tour', 'Beer / brewery tour', 'Coffee / tea tasting', 'Street food tour', 'Dinner cruise'],
+  'Fun & Games': ['Pub crawl / bar tour', 'Ghost / vampire tour', 'Street art / graffiti tour', 'Concert / live show', 'Cultural performance'],
+  'Land & Outdoor Activities': ['Walking tour', 'Hiking / trekking', 'Bike tour', 'Segway tour', 'Horseback riding', 'ATV / 4WD tour', 'Zip-lining / canopy tour', 'Canyoning / rappelling', 'Safari / wildlife viewing'],
+  'Snow Activities': ['Skiing', 'Snowboarding', 'Snowmobile tour', 'Sled tour'],
+  'Spas': ['Spa / thermal baths', 'Wellness retreat'],
+  'Water Activities': ['Boat cruise', 'Sailing trip', 'Scuba diving', 'Snorkeling', 'Kayaking / canoeing', 'White water rafting', 'Surfing / paddleboarding', 'Dolphin / whale watching', 'Jet skiing', 'Fishing charter', 'Glass bottom boat tour', 'Sunset cruise', 'Dinner cruise'],
+}
+
+export const TOUR_TRANSPORT_CATEGORIES = {
+  'Air Transport': ['Helicopter', 'Airplane', 'Balloon', 'Glider'],
+  'Land Transport': ['Bus / coach', 'Car', 'Vintage car', 'Train', 'Tram', 'Bike', 'Segway', 'Trolley', 'Public transportation', 'Cable car'],
+  'Water Transport': ['Boat', 'Ferry', 'Yacht', 'Kayak', 'Canoe', 'Sailboat'],
+}
+
+export const TRANSPORT_SERVICE_CATEGORIES = {
+  'Air Transports': ['Helicopter transfer', 'Airplane transfer', 'Hot air balloon ride', 'Charter flight'],
+  'Land Transports': ['Bus / coach', 'Private car', 'Van', 'Shuttle service', 'Train', 'Tram', 'Trolley', 'Tuk tuk', 'Bike rental', 'Scooter rental'],
+  'Passes': ['Airport Lounge Pass', 'Airport Parking', 'Bus Pass', 'Luggage Storage', 'Public Transit', 'Rail Pass', 'City Card', 'Hop-on hop-off pass'],
+  'Water Transports': ['Ferry', 'Water taxi', 'Private boat', 'Speedboat', 'Yacht charter', 'Canoe / kayak rental'],
+}
+
 export const GYG_ACTIVITIES = [
-  'Aperitif', 'Beer', 'Cocktail', 'Coffee', 'Spirits', 'Tea', 'Wine',
-  'Picnic', 'Street food', 'BBQ', 'Local snacks', 'Regional food', 'Tapas',
-  'Breakfast', 'Brunch', 'Dessert', 'Dinner', 'Lunch', 'Meal onboard',
-  'Welcome refreshments', 'Swimming', 'Snorkeling', 'Scuba diving',
-  'Parasailing', 'Stand up paddleboarding', 'Surfing', 'Dolphin watching',
-  'Marine life viewing', 'Whale watching', 'Boat cruise', 'Kayaking',
-  'Long-tail boat ride', 'Bamboo rafting', 'Gondola ride', 'Rafting',
-  'Sailing', 'Airboat ride', 'Glass bottom boat ride', 'Canoeing',
-  'Duck boat ride', 'Banana boat ride', 'Jetskiing',
+  'Walking tour', 'Hiking / trekking', 'Bike tour', 'Segway tour',
+  'ATV / 4WD tour', 'Helicopter tour', 'Hot air balloon ride',
+  'Horseback riding', 'Zip-lining / canopy tour', 'Paragliding',
+  'Skydiving', 'Safari / wildlife viewing', 'Canyoning / rappelling',
+  'Boat cruise', 'Sailing trip', 'Scuba diving', 'Snorkeling',
+  'Kayaking / canoeing', 'White water rafting', 'Surfing / paddleboarding',
+  'Dolphin / whale watching', 'Jet skiing', 'Fishing charter',
+  'Glass bottom boat tour', 'Cooking class', 'Food tasting tour',
+  'Wine tasting / winery tour', 'Beer / brewery tour',
+  'Coffee / tea tasting', 'Distillery tour / spirits tasting',
+  'Street food tour', 'Guided museum tour', 'Historical / heritage tour',
+  'Skip-the-line entry', 'Photography tour', 'Street art / graffiti tour',
+  'Ghost / vampire tour', 'Architecture tour', 'Art class',
+  'Dance lesson', 'Craft workshop', 'Dinner cruise', 'Sunset cruise',
+  'Pub crawl / bar tour', 'Concert / live show', 'Cultural performance',
+  'Vintage car / Vespa tour', 'Tuk tuk / pedicab tour',
+  'Multi-day excursion', 'Spa / thermal baths',
 ]
 
 export const GYG_PICKUP_TRANSPORT = {
   '2 wheels': ['Bike', 'Segway', 'Electric bike', 'Mountain bike', 'Motorcycle', 'Scooter'],
   'Car / bus': ['Car', 'Limousine', 'Jeep / SUV', 'Van', 'Bus / coach', 'Electric car', 'Vintage car', 'Black cab'],
   Water: ['Gondola', 'Water taxi', 'Other water transport'],
-  Other: ['Quad ATV', 'Pedicab / rickshaw', 'Trike', 'Tuk tuk/auto', 'Motorized tuk tuk/auto', 'Golf cart', 'On foot'],
+  Other: ['Quad ATV', 'Pedicab / rickshaw', 'Trike', 'Tuk tuk/auto', 'Motorized tuk tuk/auto', 'Golf cart'],
+  'On foot': ['On foot'],
 }
 
 export const GYG_TRANSPORT_TYPES = [

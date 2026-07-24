@@ -7,7 +7,7 @@ import {
   Check, X as XIcon, Camera, ChevronLeft, ChevronRight,
   Eye, Shield, Activity, Navigation, MoreHorizontal,
   Tag, Percent, DollarSign, MessageSquare, Pencil,
-  MapPin,
+  MapPin, CalendarDays,
 } from "lucide-react";
 import { toast } from "sonner";
 import { getMyProduct, updateProduct, deleteProduct } from "@/features/products/api";
@@ -417,6 +417,8 @@ export default function ProductDetailPage() {
   const pricingSchedules = schedules.pricingSchedules || {};
   const pricing = pricingSchedules.schedules?.[0] || {};
   const pricingArr = schedules.pricing || [];
+  const avail = schedules.availability || {};
+  const travelerDetails = schedules.travelerDetails || {};
   const cancellation = booking.cancellationPolicy || {};
   const meetingPoint = (() => {
     if (booking.meetingPoint?.name) return booking.meetingPoint;
@@ -434,17 +436,43 @@ export default function ProductDetailPage() {
   const excluded = content.excluded?.length > 0 ? content.excluded : (categorization.excludes || []);
   const whatToKnow = content.whatToKnow || content.additionalInfo;
 
+  const scheduleData = {
+    operatingDays: schedules.operatingDays || avail.daysOfWeek || [],
+    timeSlots: schedules.timeSlots || pricing.timeSlots || avail.timeSlots || [],
+    capacityPerSlot: schedules.capacityPerSlot || travelerDetails.maxParticipants || null,
+    availableDates: schedules.availableDates || (pricing.dateExceptions || []).filter(d => d.type === 'override').map(d => d.date),
+    scheduleType: avail.scheduleType || null,
+  };
+
+  const validPeriod = pricing.startDate ? { start: pricing.startDate, end: pricing.endDate } : null;
+
   const normalizedPrices = (() => {
     if (pricing.prices?.length > 0) {
       return pricing.prices.map(p => ({
         label: p.ageGroup || p.travelerType || 'Standard',
         price: Number(p.retailPrice ?? p.price ?? 0),
+        _raw: p,
       }));
     }
     if (pricingArr.length > 0) {
       return pricingArr.map(p => ({
         label: p.travelerType || p.ageGroup || 'Standard',
         price: Number(p.price ?? p.retailPrice ?? 0),
+        _raw: p,
+      }));
+    }
+    const cats = travelerDetails.pricingCategories || [];
+    if (cats.length > 0) {
+      const uniform = travelerDetails.uniformPrice;
+      return cats.map(c => ({
+        label: c.name,
+        price: Number(uniform ?? c.price ?? 0),
+        tiers: c.tiers || [],
+        minAge: c.minAge,
+        maxAge: c.maxAge,
+        idRequired: c.idRequired,
+        idType: c.idType,
+        _raw: c,
       }));
     }
     return [];
@@ -611,6 +639,9 @@ export default function ProductDetailPage() {
                 <span className="text-xs text-slate-400">Updated {formatDate(tour.updatedAt)}</span>
               </div>
               <h1 className="text-xl md:text-2xl font-bold text-slate-800 tracking-tight">{tour.title}</h1>
+              {content.shortSummary && (
+                <p className="text-sm text-slate-500 mt-1.5 max-w-2xl leading-relaxed">{content.shortSummary}</p>
+              )}
             </div>
           </div>
         </motion.div>
@@ -906,7 +937,7 @@ export default function ProductDetailPage() {
             )}
 
             {/* INCLUDED / EXCLUDED */}
-            {(included.length > 0 || excluded.length > 0) && (
+            {(included.length > 0 || excluded.length > 0 || content.meals?.length > 0 || content.foodProvided || content.drinksIncluded || content.dietaryOptions?.length > 0) && (
               <SectionCard title="What's Included" onEdit={() => handleEditSection("What's Included")}>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-0 divide-y sm:divide-y-0 sm:divide-x divide-slate-100">
                   {included.length > 0 && (
@@ -940,6 +971,13 @@ export default function ProductDetailPage() {
                     </div>
                   )}
                 </div>
+                {(content.foodProvided || content.meals?.length > 0 || content.drinksIncluded || content.dietaryOptions?.length > 0) && (
+                  <div className="mt-4 pt-4 border-t border-slate-100 space-y-2">
+                    {content.foodProvided && <p className="text-sm text-slate-600"><span className="font-medium">Meals:</span> {content.meals?.map(m => `${m.type} (${m.format})`).join(', ') || 'Provided'}</p>}
+                    {content.drinksIncluded && <p className="text-sm text-slate-600"><span className="font-medium">Drinks:</span> Included</p>}
+                    {content.dietaryOptions?.length > 0 && <p className="text-sm text-slate-600"><span className="font-medium">Dietary options:</span> {content.dietaryOptions.join(', ')}</p>}
+                  </div>
+                )}
               </SectionCard>
             )}
 
@@ -1030,7 +1068,13 @@ export default function ProductDetailPage() {
                 ) : availability.length > 0 ? (
                   <AvailabilityCalendar availability={availability} availMonth={availMonth} setAvailMonth={setAvailMonth} />
                 ) : (
-                  <p className="text-xs text-slate-400 text-center py-6">No availability data for this period</p>
+                  <div className="text-center py-6">
+                    <CalendarDays size={24} className="mx-auto text-slate-300 mb-2" />
+                    <p className="text-xs text-slate-400">No availability data</p>
+                    <button onClick={() => handleEditSection("Pricing")} className="mt-2 text-xs font-medium text-emerald-600 hover:text-emerald-700 transition-colors">
+                      Add availability
+                    </button>
+                  </div>
                 )}
               </div>
             </motion.div>
@@ -1062,38 +1106,186 @@ export default function ProductDetailPage() {
                 </div>
               </div>
               <div className="p-5 space-y-3">
-                {normalizedPrices.length > 0 ? normalizedPrices.map((price, i) => (
-                  <div key={i} className="flex items-center justify-between py-1.5">
-                    <span className="text-sm text-slate-500">{price.label}</span>
-                    <span className="text-sm font-bold text-slate-800 tabular-nums">{formatCurrency(price.price, currency)}</span>
+                {normalizedPrices.length > 0 ? (
+                  <>
+                    {/* Pricing model badges */}
+                    <div className="flex flex-wrap items-center gap-1.5 pb-2">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-slate-100 text-slate-600">
+                        {travelerDetails.pricingModel === 'perGroup' ? 'Per group' : 'Per person'}
+                      </span>
+                      {travelerDetails.pricingApproach === 'sameForEveryone' && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-emerald-50 text-emerald-600">
+                          Same for everyone
+                        </span>
+                      )}
+                      {travelerDetails.pricingApproach === 'dependsOnAge' && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-amber-50 text-amber-600">
+                          Depends on age
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Per-category prices */}
+                    <div className="divide-y divide-slate-50">
+                      {normalizedPrices.map((price, i) => (
+                        <div key={i}>
+                          <div className="flex items-center justify-between py-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="text-sm text-slate-700 font-medium">{price.label}</span>
+                              {(price.minAge != null || price.maxAge != null) && (
+                                <span className="text-xs text-slate-400">
+                                  ({price.minAge}–{price.maxAge})
+                                </span>
+                              )}
+                              {price.idRequired && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 font-medium border border-amber-200/50">
+                                  {price.idType || 'ID'}
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-sm font-bold text-slate-800 tabular-nums shrink-0 ml-3">{formatCurrency(price.price, currency)}</span>
+                          </div>
+
+                          {/* Tiers inside this category */}
+                          {price.tiers && price.tiers.length > 0 && (
+                            <div className="ml-3 mb-2 pb-2 border-b border-slate-50 last:border-b-0">
+                              <div className="space-y-1">
+                                {price.tiers.map((tier, ti) => (
+                                  <div key={ti} className="flex items-center justify-between text-xs pl-3 py-1 rounded bg-slate-50/50 px-2">
+                                    <span className="text-slate-500">
+                                      {tier.from ?? '1'}–{tier.to ?? '∞'} people
+                                    </span>
+                                    <span className="font-semibold text-slate-700 tabular-nums">
+                                      {formatCurrency(tier.pricePerPerson, currency)} each
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Valid period */}
+                    {validPeriod && (
+                      <div className="pt-3 mt-2 border-t border-slate-100">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-slate-400">Valid period</span>
+                          <span className="font-medium text-slate-500">{formatDate(validPeriod.start)}{validPeriod.end ? ` \u2013 ${formatDate(validPeriod.end)}` : ''}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Discount Perks */}
+                    {schedules.discountPerks && (schedules.discountPerks.groupDiscount || schedules.discountPerks.earlyBirdDiscount) && (
+                      <div className="pt-3 mt-3 border-t border-slate-100 space-y-2">
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Discount Perks</p>
+                        {schedules.discountPerks.groupDiscount && (
+                          <div className="flex items-center gap-2 text-xs text-slate-600 bg-emerald-50/50 rounded-lg px-3 py-2">
+                            <Percent size={12} className="text-emerald-500 shrink-0" />
+                            <span>Group: <strong>{schedules.discountPerks.groupDiscount.discountPercentage}% off</strong> ({schedules.discountPerks.groupDiscount.minTravelers}+ travelers)</span>
+                          </div>
+                        )}
+                        {schedules.discountPerks.earlyBirdDiscount && (
+                          <div className="flex items-center gap-2 text-xs text-slate-600 bg-amber-50/50 rounded-lg px-3 py-2">
+                            <Percent size={12} className="text-amber-500 shrink-0" />
+                            <span>Early bird: <strong>{schedules.discountPerks.earlyBirdDiscount.discountPercentage}% off</strong> (book {schedules.discountPerks.earlyBirdDiscount.daysBeforeBooking} days ahead)</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="text-center py-4">
+                    <p className="text-sm text-slate-400 mb-2">No pricing configured yet</p>
+                    <button onClick={() => handleEditSection("Pricing")} className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 hover:text-emerald-700">
+                      <Pencil size={11} />
+                      Add pricing
+                    </button>
                   </div>
-                )) : (
-                  <p className="text-sm text-slate-400">No pricing data</p>
                 )}
-                {pricing.schedules?.[0]?.startDate && (
-                  <div className="pt-3 mt-3 border-t border-slate-100">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-400">Valid period</span>
-                      <span className="font-medium text-slate-500">{formatDate(pricing.schedules[0].startDate)} \u2013 {formatDate(pricing.schedules[0].endDate)}</span>
+              </div>
+            </motion.div>
+
+            {/* SCHEDULE */}
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.35, ease: "easeOut" }}
+              className="group bg-white rounded-xl border border-slate-100 shadow-sm shadow-slate-900/5 overflow-hidden hover:shadow-md hover:shadow-slate-900/5 hover:border-slate-200 transition-all duration-200"
+            >
+              <div className="px-5 py-4 border-b border-slate-100">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-0.5 h-4 bg-linear-to-b from-emerald-500 to-emerald-300 rounded-full shrink-0" />
+                    <h3 className="text-sm font-semibold text-slate-800">Schedule</h3>
+                  </div>
+                  <button onClick={() => handleEditSection("Schedule")} className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors opacity-0 group-hover:opacity-100" title="Edit Schedule">
+                    <Pencil size={13} />
+                  </button>
+                </div>
+              </div>
+              <div className="p-5 space-y-4">
+                {/* Schedule type badge */}
+                {scheduleData.scheduleType && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-slate-100 text-slate-600">
+                    {scheduleData.scheduleType === 'operatingHours' ? 'Operating Hours' : 'Fixed Time Slot'}
+                  </span>
+                )}
+
+                {/* Operating Days */}
+                <div>
+                  <p className="text-xs text-slate-400 mb-2">Operating Days</p>
+                  {scheduleData.operatingDays.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5">
+                      {scheduleData.operatingDays.map((day) => (
+                        <span key={day} className="text-xs px-2.5 py-1 rounded-md bg-slate-50 text-slate-500 font-medium border border-slate-100 capitalize">{day.slice(0, 3)}</span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-400 italic">Not configured</p>
+                  )}
+                </div>
+
+                {/* Time Slots */}
+                {scheduleData.timeSlots.length > 0 && (
+                  <div>
+                    <p className="text-xs text-slate-400 mb-2">Time Slots</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {scheduleData.timeSlots.map((slot, i) => {
+                        const start = typeof slot === "string" ? slot : slot.startTime;
+                        const end = slot.endTime;
+                        return <span key={i} className="text-xs px-2.5 py-1 rounded-md bg-slate-50 text-slate-500 font-medium border border-slate-100">{formatTime(start)}{end ? ` \u2013 ${formatTime(end)}` : ""}</span>;
+                      })}
                     </div>
                   </div>
                 )}
-                {/* Discount Perks */}
-                {schedules.discountPerks && (schedules.discountPerks.groupDiscount || schedules.discountPerks.earlyBirdDiscount) && (
-                  <div className="pt-3 mt-3 border-t border-slate-100 space-y-2">
-                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Discount Perks</p>
-                    {schedules.discountPerks.groupDiscount && (
-                      <div className="flex items-center gap-2 text-xs text-slate-600 bg-emerald-50/50 rounded-lg px-3 py-2">
-                        <Percent size={12} className="text-emerald-500 shrink-0" />
-                        <span>Group: <strong>{schedules.discountPerks.groupDiscount.discountPercentage}% off</strong> ({schedules.discountPerks.groupDiscount.minTravelers}+ travelers)</span>
-                      </div>
-                    )}
-                    {schedules.discountPerks.earlyBirdDiscount && (
-                      <div className="flex items-center gap-2 text-xs text-slate-600 bg-amber-50/50 rounded-lg px-3 py-2">
-                        <Percent size={12} className="text-amber-500 shrink-0" />
-                        <span>Early bird: <strong>{schedules.discountPerks.earlyBirdDiscount.discountPercentage}% off</strong> (book {schedules.discountPerks.earlyBirdDiscount.daysBeforeBooking} days ahead)</span>
-                      </div>
-                    )}
+
+                {/* Capacity */}
+                {scheduleData.capacityPerSlot && (
+                  <div className="flex items-center gap-2 text-xs text-slate-500 pt-1">
+                    <Users size={13} /> Max per booking: <strong className="text-slate-700">{scheduleData.capacityPerSlot}</strong>
+                  </div>
+                )}
+
+                {/* Valid period */}
+                {validPeriod && (
+                  <div className="flex items-center gap-2 text-xs text-slate-500 pt-1">
+                    <Calendar size={13} /> {formatDate(validPeriod.start)}{validPeriod.end ? ` \u2013 ${formatDate(validPeriod.end)}` : ''}
+                  </div>
+                )}
+
+                {/* Available Dates */}
+                {scheduleData.availableDates.length > 0 && (
+                  <div>
+                    <p className="text-xs text-slate-400 mb-2">Available Dates</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {scheduleData.availableDates.map((date, i) => (
+                        <span key={i} className="text-xs px-2.5 py-1 rounded-md bg-slate-50 text-slate-500 font-medium border border-slate-100">{formatDate(date)}</span>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
@@ -1127,12 +1319,34 @@ export default function ProductDetailPage() {
                 <DetailRow icon={Shield} label="Age Requirement" value={categorization.ageRequirement} />
                 <DetailRow icon={Navigation} label="Transport" value={categorization.transportMode && Object.keys(categorization.transportMode).length > 0 ? Object.entries(categorization.transportMode).map(([mode, items]) => items?.length ? `${mode}: ${items.join(", ")}` : "").filter(Boolean).join(" | ") : null} />
                 <DetailRow icon={Users} label="Group Type" value={content.isPrivateActivity ? "Private" : "Group"} />
-                <DetailRow icon={DollarSign} label="Pricing" value={schedules.travelerDetails?.pricingModel === "perPerson" ? "Per person" : "Per group"} />
+                <DetailRow icon={DollarSign} label="Pricing" value={travelerDetails.pricingModel === "perPerson" ? "Per person" : "Per group"} />
                 {(() => {
-                  const cats = schedules.travelerDetails?.pricingCategories || schedules.travelerDetails?.ageGroups || []
+                  const cats = travelerDetails.pricingCategories || travelerDetails.ageGroups || []
                   const enabled = cats.filter(c => c.enabled !== false)
                   if (enabled.length === 0) return null
-                  return <DetailRow icon={Users} label="Pricing categories" value={enabled.map(c => c.idRequired ? `${c.name} (${c.minAge}–${c.maxAge}, ${c.idType || 'ID required'})` : `${c.name} (${c.minAge}–${c.maxAge})`).join(", ")} />
+                  return (
+                    <div className="px-5 py-3 -mx-5 border-t border-slate-50">
+                      <p className="text-xs font-medium text-slate-500 mb-2">Pricing categories</p>
+                      <div className="space-y-1.5">
+                        {enabled.map((c, i) => (
+                          <div key={i} className="flex items-center justify-between text-xs">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-slate-700 font-medium">{c.name}</span>
+                              <span className="text-slate-400">({c.minAge}–{c.maxAge})</span>
+                              {c.idRequired && (
+                                <span className="text-[10px] px-1 py-0.5 rounded bg-amber-50 text-amber-600 font-medium border border-amber-200/50">
+                                  {c.idType || 'ID'}
+                                </span>
+                              )}
+                            </div>
+                            <span className="font-semibold text-slate-700 tabular-nums">
+                              {formatCurrency(c.price ?? 0, currency)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )
                 })()}
               </div>
             </motion.div>
@@ -1207,65 +1421,7 @@ export default function ProductDetailPage() {
               </motion.div>
             )}
 
-            {/* SCHEDULE */}
-            {schedules.operatingDays?.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.35, ease: "easeOut", delay: 0.2 }}
-                className="group bg-white rounded-xl border border-slate-100 shadow-sm shadow-slate-900/5 overflow-hidden hover:shadow-md hover:shadow-slate-900/5 hover:border-slate-200 transition-all duration-200"
-              >
-                <div className="px-5 py-4 border-b border-slate-100">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-0.5 h-4 bg-linear-to-b from-emerald-500 to-emerald-300 rounded-full shrink-0" />
-                      <h3 className="text-sm font-semibold text-slate-800">Schedule</h3>
-                    </div>
-                    <button onClick={() => handleEditSection("Schedule")} className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors opacity-0 group-hover:opacity-100" title="Edit Schedule">
-                      <Pencil size={13} />
-                    </button>
-                  </div>
-                </div>
-                <div className="p-5 space-y-4">
-                  <div>
-                    <p className="text-xs text-slate-400 mb-2">Operating Days</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {schedules.operatingDays.map((day) => (
-                        <span key={day} className="text-xs px-2.5 py-1 rounded-md bg-slate-50 text-slate-500 font-medium border border-slate-100 capitalize">{day.slice(0, 3)}</span>
-                      ))}
-                    </div>
-                  </div>
-                  {schedules.timeSlots?.length > 0 && (
-                    <div>
-                      <p className="text-xs text-slate-400 mb-2">Time Slots</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {schedules.timeSlots.map((slot, i) => {
-                          const start = typeof slot === "string" ? slot : slot.startTime;
-                          const end = slot.endTime;
-                          return <span key={i} className="text-xs px-2.5 py-1 rounded-md bg-slate-50 text-slate-500 font-medium border border-slate-100">{formatTime(start)}{end ? ` \u2013 ${formatTime(end)}` : ""}</span>;
-                        })}
-                      </div>
-                    </div>
-                  )}
-                  {schedules.capacityPerSlot && (
-                    <div className="flex items-center gap-2 text-xs text-slate-500 pt-1">
-                      <Users size={13} /> Capacity: <strong className="text-slate-700">{schedules.capacityPerSlot}</strong> per slot
-                    </div>
-                  )}
-                  {schedules.availableDates?.length > 0 && (
-                    <div>
-                      <p className="text-xs text-slate-400 mb-2">Available Dates</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {schedules.availableDates.map((date, i) => (
-                          <span key={i} className="text-xs px-2.5 py-1 rounded-md bg-slate-50 text-slate-500 font-medium border border-slate-100">{formatDate(date)}</span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </motion.div>
-            )}
+
 
             {/* BOOKING RULES */}
             <motion.div
@@ -1287,13 +1443,6 @@ export default function ProductDetailPage() {
                 </div>
               </div>
               <div className="p-5 space-y-3 text-sm">
-                {meetingPoint.name && (
-                  <div className="bg-slate-50 rounded-lg px-3.5 py-3 -mx-1">
-                    <p className="text-[11px] text-slate-400 uppercase tracking-wider font-medium mb-1">Meeting Point</p>
-                    <p className="font-semibold text-slate-800">{meetingPoint.name}</p>
-                    {meetingPoint.address && <p className="text-xs text-slate-500 mt-0.5">{meetingPoint.address}</p>}
-                  </div>
-                )}
                 {booking.ticketType && (
                   <div className="flex items-center gap-2.5 text-slate-600">
                     <Tag size={14} className="text-slate-400 shrink-0" /> <span>Ticket type: <strong className="text-slate-700">{booking.ticketType}</strong></span>
@@ -1309,9 +1458,9 @@ export default function ProductDetailPage() {
                     <span>{booking.instantConfirmation ? "Instant confirmation" : "Manual confirmation"}</span>
                   </div>
                 )}
-                {schedules.travelerDetails?.maxTravelersPerBooking && (
+                {(travelerDetails.maxTravelersPerBooking || travelerDetails.maxParticipants) && (
                   <div className="flex items-center gap-2.5 text-slate-600">
-                    <Users size={14} className="text-slate-400 shrink-0" /> Max travelers: <strong className="text-slate-700">{schedules.travelerDetails.maxTravelersPerBooking}</strong>
+                    <Users size={14} className="text-slate-400 shrink-0" /> Max travelers: <strong className="text-slate-700">{travelerDetails.maxTravelersPerBooking || travelerDetails.maxParticipants}</strong>
                   </div>
                 )}
                 {booking.maxQuantity && (

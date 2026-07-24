@@ -2,7 +2,7 @@ import { stepSchemas } from './productFormSchema'
 
 const STEP_FIELDS = {
   1: ['language'],
-   2: ['category', 'activityType', 'difficulty', 'duration', 'durationUnit'],
+   2: ['category', 'activitiesIncluded', 'transportModes', 'transportServices', 'difficulty', 'duration', 'durationUnit'],
   3: ['title', 'referenceCode'],
   4: ['shortDescription', 'fullDescription', 'highlights'],
     5: ['locations'],
@@ -11,18 +11,16 @@ const STEP_FIELDS = {
       'whatsIncluded',
       'whatsNotIncluded',
       'activitiesIncluded',
-      'pickupTransportTypes',
       'foodProvided',
       'meals',
       'drinksIncluded',
       'showDietaryRestrictions',
       'dietaryOptions',
-      'transportationProvided',
-      'transportationType',
     ],
-   8: ['guideType', 'guideMaterials'],
-   9: ['photos', 'copyrightConfirmed'],
-   10: [
+   8: ['transportationProvided', 'pickupTransportTypes', 'crossCityTravel'],
+   9: ['guideType', 'guideMaterials'],
+   10: ['photos', 'copyrightConfirmed'],
+   11: [
      'notSuitableFor',
      'notAllowed',
      'petFriendly',
@@ -32,8 +30,8 @@ const STEP_FIELDS = {
      'emergencyPhone',
      'voucherInfo',
    ],
-   11: ['options'],
-   12: [
+   12: ['options'],
+   13: [
      'meetingMode',
      'meetingPoint',
      'meetingPointPicture',
@@ -52,13 +50,14 @@ const STEP_FIELDS = {
      'dropoffLocation',
      'dropoffDescription',
    ],
-    13: [
+    14: [
       'pricingModel',
       'currency',
       'scheduleType',
       'schedules',
     ],
-   14: ['itinerary'],
+   15: ['cutoffMinutes', 'lastMinuteBookings', 'perSlotCutoff'],
+   16: ['itinerary'],
 }
 
 function pick(obj, keys) {

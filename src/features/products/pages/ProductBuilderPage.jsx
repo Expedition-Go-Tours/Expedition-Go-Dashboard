@@ -17,47 +17,53 @@ import Step04Descriptions from '@/features/products/steps/Step04Descriptions'
 import Step05Locations from '@/features/products/steps/Step05Locations'
 import Step06Keywords from '@/features/products/steps/Step06Keywords'
 import Step07Inclusions from '@/features/products/steps/Step07Inclusions'
-import Step08GuideInfo from '@/features/products/steps/Step08GuideInfo'
-import Step09Photos from '@/features/products/steps/Step09Photos'
-import Step10ExtraInfo from '@/features/products/steps/Step10ExtraInfo'
-import Step11Options from '@/features/products/steps/Step11Options'
-import Step12MeetingPoint from '@/features/products/steps/Step12MeetingPoint'
-import Step13PricingAvailability from '@/features/products/steps/Step13PricingAvailability'
-import Step14Itinerary from '@/features/products/steps/Step14Itinerary'
+import Step08Transportation from '@/features/products/steps/Step08Transportation'
+import Step09GuideInfo from '@/features/products/steps/Step09GuideInfo'
+import Step10Photos from '@/features/products/steps/Step10Photos'
+import Step11ExtraInfo from '@/features/products/steps/Step11ExtraInfo'
+import Step12Options from '@/features/products/steps/Step12Options'
+import Step13MeetingPoint from '@/features/products/steps/Step13MeetingPoint'
+import Step14PricingAvailability from '@/features/products/steps/Step14PricingAvailability'
+import Step15Cutoff from '@/features/products/steps/Step15Cutoff'
+import Step16Itinerary from '@/features/products/steps/Step16Itinerary'
 import { safeId } from '@/lib/utils'
 
 const STEP_COMPONENTS = {
   1: Step01Language,
-  2: Step02Category,
-  3: Step03Title,
+  2: Step03Title,
+  3: Step02Category,
   4: Step04Descriptions,
   5: Step05Locations,
   6: Step06Keywords,
   7: Step07Inclusions,
-  8: Step08GuideInfo,
-  9: Step09Photos,
-  10: Step10ExtraInfo,
-  11: Step11Options,
-  12: Step12MeetingPoint,
-  13: Step13PricingAvailability,
-  14: Step14Itinerary,
+  8: Step08Transportation,
+  9: Step09GuideInfo,
+  10: Step10Photos,
+  11: Step11ExtraInfo,
+  12: Step12Options,
+  13: Step13MeetingPoint,
+  14: Step14PricingAvailability,
+  15: Step15Cutoff,
+  16: Step16Itinerary,
 }
 
 const STEP_LABELS = {
   1: 'Language',
-  2: 'Product Category',
-  3: 'Title & Reference Code',
+  2: 'Title & Reference Code',
+  3: 'Product Category',
   4: 'Descriptions & highlights',
   5: 'Locations',
   6: 'Keywords',
   7: 'Inclusions',
-  8: 'Guide information',
-  9: 'Photos',
-  10: 'Extra information',
-  11: 'Options',
-  12: 'Meeting Point or Pickup',
-  13: 'Pricing & Availability',
-  14: 'Itinerary',
+  8: 'Transportation',
+  9: 'Guide information',
+  10: 'Photos',
+  11: 'Extra information',
+  12: 'Options',
+  13: 'Meeting Point or Pickup',
+  14: 'Pricing & Availability',
+  15: 'Cut-off',
+  16: 'Itinerary',
 }
 
 function getGygStepIndex(sectionId, stepId) {
@@ -96,6 +102,8 @@ function tourToProduct(tour) {
     attractions: content.attractions || [],
     keywords: tour.tags || [],
     activitiesIncluded: content.activitiesIncluded || [],
+    transportModes: content.transportModes || [],
+    transportServices: content.transportServices || [],
     pickupTransportTypes: content.pickupTransportTypes || [],
     whatsIncluded: content.included || [],
     whatsNotIncluded: content.excluded || [],
@@ -109,6 +117,10 @@ function tourToProduct(tour) {
     dietaryOptions: content.dietaryOptions || [],
     transportationProvided: !!content.transportationProvided,
     transportationType: content.transportationType || '',
+    crossCityTravel: !!content.crossCityTravel,
+    cutoffMinutes: content.cutoffMinutes ?? 20,
+    lastMinuteBookings: !!content.lastMinuteBookings,
+    perSlotCutoff: !!content.perSlotCutoff,
     notSuitableFor: content.healthRestrictions || [],
     notAllowed: content.notAllowed || [],
     petFriendly: !!content.petFriendly,
@@ -147,6 +159,8 @@ function tourToProduct(tour) {
     ),
     pickupLocations: content.pickupLocations || [],
     pickupGeoshape: content.pickupGeoshape || null,
+    planPickupTimes: !!content.planPickupTimes,
+    pickupStartTime: content.pickupStartTime || '08:00',
     dropoffOption: content.dropoffOption || 'none',
     dropoffLocation: content.dropoffLocation || null,
     dropoffDescription: content.dropoffDescription || '',
@@ -158,13 +172,12 @@ function tourToProduct(tour) {
       ? ((Array.isArray(td.pricingCategories) && td.pricingCategories[0]?.price != null) || (Array.isArray(td.ageGroups) && td.ageGroups[0]?.price != null) ? (td.pricingCategories || td.ageGroups)[0].price : null)
       : null),
     pricingCategories: (Array.isArray(td.pricingCategories) && td.pricingCategories.length > 0)
-      ? td.pricingCategories
+      ? td.pricingCategories.map((c) => ({ ...c, tiers: c.tiers || [] }))
       : (Array.isArray(td.ageGroups) && td.ageGroups.length > 0)
-        ? td.ageGroups
-        : [{ name: 'Adult', price: null, minAge: 13, maxAge: 99, notAllowed: false, ticketNotRequired: false, needsAdult: false, idRequired: false, idType: '' }],
+        ? td.ageGroups.map((c) => ({ ...c, tiers: [] }))
+        : [{ name: 'Adult', price: null, minAge: 13, maxAge: 99, notAllowed: false, ticketNotRequired: false, needsAdult: false, idRequired: false, idType: '', tiers: [] }],
     minParticipants: td.minParticipants ?? 1,
     maxParticipants: td.maxParticipants ?? 10,
-    pricingTiers: Array.isArray(td.pricingTiers) ? td.pricingTiers : [],
     groupSizes: Array.isArray(td.groupSizes) ? td.groupSizes : [],
     additionalPersonsEnabled: !!td.additionalPersonsEnabled,
     additionalPersonPrice: td.additionalPersonPrice ?? null,
@@ -355,8 +368,9 @@ export default function ProductBuilderPage() {
 
     const payload = {
       ...state,
-      photos: (state.photos || []).map((p) => (typeof p === 'string' ? p : p.url || p)),
-      existingPhotos: (state.photos || []).map((p) => (typeof p === 'string' ? p : p.url || p)),
+      highlights: (state.highlights || []).filter(Boolean),
+      photos: (state.photos || []).map((p) => (typeof p === 'string' ? p : p.url || '')).filter(Boolean),
+      existingPhotos: (state.photos || []).map((p) => (typeof p === 'string' ? p : p.url || '')).filter(Boolean),
       meetingPoint: normalizeLocationPoint(state.meetingPoint),
       dropoffLocation: normalizeLocationPoint(state.dropoffLocation),
       options: (state.options || []).filter((o) => o.title && o.languages?.length),
@@ -395,10 +409,17 @@ export default function ProductBuilderPage() {
       const res = savedProductId
         ? await updateProduct(savedProductId, payload)
         : await createProduct(payload)
-      const newId = savedProductId || res.data?.data?.tour?._id
+      const newId = savedProductId || res.data?.data?.tour?.id
       if (newId) setStoreSavedProductId(newId)
       state.markSaved()
+      if (gygStepNumber === 16) {
+        useProductBuilderStore.getState().completeStep('itinerary')
+        navigate('/products')
+      }
       return res
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Failed to save product')
+      throw err
     } finally {
       state.setSaving(false)
       setSaving(false)
@@ -406,7 +427,7 @@ export default function ProductBuilderPage() {
   }
 
   function handleNext() {
-    if (gygStepNumber < 14) {
+    if (gygStepNumber < 16) {
       setStepDirection(1)
       const storeState = useProductBuilderStore.getState()
       storeState.nextStep()
@@ -481,7 +502,7 @@ export default function ProductBuilderPage() {
                   {id && id !== 'new' ? 'Edit Product' : 'Create New Product'}
                 </h1>
                 <p className="text-xs text-slate-500">
-                  Step {gygStepNumber} of 14: {STEP_LABELS[gygStepNumber]}
+                  Step {gygStepNumber} of 16: {STEP_LABELS[gygStepNumber]}
                 </p>
               </div>
             </div>
@@ -517,7 +538,7 @@ export default function ProductBuilderPage() {
               </div>
               <WizardNavFooter
                 currentStep={gygStepNumber}
-                totalSteps={14}
+                totalSteps={16}
                 onBack={handleBack}
                 onNext={handleNext}
                 onSave={handleSave}

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { toast } from 'sonner'
 import { useProductBuilderStore } from './productBuilderStore'
 import { createProduct, updateProduct } from './api'
 
@@ -12,8 +13,9 @@ function buildPayload(state) {
 
   const payload = {
     ...state,
-    photos: (state.photos || []).map((p) => (typeof p === 'string' ? p : p.url || p)),
-    existingPhotos: (state.photos || []).map((p) => (typeof p === 'string' ? p : p.url || p)),
+    highlights: (state.highlights || []).filter(Boolean),
+    photos: (state.photos || []).map((p) => (typeof p === 'string' ? p : p.url || '')).filter(Boolean),
+    existingPhotos: (state.photos || []).map((p) => (typeof p === 'string' ? p : p.url || '')).filter(Boolean),
     meetingPoint: normalizeLocationPoint(state.meetingPoint),
     dropoffLocation: normalizeLocationPoint(state.dropoffLocation),
     options: (state.options || []).filter((o) => o.title && o.languages?.length),
@@ -44,6 +46,7 @@ function buildPayload(state) {
 export function useAutoSave() {
   const timerRef = useRef(null)
   const savingRef = useRef(false)
+  const lastToastRef = useRef(0)
 
   useEffect(() => {
     const unsub = useProductBuilderStore.subscribe((state) => {
@@ -66,12 +69,17 @@ export function useAutoSave() {
             ? await updateProduct(id, payload)
             : await createProduct(payload)
 
-          const newId = id || res.data?.data?.tour?._id
+          const newId = id || res.data?.data?.tour?.id
           if (newId) s.setSavedProductId(newId)
           s.markSaved()
         } catch (err) {
           if (err?.code !== 'ERR_CANCELED' && err?.message !== 'AUTH_REQUIRED') {
             console.warn('[AutoSave] Failed:', err.message)
+            const now = Date.now()
+            if (now - lastToastRef.current > 10000) {
+              lastToastRef.current = now
+              toast.error(err.response?.data?.message || err.message || 'Failed to save draft')
+            }
           }
         } finally {
           savingRef.current = false

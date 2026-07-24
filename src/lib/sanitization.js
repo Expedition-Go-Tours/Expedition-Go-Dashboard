@@ -1,123 +1,64 @@
-/**
- * Input sanitization utilities for security
- */
+import DOMPurify from 'dompurify'
 
-/**
- * Sanitize string input to prevent XSS attacks
- * @param {string} input - Raw input string
- * @returns {string} Sanitized string
- */
 export function sanitizeString(input) {
   if (typeof input !== 'string') return '';
-  
-  return input
-    .replace(/[<>]/g, '') // Remove < and > characters
-    .trim();
+  return DOMPurify.sanitize(input, { ALLOWED_TAGS: [] }).trim();
 }
 
-/**
- * Sanitize HTML content (basic implementation)
- * For production, consider using DOMPurify library
- * @param {string} html - Raw HTML string
- * @returns {string} Sanitized HTML
- */
 export function sanitizeHTML(html) {
   if (typeof html !== 'string') return '';
-  
-  // Basic sanitization - remove script tags and event handlers
-  return html
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-    .replace(/on\w+\s*=\s*["'][^"']*["']/gi, '')
-    .replace(/on\w+\s*=\s*[^\s>]*/gi, '');
+  return DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'a', 'p', 'ul', 'ol', 'li', 'br'],
+    ALLOWED_ATTR: ['href', 'target', 'rel'],
+  });
 }
 
-/**
- * Sanitize filename to prevent directory traversal
- * @param {string} filename - Raw filename
- * @returns {string} Sanitized filename
- */
 export function sanitizeFilename(filename) {
   if (typeof filename !== 'string') return '';
-  
   return filename
-    .replace(/[^a-zA-Z0-9._-]/g, '_') // Replace special chars with underscore
-    .replace(/\.{2,}/g, '.') // Remove multiple dots
-    .replace(/^\.+/, '') // Remove leading dots
-    .substring(0, 255); // Limit length
+    .replace(/[^a-zA-Z0-9._-]/g, '_')
+    .replace(/\.{2,}/g, '.')
+    .replace(/^\.+/, '')
+    .substring(0, 255);
 }
 
-/**
- * Validate and sanitize URL
- * @param {string} url - Raw URL string
- * @returns {string|null} Sanitized URL or null if invalid
- */
 export function sanitizeURL(url) {
   if (typeof url !== 'string') return null;
-  
   try {
     const parsed = new URL(url);
-    // Only allow http and https protocols
-    if (!['http:', 'https:'].includes(parsed.protocol)) {
-      return null;
-    }
+    if (!['http:', 'https:'].includes(parsed.protocol)) return null;
     return parsed.toString();
   } catch {
     return null;
   }
 }
 
-/**
- * Sanitize email address
- * @param {string} email - Raw email string
- * @returns {string} Sanitized email
- */
 export function sanitizeEmail(email) {
   if (typeof email !== 'string') return '';
-  
-  return email
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w@.+-]/g, '');
+  return email.toLowerCase().trim().replace(/[^\w@.+-]/g, '');
 }
 
-/**
- * Sanitize phone number
- * @param {string} phone - Raw phone string
- * @returns {string} Sanitized phone
- */
 export function sanitizePhone(phone) {
   if (typeof phone !== 'string') return '';
-  
   return phone.replace(/[^\d+\-() ]/g, '');
 }
 
-/**
- * Validate file upload
- * @param {File} file - File object
- * @param {Object} options - Validation options
- * @param {string[]} options.allowedTypes - Allowed MIME types
- * @param {number} options.maxSize - Max file size in bytes
- * @returns {Object} Validation result
- */
 export function validateFileUpload(file, options = {}) {
   const {
     allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
-    maxSize = 5 * 1024 * 1024, // 5MB default
+    maxSize = 5 * 1024 * 1024,
   } = options;
 
   const errors = [];
 
-  // Check file type
   if (!allowedTypes.includes(file.type)) {
     errors.push(`File type ${file.type} is not allowed. Allowed types: ${allowedTypes.join(', ')}`);
   }
 
-  // Check file size
   if (file.size > maxSize) {
     errors.push(`File size ${(file.size / 1024 / 1024).toFixed(2)}MB exceeds maximum ${(maxSize / 1024 / 1024).toFixed(2)}MB`);
   }
 
-  // Check filename
   const sanitizedName = sanitizeFilename(file.name);
   if (!sanitizedName) {
     errors.push('Invalid filename');
@@ -130,42 +71,21 @@ export function validateFileUpload(file, options = {}) {
   };
 }
 
-/**
- * Escape special characters for use in SQL LIKE queries
- * @param {string} input - Raw input string
- * @returns {string} Escaped string
- */
 export function escapeSQLLike(input) {
   if (typeof input !== 'string') return '';
-  
-  return input
-    .replace(/\\/g, '\\\\')
-    .replace(/%/g, '\\%')
-    .replace(/_/g, '\\_');
+  return input.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
 }
 
-/**
- * Sanitize object by removing null/undefined values
- * @param {Object} obj - Input object
- * @returns {Object} Sanitized object
- */
 export function sanitizeObject(obj) {
   if (typeof obj !== 'object' || obj === null) return {};
-  
   return Object.entries(obj).reduce((acc, [key, value]) => {
     if (value !== null && value !== undefined && value !== '') {
-      acc[key] = value;
+      acc[key] = typeof value === 'string' ? sanitizeString(value) : value;
     }
     return acc;
   }, {});
 }
 
-/**
- * Rate limiting helper (client-side)
- * @param {Function} fn - Function to rate limit
- * @param {number} delay - Delay in milliseconds
- * @returns {Function} Rate limited function
- */
 export function rateLimit(fn, delay = 1000) {
   let lastCall = 0;
   let timeoutId = null;
@@ -192,20 +112,10 @@ export function rateLimit(fn, delay = 1000) {
   };
 }
 
-/**
- * Debounce function for form inputs
- * @param {Function} fn - Function to debounce
- * @param {number} delay - Delay in milliseconds
- * @returns {Function} Debounced function
- */
 export function debounce(fn, delay = 300) {
   let timeoutId = null;
-
   return function (...args) {
-    if (timeoutId) {
-      clearTimeout(timeoutId);
-    }
-
+    if (timeoutId) clearTimeout(timeoutId);
     return new Promise((resolve) => {
       timeoutId = setTimeout(() => {
         resolve(fn.apply(this, args));

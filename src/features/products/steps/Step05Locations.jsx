@@ -11,14 +11,6 @@ import {
 } from '@/components/ui/select'
 import { ChevronDown, GripVertical } from 'lucide-react'
 
-const VISIT_TYPES = [
-  { value: 'visit', label: 'Visit' },
-  { value: 'pass_by', label: 'Pass by' },
-  { value: 'guided_tour', label: 'Guided tour' },
-  { value: 'free_time', label: 'Free time' },
-  { value: 'photo_stop', label: 'Photo stop' },
-]
-
 const ADMISSION_OPTIONS = [
   { value: 'yes', label: 'Yes', desc: 'Admission is covered by the tour price.' },
   { value: 'no', label: 'No', desc: 'Travelers pay separately at the venue.' },
@@ -35,7 +27,6 @@ export default function Step05Locations() {
   const reorderLocations = useProductBuilderStore((s) => s.reorderLocations)
 
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedVT, setSelectedVT] = useState('visit')
   const [dragIdx, setDragIdx] = useState(null)
   const [dragOverIdx, setDragOverIdx] = useState(null)
   const [expandedIdx, setExpandedIdx] = useState(null)
@@ -53,7 +44,6 @@ export default function Step05Locations() {
     setExpandedIdx(locations.length)
     addLocation({
       name: item.name || item.city || searchQuery.trim(),
-      visitType: selectedVT,
       address: item.formatted || '',
       lat: item.latitude ?? null,
       lng: item.longitude ?? null,
@@ -72,7 +62,6 @@ export default function Step05Locations() {
     setExpandedIdx(locations.length)
     addLocation({
       name: val,
-      visitType: selectedVT,
       address: '',
       lat: null,
       lng: null,
@@ -178,16 +167,6 @@ export default function Step05Locations() {
               </div>
             )}
           </div>
-          <Select value={selectedVT} onValueChange={setSelectedVT}>
-            <SelectTrigger className="w-[140px] shrink-0">
-              <SelectValue placeholder="Visit type" />
-            </SelectTrigger>
-            <SelectContent>
-              {VISIT_TYPES.map((vt) => (
-                <SelectItem key={vt.value} value={vt.value}>{vt.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
           <button
             className="shrink-0 h-[46px] px-4 rounded-xl bg-emerald-600 text-white text-sm font-semibold border-0 cursor-pointer hover:bg-emerald-700 transition-colors"
             onClick={() => {
@@ -302,22 +281,6 @@ export default function Step05Locations() {
                         </span>
                       )}
                     </div>
-                    <Select
-                      value={loc.visitType}
-                      onValueChange={(v) => updateLocation(i, { visitType: v })}
-                    >
-                      <SelectTrigger
-                        onClick={(e) => e.stopPropagation()}
-                        className="min-h-[30px] h-[30px] text-[13px] px-2 py-0 border-slate-200 rounded-lg w-[110px] shrink-0"
-                      >
-                        <SelectValue placeholder="Visit type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {VISIT_TYPES.map((vt) => (
-                          <SelectItem key={vt.value} value={vt.value}>{vt.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
                     {!isExpanded && (
                       <button
                         className="shrink-0 w-7 h-7 rounded-lg border border-slate-200 bg-white text-slate-400 cursor-pointer grid place-items-center text-xs hover:border-slate-300 hover:text-slate-600 transition-colors"

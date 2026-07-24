@@ -30,7 +30,7 @@ const GUIDE_TYPE_OPTIONS = [
   },
 ]
 
-export default function Step08GuideInfo() {
+export default function Step09GuideInfo() {
   const guideType = useProductBuilderStore((s) => s.guideType)
   const guideMaterials = useProductBuilderStore((s) => s.guideMaterials)
   const setField = useProductBuilderStore((s) => s.setField)

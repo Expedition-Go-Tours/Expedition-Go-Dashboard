@@ -59,8 +59,8 @@ export default function WizardNavFooter({ currentStep, totalSteps, onBack, onNex
       completeStep('itinerary')
       toast.success('Product saved successfully')
       navigate('/products')
-    } catch (err) {
-      toast.error(err.response?.data?.message || err.message || 'Failed to save product')
+    } catch {
+      // Error already handled by the global interceptor + handleSave catch
     }
   }
 

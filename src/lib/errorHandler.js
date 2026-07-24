@@ -43,9 +43,9 @@ export function getErrorType(error) {
   const status = error.response.status;
 
   if (status === 401) return ErrorType.AUTH;
+  if (status === 400 || status === 422) return ErrorType.VALIDATION;
   if (status === 403) return ErrorType.FORBIDDEN;
   if (status === 404) return ErrorType.NOT_FOUND;
-  if (status === 422) return ErrorType.VALIDATION;
   if (status >= 500) return ErrorType.SERVER;
 
   return ErrorType.UNKNOWN;

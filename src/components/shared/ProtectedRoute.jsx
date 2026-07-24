@@ -8,7 +8,6 @@ import {
 } from "@/stores/authStore";
 import { loadSupplierProfile } from "@/features/auth/api";
 import { useTeamRole } from "@/hooks/useTeamRole";
-import { useSessionTimeout } from "@/hooks/useSessionTimeout";
 import { Loader2 } from "lucide-react";
 
 const PROFILE_CHECK_TIMEOUT_MS = 8000;
@@ -38,8 +37,6 @@ export default function ProtectedRoute({ requireAdmin = false }) {
     hasHydrated && isAuthenticated && Boolean(authToken) && !isAdmin && !isTeamMember && !canAccessSupplierDashboard(supplierProfile);
 
   const [profileResolved, setProfileResolved] = useState(() => !needsProfileLookup);
-
-  useSessionTimeout();
 
   useEffect(() => {
     if (!needsProfileLookup) {

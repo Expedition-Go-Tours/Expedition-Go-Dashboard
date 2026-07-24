@@ -18,51 +18,78 @@ const REFRESH_BEFORE_MS = 5 * 60 * 1000;
 export function useTokenRefresh() {
   const timerRef = useRef(null);
 
+  function scheduleRefresh() {
+    const token = getAuthToken();
+    if (!token) return;
+
+    const decoded = decodeTokenPayload(token);
+    if (!decoded?.exp) return;
+
+    const expiresAt = decoded.exp * 1000;
+    const now = Date.now();
+    const timeUntilExpiry = expiresAt - now;
+    const delay = Math.max(timeUntilExpiry - REFRESH_BEFORE_MS, 0);
+
+    if (delay > 0) {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(refresh, delay);
+    }
+  }
+
+  async function refresh() {
+    const token = getAuthToken();
+    if (!token) return;
+
+    const refreshToken = localStorage.getItem('refresh_token');
+    if (!refreshToken) return;
+
+    try {
+      const res = await axios.post(
+        `${config.api.baseURL}/auth/refresh`,
+        { refreshToken },
+        { skipGlobalErrorHandler: true }
+      );
+      const data = res.data?.data;
+      if (data?.accessToken) {
+        localStorage.setItem('auth_token', data.accessToken);
+        if (data?.refreshToken) {
+          localStorage.setItem('refresh_token', data.refreshToken);
+        }
+        useAuthStore.getState().setToken(data.accessToken);
+      }
+    } catch (err) {
+      if (config.isDevelopment()) {
+        console.error('[TokenRefresh] Failed to proactively refresh token:', err?.response?.status, err?.message);
+      }
+    }
+
+    scheduleRefresh();
+  }
+
   useEffect(() => {
-    const scheduleRefresh = () => {
+    scheduleRefresh();
+
+    const handleActivity = () => {
       const token = getAuthToken();
       if (!token) return;
-
       const decoded = decodeTokenPayload(token);
       if (!decoded?.exp) return;
-
       const expiresAt = decoded.exp * 1000;
-      const now = Date.now();
-      const timeUntilExpiry = expiresAt - now;
-      const delay = Math.max(timeUntilExpiry - REFRESH_BEFORE_MS, 0);
-
-      if (delay > 0) {
-        timerRef.current = setTimeout(async () => {
-          const refreshToken = localStorage.getItem('refresh_token');
-          if (!refreshToken) return;
-
-          try {
-            const res = await axios.post(
-              `${config.api.baseURL}/auth/refresh`,
-              { refreshToken },
-              { skipGlobalErrorHandler: true }
-            );
-            const data = res.data?.data;
-            if (data?.accessToken) {
-              localStorage.setItem('auth_token', data.accessToken);
-              if (data?.refreshToken) {
-                localStorage.setItem('refresh_token', data.refreshToken);
-              }
-              useAuthStore.getState().setToken(data.accessToken);
-            }
-          } catch (err) {
-            console.error('[TokenRefresh] Failed to proactively refresh token:', err?.response?.status, err?.message);
-          }
-
-          scheduleRefresh();
-        }, delay);
+      const timeUntilExpiry = expiresAt - Date.now();
+      if (timeUntilExpiry < REFRESH_BEFORE_MS + 10_000) {
+        refresh();
+      } else {
+        scheduleRefresh();
       }
     };
 
-    scheduleRefresh();
+    window.addEventListener('mousedown', handleActivity, { passive: true });
+    window.addEventListener('keydown', handleActivity, { passive: true });
 
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
+      window.removeEventListener('mousedown', handleActivity);
+      window.removeEventListener('keydown', handleActivity);
     };
   }, []);
 }

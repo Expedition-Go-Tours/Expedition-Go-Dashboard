@@ -125,7 +125,9 @@ api.interceptors.response.use(
           }
         }
       } catch (refreshErr) {
-        console.error("[Auth] Token refresh failed:", refreshErr?.response?.status, refreshErr?.message);
+        if (config.isDevelopment()) {
+          console.error("[Auth] Token refresh failed:", refreshErr?.response?.status, refreshErr?.message);
+        }
       }
 
       if (typeof window !== "undefined") {

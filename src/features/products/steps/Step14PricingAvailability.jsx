@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Select,
@@ -10,6 +10,15 @@ import {
 import { HelpCircle, Info, Plus, X, ChevronDown, ChevronUp, Check, Copy } from 'lucide-react'
 import { useProductBuilderStore } from '@/features/products/productBuilderStore'
 import { safeId } from '@/lib/utils'
+
+const CATEGORY_TEMPLATES = [
+  { name: 'Child', minAge: 0, maxAge: 17 },
+  { name: 'Adult', minAge: 18, maxAge: 99 },
+  { name: 'Senior', minAge: 60, maxAge: 99 },
+  { name: 'Student', minAge: 18, maxAge: 25, idRequired: true },
+  { name: 'EU', minAge: 18, maxAge: 99, idRequired: true },
+  { name: 'Military', minAge: 18, maxAge: 99, idRequired: true },
+]
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'))
@@ -268,6 +277,37 @@ function PricingCategoriesStep() {
     pricingApproach, pricingCategories, showAdvancedCategorySettings,
     setField, addPricingCategory, updatePricingCategory, removePricingCategory,
   } = useProductBuilderStore()
+  const [showPicker, setShowPicker] = useState(false)
+  const [customMode, setCustomMode] = useState(false)
+  const [customName, setCustomName] = useState('')
+  const pickerRef = useRef(null)
+  const inputRef = useRef(null)
+
+  useEffect(() => {
+    if (customMode) inputRef.current?.focus()
+  }, [customMode])
+
+  useEffect(() => {
+    if (!showPicker) return
+    function handleClick(e) {
+      if (pickerRef.current && !pickerRef.current.contains(e.target)) setShowPicker(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [showPicker])
+
+  const handleSelectTemplate = (t) => {
+    addPricingCategory({ name: t.name, price: null, minAge: t.minAge, maxAge: t.maxAge, notAllowed: false, ticketNotRequired: false, needsAdult: false, idRequired: t.idRequired || false, idType: '' })
+    setShowPicker(false)
+  }
+
+  const handleAddCustom = () => {
+    if (customName.trim()) {
+      addPricingCategory({ name: customName.trim(), price: null, minAge: 1, maxAge: 99, notAllowed: false, ticketNotRequired: false, needsAdult: false, idRequired: false, idType: '' })
+      setCustomName('')
+      setCustomMode(false)
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -406,14 +446,71 @@ function PricingCategoriesStep() {
             ))}
           </div>
 
-          <button
-            type="button"
-            onClick={addPricingCategory}
-            className="flex items-center gap-1.5 mt-3 text-sm text-emerald-600 hover:text-emerald-700 font-medium"
-          >
-            <Plus className="w-4 h-4" />
-            Add pricing category
-          </button>
+          <div className="relative" ref={pickerRef}>
+            <button
+              type="button"
+              onClick={() => { setShowPicker(!showPicker); setCustomMode(false) }}
+              className="flex items-center gap-1.5 mt-3 text-sm text-emerald-600 hover:text-emerald-700 font-medium"
+            >
+              <Plus className="w-4 h-4" />
+              Add pricing category
+            </button>
+
+            {showPicker && (
+              <div className="absolute z-20 top-full left-0 mt-1 w-56 bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden">
+                <div className="px-3 py-2 bg-slate-50 border-b border-slate-100">
+                  <span className="text-xs font-bold text-slate-600">Choose a category</span>
+                </div>
+                {CATEGORY_TEMPLATES.map((t) => (
+                  <button
+                    key={t.name}
+                    type="button"
+                    onClick={() => handleSelectTemplate(t)}
+                    className="w-full text-left px-3.5 py-2.5 text-sm text-slate-700 hover:bg-emerald-50 transition-colors flex items-center justify-between border-0 bg-transparent cursor-pointer"
+                  >
+                    <span className="flex items-center gap-1.5">
+                      {t.name}
+                      {t.idRequired && (
+                        <span className="text-[10px] font-medium text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">ID required</span>
+                      )}
+                    </span>
+                    <span className="text-xs text-slate-400">{t.minAge}-{t.maxAge}</span>
+                  </button>
+                ))}
+                <div className="border-t border-slate-100">
+                  {customMode ? (
+                    <div className="p-2 flex items-center gap-1.5 bg-white">
+                      <input
+                        ref={inputRef}
+                        type="text"
+                        value={customName}
+                        onChange={(e) => setCustomName(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleAddCustom() }}
+                        placeholder="Category name"
+                        className="flex-1 h-8 rounded-lg border border-slate-200 px-2.5 text-xs focus:outline-none focus:border-emerald-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddCustom}
+                        disabled={!customName.trim()}
+                        className="px-2.5 h-8 bg-emerald-600 text-white rounded-lg text-xs font-medium hover:bg-emerald-700 transition-colors disabled:opacity-50"
+                      >
+                        Add
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => { setCustomMode(true); setCustomName('') }}
+                      className="w-full text-left px-3.5 py-2.5 text-sm text-emerald-600 hover:bg-emerald-50 transition-colors font-medium border-0 bg-transparent cursor-pointer"
+                    >
+                      + Custom category
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -464,17 +561,31 @@ function CapacityStep() {
 function PriceStep() {
   const {
     pricingModel, pricingApproach, currency, pricingCategories, uniformPrice,
-    minParticipants, maxParticipants, pricingTiers,
-    setField, addPricingTier, updatePricingTier, removePricingTier,
+    minParticipants, maxParticipants,
+    setField, addCategoryTier, updateCategoryTier, removeCategoryTier,
   } = useProductBuilderStore()
 
-  const [customerPays, setCustomerPays] = useState('')
   const commission = 0.30
-  const pricePerParticipant = customerPays ? (parseFloat(customerPays) * (1 - commission)).toFixed(2) : ''
 
-  const categories = pricingApproach === 'sameForEveryone'
-    ? [{ name: 'Participant', minAge: 0, maxAge: 99 }]
+  const isSameForEveryone = pricingApproach === 'sameForEveryone'
+  const categories = isSameForEveryone
+    ? [{ name: 'Participant', minAge: 0, maxAge: 99, tiers: [] }]
     : pricingCategories
+
+  function getCatPrice(cat) {
+    return isSameForEveryone ? uniformPrice : (cat.price ?? '')
+  }
+
+  function handlePriceChange(i, value) {
+    const num = parseFloat(value) || 0
+    if (isSameForEveryone) {
+      setField('uniformPrice', num)
+    } else {
+      const updated = [...pricingCategories]
+      updated[i] = { ...updated[i], price: num }
+      setField('pricingCategories', updated)
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -486,112 +597,109 @@ function PriceStep() {
         </p>
       </div>
 
-      {categories.map((cat, i) => (
-        <div key={i}>
-          <h4 className="text-sm font-bold text-slate-900 mb-3">{cat.name}</h4>
-          <div className="grid grid-cols-4 gap-3 items-end">
-            <div>
-              <label className="block text-xs text-slate-500 mb-1">Number of people</label>
-              <div className="flex items-center gap-1 text-sm text-slate-700">
-                <span>{minParticipants} to</span>
-                {pricingTiers.length > 0 && i === 0 ? (
+      {categories.map((cat, i) => {
+        const catPrice = getCatPrice(cat)
+        const computed = catPrice ? (parseFloat(catPrice) * (1 - commission)).toFixed(2) : ''
+
+        return (
+          <div key={i} className="p-4 rounded-lg border border-slate-200 bg-white">
+            <h4 className="text-sm font-bold text-slate-900 mb-3">{cat.name}</h4>
+            <div className="grid grid-cols-4 gap-3 items-end">
+              <div>
+                <label className="block text-xs text-slate-500 mb-1">Number of people</label>
+                <div className="flex items-center gap-1 text-sm text-slate-700">
+                  <span>{minParticipants} to</span>
+                  <span>{maxParticipants}</span>
+                  <HelpCircle className="w-3.5 h-3.5 text-slate-400" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs text-slate-500 mb-1">Customer pays</label>
+                <div className="flex items-center">
                   <input
                     type="number"
-                    value={pricingTiers[0]?.to || maxParticipants}
-                    onChange={(e) => updatePricingTier(0, { to: parseInt(e.target.value) })}
-                    className="h-9 w-16 rounded-lg border border-slate-200 px-2 text-sm focus:outline-none focus:border-emerald-500"
+                    value={catPrice}
+                    onChange={(e) => handlePriceChange(i, e.target.value)}
+                    placeholder="USD"
+                    className="h-11 w-full rounded-lg border border-slate-200 px-3 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
                   />
-                ) : (
-                  <span>{maxParticipants}</span>
-                )}
-                <HelpCircle className="w-3.5 h-3.5 text-slate-400" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs text-slate-500 mb-1">Commission</label>
+                <div className="h-11 rounded-lg bg-slate-100 flex items-center px-3 text-sm text-slate-500">
+                  30%
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs text-slate-500 mb-1">Price per participant</label>
+                <div className="h-11 rounded-lg bg-slate-100 flex items-center px-3 text-sm text-slate-700 font-medium">
+                  {computed ? `${computed} USD` : ''}
+                </div>
               </div>
             </div>
-            <div>
-              <label className="block text-xs text-slate-500 mb-1">Customer pays</label>
-              <div className="flex items-center">
-                <input
-                  type="number"
-                  value={customerPays}
-                  onChange={(e) => {
-                    setCustomerPays(e.target.value)
-                    setField('uniformPrice', parseFloat(e.target.value) || 0)
-                  }}
-                  placeholder="USD"
-                  className="h-11 w-full rounded-lg border border-slate-200 px-3 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-xs text-slate-500 mb-1">Commission</label>
-              <div className="h-11 rounded-lg bg-slate-100 flex items-center px-3 text-sm text-slate-500">
-                30%
-              </div>
-            </div>
-            <div>
-              <label className="block text-xs text-slate-500 mb-1">Price per participant</label>
-              <div className="h-11 rounded-lg bg-slate-100 flex items-center px-3 text-sm text-slate-700 font-medium">
-                {pricePerParticipant ? `${pricePerParticipant} USD` : ''}
-              </div>
-            </div>
-          </div>
-        </div>
-      ))}
 
-      <button
-        type="button"
-        onClick={addPricingTier}
-        className="flex items-center gap-1.5 text-sm text-emerald-600 hover:text-emerald-700 font-medium"
-      >
-        <Plus className="w-4 h-4" />
-        Tier price
-      </button>
+            {(cat.tiers || []).map((tier, j) => (
+              <div key={tier.id || j} className="flex items-end gap-3 p-3 mt-3 rounded-lg border border-slate-100 bg-slate-50">
+                <div className="flex-1">
+                  <label className="block text-xs text-slate-500 mb-1">From</label>
+                  <input
+                    type="number"
+                    value={tier.from ?? ''}
+                    onChange={(e) => updateCategoryTier(i, j, { from: e.target.value ? parseInt(e.target.value) : null })}
+                    className="h-9 w-full rounded-lg border border-slate-200 px-2.5 text-sm focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-xs text-slate-500 mb-1">To</label>
+                  <input
+                    type="number"
+                    value={tier.to ?? ''}
+                    onChange={(e) => updateCategoryTier(i, j, { to: e.target.value ? parseInt(e.target.value) : null })}
+                    className="h-9 w-full rounded-lg border border-slate-200 px-2.5 text-sm focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-xs text-slate-500 mb-1">Price per person</label>
+                  <input
+                    type="number"
+                    value={tier.pricePerPerson ?? ''}
+                    onChange={(e) => updateCategoryTier(i, j, { pricePerPerson: e.target.value ? parseFloat(e.target.value) : null })}
+                    placeholder="USD"
+                    className="h-9 w-full rounded-lg border border-slate-200 px-2.5 text-sm focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-xs text-slate-500 mb-1">Commission</label>
+                  <div className="h-9 rounded-lg bg-slate-100 flex items-center px-2.5 text-sm text-slate-500">30%</div>
+                </div>
+                <div className="flex-1">
+                  <label className="block text-xs text-slate-500 mb-1">You receive</label>
+                  <div className="h-9 rounded-lg bg-slate-100 flex items-center px-2.5 text-sm text-slate-700">
+                    {tier.pricePerPerson ? `${(tier.pricePerPerson * 0.7).toFixed(2)} USD` : ''}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => removeCategoryTier(i, j)}
+                  className="flex items-center gap-1 text-sm text-red-500 hover:text-red-600 font-medium mb-2"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
 
-      {pricingTiers.map((tier, i) => (
-        <div key={tier.id || i} className="flex items-end gap-3 p-3 rounded-lg border border-slate-200 bg-white">
-          <div className="flex-1">
-            <label className="block text-xs text-slate-500 mb-1">Number of people</label>
-            <div className="flex items-center gap-1 text-sm text-slate-700">
-              <span>{minParticipants} to</span>
-              <input
-                type="number"
-                value={tier.to || ''}
-                onChange={(e) => updatePricingTier(i, { to: parseInt(e.target.value) })}
-                className="h-9 w-16 rounded-lg border border-slate-200 px-2 text-sm focus:outline-none focus:border-emerald-500"
-              />
-              <HelpCircle className="w-3.5 h-3.5 text-slate-400" />
-            </div>
+            <button
+              type="button"
+              onClick={() => addCategoryTier(i)}
+              className="flex items-center gap-1.5 mt-3 text-sm text-emerald-600 hover:text-emerald-700 font-medium"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Tier price
+            </button>
           </div>
-          <div className="flex-1">
-            <label className="block text-xs text-slate-500 mb-1">Customer pays</label>
-            <input
-              type="number"
-              value={tier.pricePerPerson || ''}
-              onChange={(e) => updatePricingTier(i, { pricePerPerson: parseFloat(e.target.value) })}
-              placeholder="USD"
-              className="h-11 w-full rounded-lg border border-slate-200 px-3 text-sm focus:outline-none focus:border-emerald-500"
-            />
-          </div>
-          <div className="flex-1">
-            <label className="block text-xs text-slate-500 mb-1">Commission</label>
-            <div className="h-11 rounded-lg bg-slate-100 flex items-center px-3 text-sm text-slate-500">30%</div>
-          </div>
-          <div className="flex-1">
-            <label className="block text-xs text-slate-500 mb-1">Price per participant</label>
-            <div className="h-11 rounded-lg bg-slate-100 flex items-center px-3 text-sm text-slate-700">
-              {tier.pricePerPerson ? `${(tier.pricePerPerson * 0.7).toFixed(2)} USD` : ''}
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => removePricingTier(i)}
-            className="flex items-center gap-1 text-sm text-red-500 hover:text-red-600 font-medium mb-2"
-          >
-            <X className="w-4 h-4" />
-            Remove
-          </button>
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }
@@ -735,21 +843,42 @@ function ScheduleCard({ schedule, index, onEdit }) {
             >
               Edit
             </button>
-            <button
-              type="button"
-              onClick={() => setExpanded(!expanded)}
-              className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors"
-            >
-              {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-            </button>
           </div>
+        </div>
+        <div className="flex justify-end px-4 pb-3">
+          <button
+            type="button"
+            onClick={() => setExpanded(!expanded)}
+            className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 font-medium"
+          >
+            {expanded ? 'Hide schedule' : 'Show schedule'}
+            {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </button>
         </div>
       </div>
 
       {expanded && (
         <div className="px-4 pb-4 border-t border-slate-100 pt-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-500">Active days: {activeDays.join(', ') || 'None'}</span>
+          <div className="space-y-3">
+            {DAYS.map((day) => {
+              const hours = schedule.weeklySchedule?.[day] || []
+              return (
+                <div key={day}>
+                  <p className="text-sm font-semibold text-slate-800">{day}</p>
+                  {hours.length > 0 ? (
+                    <div className="mt-1 space-y-0.5">
+                      {hours.map((h, hi) => (
+                        <p key={hi} className="text-sm text-slate-600">{h.startTime} - {h.endTime}</p>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-slate-400 mt-1">Closed</p>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+          <div className="flex items-center justify-end mt-4 pt-3 border-t border-slate-100">
             <button
               type="button"
               onClick={() => removeSchedule(index)}
@@ -764,7 +893,7 @@ function ScheduleCard({ schedule, index, onEdit }) {
   )
 }
 
-export default function Step13PricingAvailability() {
+export default function Step14PricingAvailability() {
   const {
     scheduleType, pricingModel, currency, schedules,
     setField, resetScheduleForm,
@@ -788,8 +917,6 @@ export default function Step13PricingAvailability() {
   const handleWizardBack = () => {
     setShowWizard(false)
     setEditingIndex(null)
-    const { resetScheduleForm } = useProductBuilderStore.getState()
-    resetScheduleForm()
   }
 
   return (

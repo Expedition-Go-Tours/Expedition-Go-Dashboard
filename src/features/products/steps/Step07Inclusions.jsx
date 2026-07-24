@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/select'
 import { Info, HelpCircle, Plus, X, Check } from 'lucide-react'
 import { useProductBuilderStore } from '@/features/products/productBuilderStore'
-import { GYG_ACTIVITIES, GYG_PICKUP_TRANSPORT } from '@/constants/gygLists'
+import { GYG_ACTIVITIES } from '@/constants/gygLists'
 
 const MEAL_TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Brunch', 'Lunch or dinner, depending on starting time']
 const MEAL_FORMATS = ['Full meal', 'Food tasting', 'Cooking class', 'Buffet', 'Snack', 'Picnic', 'Packed meal', 'BBQ']
@@ -185,80 +185,6 @@ function InclusionList({ items, field, placeholder, accent }) {
   )
 }
 
-function TransportTypeGroup({ items, onAdd, onRemove }) {
-  const categories = Object.entries(GYG_PICKUP_TRANSPORT)
-
-  function toggle(type) {
-    if (items.includes(type)) onRemove(items.indexOf(type))
-    else onAdd(type)
-  }
-
-  return (
-    <div className="space-y-2.5">
-      {categories.map(([category, types]) => (
-        <div key={category} className="border border-slate-200 rounded-xl overflow-hidden">
-          <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-100">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">
-              {category}
-            </span>
-          </div>
-          <div className="p-3 flex flex-wrap gap-2">
-            {types.map((type) => {
-              const selected = items.includes(type)
-              return (
-                <motion.button
-                  key={type}
-                  type="button"
-                  layout
-                  initial={false}
-                  animate={{ scale: 1 }}
-                  whileTap={{ scale: 0.96 }}
-                  onClick={() => toggle(type)}
-                  className={`
-                    inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] border text-sm font-medium
-                    transition-colors duration-150 cursor-pointer
-                    ${selected
-                      ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
-                      : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-800'
-                    }
-                  `}
-                >
-                  {selected && <Check size={14} className="shrink-0 text-emerald-600" />}
-                  <span>{type}</span>
-                </motion.button>
-              )
-            })}
-          </div>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function ToggleGroup({ options, value, onChange, label }) {
-  return (
-    <div>
-      {label && <label className="block text-sm font-semibold mb-2 text-slate-800">{label}</label>}
-      <div className="flex gap-2">
-        {options.map((opt) => (
-          <button
-            key={opt.value}
-            type="button"
-            onClick={() => onChange(opt.value)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium border-2 transition-all ${
-              value === opt.value
-                ? 'border-emerald-600 bg-emerald-50 text-emerald-700'
-                : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
-            }`}
-          >
-            {opt.label}
-          </button>
-        ))}
-      </div>
-    </div>
-  )
-}
-
 function ActivityList() {
   const items = useProductBuilderStore((s) => s.activitiesIncluded)
   const onAdd = useProductBuilderStore((s) => s.addActivityIncluded)
@@ -373,17 +299,13 @@ export default function Step07Inclusions() {
   const {
     whatsIncluded,
     whatsNotIncluded,
-    pickupTransportTypes,
     foodProvided,
     meals,
     drinksIncluded,
     showDietaryRestrictions,
     dietaryOptions,
-    transportationProvided,
   } = store
   const setField = useProductBuilderStore((s) => s.setField)
-  const addPickupTransportType = useProductBuilderStore((s) => s.addPickupTransportType)
-  const removePickupTransportType = useProductBuilderStore((s) => s.removePickupTransportType)
   const addMeal = useProductBuilderStore((s) => s.addMeal)
   const updateMeal = useProductBuilderStore((s) => s.updateMeal)
   const removeMeal = useProductBuilderStore((s) => s.removeMeal)
@@ -565,35 +487,6 @@ export default function Step07Inclusions() {
                 />
               </div>
             )}
-          </div>
-        )}
-      </div>
-
-      <hr className="border-slate-100" />
-
-      {/* Transportation Provided */}
-      <div data-field="transportationProvided">
-        <ToggleGroup
-          label="Is transportation provided during the activity?"
-          options={[
-            { value: true, label: 'Yes' },
-            { value: false, label: 'No' },
-          ]}
-          value={transportationProvided}
-          onChange={(v) => setField('transportationProvided', v)}
-        />
-
-        {transportationProvided && (
-          <div className="mt-4" data-field="transportationType">
-            <label className="block text-sm font-semibold mb-1.5 text-slate-800">Transportation type</label>
-            <p className="text-[13px] text-slate-500 mb-2 leading-relaxed">
-              Select the types of transportation used during the activity. Categories are grouped for easy selection.
-            </p>
-            <TransportTypeGroup
-              items={pickupTransportTypes}
-              onAdd={addPickupTransportType}
-              onRemove={removePickupTransportType}
-            />
           </div>
         )}
       </div>

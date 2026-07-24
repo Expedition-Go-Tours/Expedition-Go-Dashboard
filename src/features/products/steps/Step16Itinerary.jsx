@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { useProductBuilderStore } from '@/features/products/productBuilderStore'
 import { useStepErrors } from '@/features/products/useStepErrors'
+import { VISIT_TYPES } from '@/constants/gygLists'
 import { useGeocoding } from '@/hooks/useGeocoding'
 import {
   Select,
@@ -22,7 +23,7 @@ const CATEGORIES_WITH_ITINERARY = [
   'Panoramic bus tour', 'City cruise', 'Boat tour', 'Multi-day tour',
 ]
 
-export default function Step13Itinerary() {
+export default function Step16Itinerary() {
   const category = useProductBuilderStore((s) => s.category)
   const itinerary = useProductBuilderStore((s) => s.itinerary)
   const meetingPoint = useProductBuilderStore((s) => s.meetingPoint)
@@ -34,7 +35,7 @@ export default function Step13Itinerary() {
   const removeItineraryEntry = useProductBuilderStore((s) => s.removeItineraryEntry)
   const reorderItineraryEntry = useProductBuilderStore((s) => s.reorderItineraryEntry)
   const insertItineraryEntry = useProductBuilderStore((s) => s.insertItineraryEntry)
-  const errors = useStepErrors(14)
+  const errors = useStepErrors(15)
 
   const [activeLocSearch, setActiveLocSearch] = useState(null)
   const [locSearchQueries, setLocSearchQueries] = useState({})
@@ -281,6 +282,24 @@ export default function Step13Itinerary() {
                                 Transfer
                               </button>
                             </div>
+
+                            {/* Visit type */}
+                            <Select
+                              value={entry.visitType || 'visit'}
+                              onValueChange={(v) => updateItineraryEntry(entry._index, { visitType: v })}
+                            >
+                              <SelectTrigger
+                                onClick={(e) => e.stopPropagation()}
+                                className="min-h-[30px] h-[30px] text-[13px] px-2 py-0 border-slate-200 rounded-lg w-[120px] shrink-0"
+                              >
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {VISIT_TYPES.map((vt) => (
+                                  <SelectItem key={vt.value} value={vt.value}>{vt.label}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
 
                             {/* Time input */}
                             <div className="flex items-center gap-1.5 ml-auto">
