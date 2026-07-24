@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useDropzone } from 'react-dropzone'
-import { HelpCircle, Upload, Image, ChevronUp, ChevronDown, Check, X } from 'lucide-react'
+import { HelpCircle, Upload, Image, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Check, X, Trash2 } from 'lucide-react'
 import { useProductBuilderStore } from '@/features/products/productBuilderStore'
 import { useStepErrors } from '@/features/products/useStepErrors'
 import { uploadPhotos } from '@/features/products/api'
@@ -9,7 +9,7 @@ import { transformImage } from '@/lib/image'
 
 const MIN_PHOTOS = 4
 
-export default function Step08Photos() {
+export default function Step10Photos() {
   const photos = useProductBuilderStore((s) => s.photos)
   const pendingFiles = useProductBuilderStore((s) => s._pendingFiles)
   const coverPhoto = useProductBuilderStore((s) => s.coverPhoto)
@@ -25,6 +25,7 @@ export default function Step08Photos() {
   const [uploading, setUploading] = useState(new Set())
   const [uploadErrors, setUploadErrors] = useState({})
   const [tipsOpen, setTipsOpen] = useState(true)
+  const [selectedIds, setSelectedIds] = useState(new Set())
   const dragIndex = useRef(null)
   const blobUrls = useRef({})
 
@@ -87,6 +88,70 @@ export default function Step08Photos() {
     maxSize: 7 * 1024 * 1024,
   })
 
+  const toggleSelect = (id) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const deselectAll = () => setSelectedIds(new Set())
+
+  const deleteSelected = () => {
+    const toRemove = photos.filter((p) => selectedIds.has(p.id))
+    toRemove.forEach((photo) => {
+      if (blobUrls.current[photo.id]) {
+        URL.revokeObjectURL(blobUrls.current[photo.id])
+        delete blobUrls.current[photo.id]
+      }
+      if (photo.url && coverPhoto === photo.url) {
+        setCoverPhoto('')
+      }
+    })
+    const idsToRemove = selectedIds
+    const newPhotos = photos.filter((p) => !idsToRemove.has(p.id))
+    newPhotos.forEach((_, i) => {
+      const oldIdx = photos.findIndex((p) => p.id === newPhotos[i].id)
+      if (oldIdx !== i) removePhoto(oldIdx)
+    })
+    for (let i = photos.length - 1; i >= 0; i--) {
+      if (idsToRemove.has(photos[i].id)) removePhoto(i)
+    }
+    setSelectedIds(new Set())
+  }
+
+  const getSelectedIndex = () => {
+    const idx = photos.findIndex((p) => selectedIds.has(p.id))
+    return idx
+  }
+
+  const movePhoto = (from, to) => {
+    if (to < 0 || to >= photos.length) return
+    reorderPhotos(from, to)
+  }
+
+  const moveSelectedLeft = () => {
+    const idx = getSelectedIndex()
+    if (idx > 0) movePhoto(idx, idx - 1)
+  }
+
+  const moveSelectedRight = () => {
+    const idx = getSelectedIndex()
+    if (idx >= 0 && idx < photos.length - 1) movePhoto(idx, idx + 1)
+  }
+
+  const moveSelectedToFirst = () => {
+    const idx = getSelectedIndex()
+    if (idx > 0) movePhoto(idx, 0)
+  }
+
+  const moveSelectedToLast = () => {
+    const idx = getSelectedIndex()
+    if (idx >= 0 && idx < photos.length - 1) movePhoto(idx, photos.length - 1)
+  }
+
   const handleRemove = (index) => {
     const photo = photos[index]
     if (blobUrls.current[photo.id]) {
@@ -96,9 +161,11 @@ export default function Step08Photos() {
     if (photo.url && coverPhoto === photo.url) {
       setCoverPhoto('')
     }
+    setSelectedIds((prev) => { const n = new Set(prev); n.delete(photo.id); return n })
     removePhoto(index)
   }
 
+  const hasSelection = selectedIds.size > 0
   const emptySlots = Math.max(0, MIN_PHOTOS - photos.length)
 
   return (
@@ -109,6 +176,65 @@ export default function Step08Photos() {
           <h2 className="text-lg font-bold text-slate-900">Product Photos</h2>
           <HelpCircle className="w-5 h-5 text-slate-400" />
         </div>
+
+        {/* Selection toolbar */}
+        {hasSelection && (
+          <div className="flex items-center justify-between p-3 mb-4 bg-white border border-slate-200 rounded-xl">
+            <button
+              type="button"
+              onClick={deselectAll}
+              className="px-4 py-2 text-sm font-medium text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
+            >
+              Deselect
+            </button>
+
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={moveSelectedToFirst}
+                className="w-9 h-9 flex items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
+                title="Move to first"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                <ChevronLeft className="w-4 h-4 -ml-2" />
+              </button>
+              <button
+                type="button"
+                onClick={moveSelectedLeft}
+                className="w-9 h-9 flex items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
+                title="Move left"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={moveSelectedRight}
+                className="w-9 h-9 flex items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
+                title="Move right"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={moveSelectedToLast}
+                className="w-9 h-9 flex items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
+                title="Move to last"
+              >
+                <ChevronRight className="w-4 h-4" />
+                <ChevronRight className="w-4 h-4 -ml-2" />
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={deleteSelected}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-500 rounded-lg hover:bg-red-600 transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
+              Delete
+            </button>
+          </div>
+        )}
 
         {/* Upload area */}
         <div
@@ -134,6 +260,11 @@ export default function Step08Photos() {
           </p>
         </div>
 
+        {/* Hint text */}
+        {photos.length > 0 && !hasSelection && (
+          <p className="text-xs text-slate-400 text-center mt-3">Drag to reorder &bull; Click to select</p>
+        )}
+
         {errors.photos && <span className="text-[13px] text-red-600 font-medium mt-2 flex items-center gap-1">{errors.photos[0]}</span>}
 
         {/* Photo grid */}
@@ -145,14 +276,19 @@ export default function Step08Photos() {
             const isUploading = uploading.has(photo.id)
             const error = uploadErrors[photo.id]
             const isPending = !isUploaded && !isUploading && !error && !!pendingFiles[photo.id]
+            const isSelected = selectedIds.has(photo.id)
 
             return (
               <div
                 key={photo.id}
-                className={`relative aspect-[4/3] rounded-xl overflow-hidden border transition-all ${
-                  isCover ? 'border-emerald-500 ring-2 ring-emerald-500/30' : 'border-slate-200'
+                className={`group relative aspect-[4/3] rounded-xl overflow-hidden border-2 transition-all cursor-pointer ${
+                  isSelected
+                    ? 'border-blue-500 ring-2 ring-blue-500/30'
+                    : isCover
+                      ? 'border-emerald-500 ring-2 ring-emerald-500/30'
+                      : 'border-slate-200 hover:border-slate-300'
                 } ${isUploading || isPending ? 'opacity-80' : ''} ${error ? 'border-red-400' : ''}`}
-                draggable={!isUploading}
+                draggable={!isUploading && !hasSelection}
                 onDragStart={() => { dragIndex.current = i }}
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={() => {
@@ -161,7 +297,19 @@ export default function Step08Photos() {
                     dragIndex.current = null
                   }
                 }}
+                onClick={() => toggleSelect(photo.id)}
               >
+                {/* Checkbox */}
+                <div className={`absolute top-2 left-2 z-20 transition-opacity ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                  <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
+                    isSelected ? 'bg-blue-500 border-blue-500' : 'bg-white/90 border-slate-300'
+                  }`}>
+                    {isSelected && (
+                      <Check className="w-3 h-3 text-white" strokeWidth={3} />
+                    )}
+                  </div>
+                </div>
+
                 {src ? (
                   <img src={src} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
                 ) : (
@@ -171,14 +319,14 @@ export default function Step08Photos() {
                 )}
 
                 {i === 0 && (
-                  <span className="absolute bottom-2 left-2 bg-white/90 text-emerald-700 text-xs font-semibold px-2.5 py-1 rounded-md">
+                  <span className="absolute bottom-2 left-2 bg-white/90 text-emerald-700 text-xs font-semibold px-2.5 py-1 rounded-md z-10">
                     Main photo
                   </span>
                 )}
 
                 <button
-                  className="absolute top-2 right-2 w-7 h-7 rounded-full border-0 bg-black/50 text-white cursor-pointer grid place-items-center text-xs hover:bg-black/70 transition-colors"
-                  onClick={() => handleRemove(i)}
+                  className="absolute top-2 right-2 w-7 h-7 rounded-full border-0 bg-black/50 text-white cursor-pointer grid place-items-center text-xs hover:bg-black/70 transition-colors z-20"
+                  onClick={(e) => { e.stopPropagation(); handleRemove(i) }}
                   type="button"
                 >
                   <X className="w-3.5 h-3.5" />
@@ -194,7 +342,8 @@ export default function Step08Photos() {
                   <div className="absolute inset-0 bg-red-500/20 grid place-items-center">
                     <button
                       className="text-white text-xs font-semibold bg-red-600 px-3 py-1.5 rounded-lg border-0 cursor-pointer hover:bg-red-700"
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation()
                         const file = pendingFiles[photo.id]
                         if (file) uploadFile(photo.id, file)
                       }}

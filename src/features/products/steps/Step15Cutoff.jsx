@@ -18,7 +18,7 @@ export default function Step15Cutoff() {
   const lastMinuteBookings = useProductBuilderStore((s) => s.lastMinuteBookings)
   const perSlotCutoff = useProductBuilderStore((s) => s.perSlotCutoff)
   const setField = useProductBuilderStore((s) => s.setField)
-  const errors = useStepErrors(14)
+  const errors = useStepErrors(15)
 
   const [showBanner, setShowBanner] = useState(true)
 

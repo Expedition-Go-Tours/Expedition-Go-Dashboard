@@ -1,553 +1,1396 @@
-import { useMemo, useRef, useState } from 'react'
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import { useProductBuilderStore } from '@/features/products/productBuilderStore'
-import { useStepErrors } from '@/features/products/useStepErrors'
-import { VISIT_TYPES } from '@/constants/gygLists'
 import { useGeocoding } from '@/hooks/useGeocoding'
+import { ITINERARY_ACTIVITY_CATEGORIES } from '@/constants/gygLists'
 import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from '@/components/ui/select'
-import { GripVertical, Clock, MapPin, MoreVertical, Navigation, Info, Search, X } from 'lucide-react'
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from '@/components/ui/dropdown-menu'
+  HelpCircle, Info, Search, X, Plus, ArrowLeft, MoreHorizontal, Calendar, MapPin,
+} from 'lucide-react'
 
-const CATEGORIES_WITH_ITINERARY = [
-  'Day trip', 'Guided walking tour', 'Guided motorized tour',
-  'Panoramic bus tour', 'City cruise', 'Boat tour', 'Multi-day tour',
-]
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
-export default function Step16Itinerary() {
-  const category = useProductBuilderStore((s) => s.category)
+/** Derive number of days from store duration/durationUnit */
+function getNumDays(duration, durationUnit) {
+  if (!duration) return 1
+  if (durationUnit === 'days') return Math.max(1, Math.round(duration))
+  if (durationUnit === 'hours' && duration >= 24) return Math.max(1, Math.floor(duration / 24))
+  return 1
+}
+
+/** Compute a human-readable duration label from minutes */
+function durationLabel(totalMin) {
+  if (!totalMin) return ''
+  const h = Math.floor(totalMin / 60)
+  const m = totalMin % 60
+  if (h > 0 && m > 0) return `(${h}h${m}min)`
+  if (h > 0) return `(${h}h)`
+  return `(${m}min)`
+}
+
+// ─── Brand icons ──────────────────────────────────────────────────────────────
+
+function GIcon({ size = 40 }) {
+  return (
+    <div
+      style={{ width: size, height: size }}
+      className="relative z-10 rounded-full bg-emerald-600 flex items-center justify-center text-white shrink-0"
+    >
+      <MapPin size={size * 0.45} strokeWidth={2} />
+    </div>
+  )
+}
+
+function OrangeCircle({ size = 40 }) {
+  return (
+    <div
+      style={{ width: size, height: size }}
+      className="relative z-10 rounded-full bg-emerald-600 shrink-0"
+    />
+  )
+}
+
+function ActivityNode({ isOptional = false }) {
+  if (isOptional) {
+    return (
+      <div className="relative z-10 w-10 h-10 rounded-full border-2 border-slate-300 bg-white flex items-center justify-center shrink-0" />
+    )
+  }
+  return (
+    <div className="relative z-10 w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-white shrink-0">
+      <Plus size={18} strokeWidth={2.5} />
+    </div>
+  )
+}
+
+function CalendarNode({ size = 40 }) {
+  return (
+    <div
+      style={{ width: size, height: size }}
+      className="relative z-10 rounded-full bg-emerald-600 flex items-center justify-center text-white shrink-0"
+    >
+      <Calendar size={size * 0.45} strokeWidth={2} />
+    </div>
+  )
+}
+
+// ─── Activity Select Modal ────────────────────────────────────────────────────
+function ActivitySelectModal({ currentValue, onSelect, onClose }) {
+  const [activeTab, setActiveTab] = useState('General tourism')
+  const tabs = Object.keys(ITINERARY_ACTIVITY_CATEGORIES)
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl w-full max-w-[660px] max-h-[85vh] flex flex-col shadow-2xl">
+        <div className="flex items-center justify-between px-6 pt-5 pb-3">
+          <h2 className="text-lg font-bold text-slate-900">Select Activity</h2>
+          <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="flex gap-0 px-6 border-b border-slate-200">
+          {tabs.map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                activeTab === tab ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-6 py-5">
+          {Object.entries(ITINERARY_ACTIVITY_CATEGORIES[activeTab] || {}).map(([section, items]) => (
+            <div key={section} className="mb-5">
+              <h4 className="text-sm font-bold text-slate-800 mb-2">{section}</h4>
+              <div className="grid grid-cols-3 gap-x-4 gap-y-2">
+                {items.map((item) => (
+                  <label key={item} className="flex items-center gap-2 cursor-pointer py-0.5">
+                    <input
+                      type="checkbox"
+                      checked={currentValue === item}
+                      onChange={() => { onSelect(item); onClose() }}
+                      className="w-4 h-4 rounded border-slate-300 text-emerald-600 accent-emerald-600 shrink-0"
+                    />
+                    <span className="text-sm text-slate-700">{item}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="px-6 py-3 bg-emerald-50 border-t border-slate-100">
+          <p className="text-xs text-emerald-700 flex items-start gap-2">
+            <Info size={14} className="shrink-0 mt-0.5" />
+            If you can't find an activity that describes this part of your experience please{' '}
+            <span className="font-bold underline cursor-pointer">request a new activity</span>
+          </p>
+        </div>
+
+        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100">
+          <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
+          <button onClick={onClose} className="px-5 py-2 text-sm font-semibold text-white bg-emerald-600 rounded-full hover:bg-emerald-700">Save</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Location Search Dropdown ─────────────────────────────────────────────────
+function LocationSearch({ selected, onSelect, taggedLocations = [] }) {
+  const [search, setSearch] = useState(selected?.name || '')
+  const [open, setOpen] = useState(false)
+  const { search: geoSearch, results, loading } = useGeocoding()
+  const ref = useRef(null)
+
+  useEffect(() => {
+    if (search.length > 1) geoSearch(search)
+  }, [search])
+
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const allResults = useMemo(() => {
+    const q = search.toLowerCase()
+    const tagged = taggedLocations.filter(
+      (l) => l.name?.toLowerCase().includes(q) || l.address?.toLowerCase().includes(q)
+    )
+    const geo = results.map((r) => ({
+      name: r.formatted?.split(',').slice(0, 2).join(',') || '',
+      address: r.formatted || '',
+      lat: r.latitude,
+      lng: r.longitude,
+    }))
+    return [...tagged, ...geo]
+  }, [search, results, taggedLocations])
+
+  return (
+    <div ref={ref} className="relative">
+      <div className="relative">
+        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => { setSearch(e.target.value); setOpen(true); if (!e.target.value) onSelect(null) }}
+          onFocus={() => setOpen(true)}
+          placeholder="Search for locations"
+          className="w-full pl-9 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+        />
+      </div>
+
+      {/* selected chip */}
+      {selected && (
+        <div className="flex flex-wrap gap-1.5 mt-2">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 text-slate-700 rounded-full text-xs">
+            {selected.name || selected.address}
+            <button type="button" onClick={() => { onSelect(null); setSearch('') }} className="p-0.5 hover:bg-slate-200 rounded">
+              <X size={12} />
+            </button>
+          </span>
+          <span className="text-xs text-slate-400 self-center">1 / 1</span>
+        </div>
+      )}
+
+      {open && !selected && (
+        <div className="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
+          <div className="text-right px-3 py-1.5 text-xs text-slate-400 border-b border-slate-100">
+            0 / 1 locations selected
+          </div>
+          <div className="max-h-52 overflow-y-auto">
+            {allResults.map((loc, i) => (
+              <label key={i} className="flex items-center gap-3 px-3.5 py-2.5 hover:bg-emerald-50 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={false}
+                  onChange={() => { onSelect(loc); setSearch(loc.name || loc.address); setOpen(false) }}
+                  className="w-4 h-4 rounded border-slate-300 text-emerald-600 shrink-0"
+                />
+                <span className="text-sm text-slate-700">{loc.name || loc.address}</span>
+              </label>
+            ))}
+            {allResults.length === 0 && !loading && search.length > 1 && (
+              <p className="px-3.5 py-3 text-sm text-slate-400">No results found</p>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── 7-step Segment Wizard ───────────────────────────────────────────────────
+function SegmentWizard({ onComplete, onCancel, initialData, taggedLocations }) {
+  const [step, setStep] = useState(1)
+  const [data, setData] = useState({
+    activityType: 'activity',
+    activityName: '',
+    location: null,
+    durationHours: '',
+    durationMinutes: '',
+    importance: 'major',
+    isOptional: false,
+    additionalFee: false,
+    ...(initialData || {}),
+  })
+  const [showActivityModal, setShowActivityModal] = useState(false)
+
+  const update = useCallback((overrides) => setData((p) => ({ ...p, ...overrides })), [])
+
+  function next() { if (step < 7) setStep(step + 1); else onComplete(data) }
+  function back() { if (step > 1) setStep(step - 1); else onCancel() }
+
+  return (
+    <div className="border border-slate-200 rounded-xl bg-white overflow-hidden">
+      <div className="px-6 py-6 min-h-[200px]">
+
+        {step === 1 && (
+          <>
+            <h3 className="text-xl font-bold text-slate-900 mb-5">What happens next?</h3>
+            <div className="space-y-3">
+              {[
+                { val: 'activity', label: 'An activity (the reason someone would purchase this experience)' },
+                { val: 'transfer', label: 'A transfer (transportation to the important parts of your experience)' },
+              ].map(({ val, label }) => (
+                <label key={val} className="flex items-start gap-3 cursor-pointer">
+                  <input type="radio" name="wz_type" checked={data.activityType === val} onChange={() => update({ activityType: val })}
+                    className="mt-0.5 w-4 h-4 accent-emerald-600" />
+                  <span className="text-sm text-slate-700">{label}</span>
+                </label>
+              ))}
+            </div>
+          </>
+        )}
+
+        {step === 2 && (
+          <>
+            <h3 className="text-xl font-bold text-slate-900 mb-1">What happens during this part of the experience?</h3>
+            <p className="text-sm text-slate-500 mb-4">Enter what happens during this part of your experience into the search bar below.</p>
+            <div className="flex items-center gap-3">
+              <div className="relative flex-1">
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text" value={data.activityName}
+                  onChange={(e) => update({ activityName: e.target.value })}
+                  placeholder="Enter activity here"
+                  className="w-full pl-9 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+              <button onClick={() => setShowActivityModal(true)} className="text-sm font-medium text-emerald-600 hover:text-emerald-700 whitespace-nowrap">
+                or <span className="underline">Select from list</span>
+              </button>
+            </div>
+            {showActivityModal && (
+              <ActivitySelectModal
+                currentValue={data.activityName}
+                onSelect={(name) => update({ activityName: name })}
+                onClose={() => setShowActivityModal(false)}
+              />
+            )}
+          </>
+        )}
+
+        {step === 3 && (
+          <>
+            <h3 className="text-xl font-bold text-slate-900 mb-1">Where does this part of your experience take place?</h3>
+            <p className="text-sm text-slate-500 mb-4">Select one of the locations tagged to your experience from the list below or use a non-specific location.</p>
+            <LocationSearch selected={data.location} onSelect={(l) => update({ location: l })} taggedLocations={taggedLocations} />
+            <p className="mt-3 text-sm text-slate-400">
+              or <button className="text-emerald-600 hover:underline font-medium">use non-specific location</button>
+            </p>
+          </>
+        )}
+
+        {step === 4 && (
+          <>
+            <h3 className="text-xl font-bold text-slate-900 mb-1">How long does this part of your experience last?</h3>
+            <p className="text-sm text-slate-500 mb-5">
+              Add a duration for this specific part of the experience. You may also skip adding a duration if you don't wish to display one for this segment (e.g. attractions you're passing by from a moving vehicle, etc).
+            </p>
+            <p className="text-sm font-bold text-slate-800 mb-3">Duration</p>
+            <div className="flex items-center gap-3">
+              <input type="number" min="0" value={data.durationHours} onChange={(e) => update({ durationHours: e.target.value })}
+                className="w-28 h-10 border border-slate-300 rounded-lg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+              <span className="text-sm text-slate-600">Hours</span>
+              <input type="number" min="0" max="59" value={data.durationMinutes} onChange={(e) => update({ durationMinutes: e.target.value })}
+                className="w-28 h-10 border border-slate-300 rounded-lg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+              <span className="text-sm text-slate-600">Minutes</span>
+            </div>
+          </>
+        )}
+
+        {step === 5 && (
+          <>
+            <h3 className="text-xl font-bold text-slate-900 mb-5">How important is this activity to the overall experience?</h3>
+            <div className="space-y-3">
+              {[
+                { val: 'major', label: "It's a major activity or attraction visit (e.g. Colosseum visit, 4x4 dune bashing, camel ride, etc)." },
+                { val: 'minor', label: "It's a minor part of the experience (e.g. rest stop break, souvenir shop visit, local snacks break, etc)." },
+              ].map(({ val, label }) => (
+                <label key={val} className="flex items-start gap-3 cursor-pointer">
+                  <input type="radio" name="wz_imp" checked={data.importance === val} onChange={() => update({ importance: val })}
+                    className="mt-0.5 w-4 h-4 accent-emerald-600" />
+                  <span className="text-sm text-slate-700">{label}</span>
+                </label>
+              ))}
+            </div>
+          </>
+        )}
+
+        {step === 6 && (
+          <>
+            <h3 className="text-xl font-bold text-slate-900 mb-5">Is this part of your experience optional?</h3>
+            <div className="space-y-3">
+              {[{ val: true, label: 'Yes' }, { val: false, label: 'No' }].map(({ val, label }) => (
+                <label key={String(val)} className="flex items-center gap-3 cursor-pointer">
+                  <input type="radio" name="wz_opt" checked={data.isOptional === val} onChange={() => update({ isOptional: val })}
+                    className="w-4 h-4 accent-emerald-600" />
+                  <span className="text-sm text-slate-700">{label}</span>
+                </label>
+              ))}
+            </div>
+          </>
+        )}
+
+        {step === 7 && (
+          <>
+            <h3 className="text-xl font-bold text-slate-900 mb-5">Does this part of your experience require an additional fee?</h3>
+            <div className="space-y-3">
+              {[{ val: true, label: 'Yes' }, { val: false, label: 'No' }].map(({ val, label }) => (
+                <label key={String(val)} className="flex items-center gap-3 cursor-pointer">
+                  <input type="radio" name="wz_fee" checked={data.additionalFee === val} onChange={() => update({ additionalFee: val })}
+                    className="w-4 h-4 accent-emerald-600" />
+                  <span className="text-sm text-slate-700">{label}</span>
+                </label>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+
+      <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100">
+        <button onClick={back} className="flex items-center gap-1.5 text-sm font-medium text-emerald-600 hover:text-emerald-700">
+          <ArrowLeft size={16} /> Back
+        </button>
+        <div className="flex items-center gap-3">
+          {step === 4 && (
+            <button onClick={next} className="text-sm font-medium text-emerald-600 hover:text-emerald-700">Skip</button>
+          )}
+          <button onClick={next} className="px-5 py-2 text-sm font-semibold text-white bg-emerald-600 rounded-full hover:bg-emerald-600 transition-colors">
+            {step < 7 ? 'Next' : 'Save'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Segment Card ─────────────────────────────────────────────────────────────
+function SegmentCard({ segment, onEdit, onRemove, onAddAfter }) {
+  const [menuOpen, setMenuOpen] = useState(false)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setMenuOpen(false) }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [])
+
+  const totalMin = segment.durationUnit === 'minute'
+    ? segment.duration
+    : segment.durationUnit === 'hour'
+      ? (segment.duration || 0) * 60
+      : (segment.duration || 0) * 1440
+  const durLabel = durationLabel(totalMin)
+  const actDisplay = [segment.activityName || segment.title, durLabel].filter(Boolean).join(' ')
+
+  return (
+    <div className="flex items-center gap-4 py-3 relative z-10">
+      <ActivityNode isOptional={segment.isOptional} />
+      <div className="flex-1 border-b border-slate-100 pb-3 min-w-0 self-stretch flex flex-col justify-center">
+        <p className="text-sm font-bold text-slate-900">{segment.locationName || segment.location?.name || 'Location'}</p>
+        {actDisplay && <p className="text-sm text-slate-600">{actDisplay}</p>}
+        {segment.isOptional && <p className="text-xs text-emerald-600 mt-0.5">Optional</p>}
+      </div>
+      <div className="relative shrink-0" ref={ref}>
+        <button
+          onClick={() => setMenuOpen(!menuOpen)}
+          className="w-7 h-7 rounded-full border border-slate-300 flex items-center justify-center text-slate-500 hover:border-emerald-400 hover:text-emerald-600 transition-colors"
+        >
+          <MoreHorizontal size={14} />
+        </button>
+        {menuOpen && (
+          <div className="absolute right-0 top-full mt-1 w-56 bg-white border border-slate-200 rounded-xl shadow-lg z-20 py-1">
+            <button onClick={() => { onAddAfter(); setMenuOpen(false) }} className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5">
+              <Plus size={14} className="text-emerald-600" /> Add itinerary segment
+            </button>
+            <button onClick={() => { onEdit(); setMenuOpen(false) }} className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-emerald-600">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
+              Edit itinerary segment
+            </button>
+            <button onClick={() => { onRemove(); setMenuOpen(false) }} className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2.5">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+              </svg>
+              Remove itinerary segment
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─── Welcome Screen ───────────────────────────────────────────────────────────
+function WelcomeScreen({ isMultiDay, onStart }) {
+  const STOPS = [
+    { type: 'bus', title: 'Bus ride', sub: '(1h30min)' },
+    { type: 'activity', title: 'Glencoe', sub: 'Photo stop' },
+    { type: 'activity', title: 'Loch Ness', sub: 'Free time (3h)' },
+    { type: 'optional', title: 'Urquhart Castle', sub: 'Guided visit (3h)', extra: 'Optional, Extra fee' },
+    { type: 'activity', title: 'Pitlochry', sub: 'Free time (3h)' },
+  ]
+
+  // Node size in preview = 32px → half = 16px. Row uses items-center py-2.5.
+  // py-2.5 = 10px. Center of first node from top of rows-wrapper = 10 + 16 = 26px.
+  // In Tailwind: top-[26px] bottom-[26px], left-4 (16px = center of 32px node).
+
+  return (
+    <div className="flex gap-10 items-start">
+      {/* Preview panel */}
+      <div className="w-72 shrink-0">
+        <div className="border border-slate-200 rounded-2xl p-5 bg-white">
+
+          {isMultiDay ? (
+            <div className="relative">
+              <div className="absolute left-4 top-[26px] bottom-[26px] w-0.5 bg-emerald-600" />
+              <div className="flex items-center gap-3 py-2.5 border-b border-slate-100">
+                <GIcon size={32} />
+                <div>
+                  <p className="text-xs font-semibold text-slate-500">Day 1</p>
+                  <p className="text-sm font-bold text-slate-900">The Golden Circle</p>
+                </div>
+              </div>
+              {[
+                { title: '8:00 AM Depart', sub: 'Pick up from your hotel' },
+                { title: 'Morning Activity', sub: 'Snorkelling at the national park' },
+                { title: 'Afternoon Stop', sub: 'Explore the waterfall route' },
+              ].map((s, i) => (
+                <div key={i} className="flex items-center gap-3 py-2.5 border-b border-slate-100">
+                  <div className="relative z-10 w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-white shrink-0">
+                    <Plus size={13} strokeWidth={2.5} />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-slate-900">{s.title}</p>
+                    <p className="text-xs text-slate-500">{s.sub}</p>
+                  </div>
+                </div>
+              ))}
+              <div className="flex items-center gap-3 py-2.5">
+                <CalendarNode size={32} />
+                <p className="text-sm font-bold text-slate-900">End of Day 1</p>
+              </div>
+            </div>
+          ) : (
+            <div className="relative">
+              <div className="absolute left-4 top-[26px] bottom-[26px] w-0.5 bg-emerald-600" />
+              <div className="flex items-center gap-3 py-2.5 border-b border-slate-100">
+                <GIcon size={32} />
+                <div>
+                  <p className="text-sm font-bold text-slate-900">Pickup location:</p>
+                  <p className="text-sm text-slate-500">Edinburgh</p>
+                </div>
+              </div>
+              {STOPS.map((s, i) => (
+                <div key={i} className="flex items-center gap-3 py-2.5 border-b border-slate-100 last:border-0">
+                  {s.type === 'optional'
+                    ? <div className="relative z-10 w-8 h-8 rounded-full border-2 border-slate-300 bg-white shrink-0" />
+                    : <div className="relative z-10 w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-white shrink-0">
+                        {s.type === 'bus'
+                          ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+                          : <Plus size={13} strokeWidth={2.5} />
+                        }
+                      </div>
+                  }
+                  <div>
+                    <p className="text-sm font-bold text-slate-900">{s.title}</p>
+                    <p className="text-sm text-slate-500">{s.sub}</p>
+                    {s.extra && <p className="text-xs text-slate-400">{s.extra}</p>}
+                  </div>
+                </div>
+              ))}
+              <div className="flex items-center gap-3 py-2.5">
+                <OrangeCircle size={32} />
+                <div>
+                  <p className="text-sm font-bold text-slate-900">Arrive back at:</p>
+                  <p className="text-sm text-slate-500">Edinburgh</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <p className="text-xs text-slate-400 mt-4 text-center">See how your schedule appears to travellers.</p>
+        </div>
+      </div>
+
+      {/* Description */}
+      <div className="flex-1">
+        <h2 className="text-2xl font-bold text-slate-900 mb-4 leading-snug">
+          {isMultiDay ? 'Plan your multi-day tour, day by day' : 'Build your tour schedule'}
+        </h2>
+        {isMultiDay ? (
+          <>
+            <p className="text-sm text-slate-600 mb-4 leading-relaxed">Show travellers exactly what each day looks like — where they'll go, what they'll do, and how their time is structured.</p>
+            <p className="text-sm text-slate-600 mb-4 leading-relaxed">A well-built schedule builds trust and helps travellers commit to booking with confidence. The more detail you add, the better your listing performs.</p>
+            <p className="text-sm font-semibold text-slate-800 mb-6">Ready to map it out? Let's go.</p>
+          </>
+        ) : (
+          <>
+            <p className="text-sm text-slate-600 mb-4 leading-relaxed">Give travellers a clear picture of what your experience involves — the stops, the highlights, and how the time unfolds.</p>
+            <p className="text-sm text-slate-600 mb-4 leading-relaxed">Tours with a detailed schedule tend to convert better. Travellers book with more confidence when they know exactly what to expect.</p>
+            <p className="text-sm text-slate-600 mb-6 leading-relaxed">Pro tip: include details that aren't covered elsewhere — transport type between stops, how long you spend at each location, and any notable things to look out for.</p>
+          </>
+        )}
+        <button onClick={onStart} className="px-7 py-2.5 bg-emerald-600 text-white rounded-full text-sm font-semibold hover:bg-emerald-700 transition-colors">
+          {isMultiDay ? 'Get started' : 'Build schedule'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ─── Single-Day Timeline Builder ─────────────────────────────────────────────
+function SingleDayBuilder({ pickupInfo, dropoffInfo, taggedLocations }) {
   const itinerary = useProductBuilderStore((s) => s.itinerary)
-  const meetingPoint = useProductBuilderStore((s) => s.meetingPoint)
-  const pickupDescription = useProductBuilderStore((s) => s.pickupDescription)
-  const dropoffDescription = useProductBuilderStore((s) => s.dropoffDescription)
   const addItineraryEntry = useProductBuilderStore((s) => s.addItineraryEntry)
+  const updateItineraryEntry = useProductBuilderStore((s) => s.updateItineraryEntry)
+  const removeItineraryEntry = useProductBuilderStore((s) => s.removeItineraryEntry)
+
+  const [editingIndex, setEditingIndex] = useState(null)
+  const [showWizard, setShowWizard] = useState(false)
+
+  // Only day=1 segments
+  const segments = itinerary.filter((e) => e.day === 1)
+  const globalIndexOf = (daySegIdx) => {
+    const daySegs = itinerary.filter((x) => x.day === 1)
+    return itinerary.indexOf(daySegs[daySegIdx])
+  }
+
+  function handleComplete(data) {
+    const totalMin = (parseInt(data.durationHours) || 0) * 60 + (parseInt(data.durationMinutes) || 0)
+    const entry = {
+      day: 1, time: '09:00',
+      duration: totalMin || 1, durationUnit: 'minute',
+      title: data.activityName || '',
+      description: data.activityName || ' ',
+      type: data.activityType === 'transfer' ? 'transfer' : 'activity',
+      visitType: 'visit',
+      locationName: data.location?.name || '',
+      locationAddress: data.location?.address || '',
+      locationLat: data.location?.lat || null,
+      locationLng: data.location?.lng || null,
+      isCustomLocation: false,
+      isOptional: !!data.isOptional,
+      additionalFee: !!data.additionalFee,
+      activityName: data.activityName || '',
+      importance: data.importance || 'major',
+    }
+    if (editingIndex !== null) {
+      updateItineraryEntry(editingIndex, entry)
+    } else {
+      const newIdx = itinerary.length
+      addItineraryEntry()
+      // Zustand updates synchronously in the store, but React batches — use setTimeout(0)
+      setTimeout(() => updateItineraryEntry(newIdx, entry), 0)
+    }
+    setShowWizard(false)
+    setEditingIndex(null)
+  }
+
+  return (
+    <div>
+      {/* Timeline
+          Layout contract:
+          - Every row is: flex items-center gap-4 py-3
+          - Node is always w-10 h-10 (40px), so its center is at 20px from left
+          - Orange line: left-5 (20px), top-5 (20px = half first node), bottom-5 (20px = half last node)
+          - Row content right of the node has a bottom border to create the separator lines
+      */}
+      <div className="relative">
+        {/* Green spine — left-5 = 20px = center of 40px node
+             top-8 = 32px = py-3(12px top) + half-node(20px)
+             bottom-8 = 32px = py-3(12px bottom) + half-node(20px) */}
+        <div className="absolute left-5 top-8 bottom-8 w-0.5 bg-emerald-600 z-0" />
+
+        {/* Pickup row */}
+        <div className="flex items-center gap-4 py-3 relative z-10">
+          <GIcon size={40} />
+          <div className="flex-1 flex items-center justify-between border-b border-slate-200 pb-3">
+            <div>
+              <p className="text-sm font-bold text-slate-900">{pickupInfo.label}</p>
+              {pickupInfo.sub && <p className="text-sm text-slate-500">{pickupInfo.sub}</p>}
+            </div>
+            <button className="text-slate-400 hover:text-slate-600 shrink-0 ml-4" type="button">
+              <Info size={16} />
+            </button>
+          </div>
+        </div>
+
+        {/* Inline wizard — sits outside the node rows so it doesn't break the line */}
+        {showWizard && (
+          <div className="ml-14 mb-2">
+            <SegmentWizard
+              onComplete={handleComplete}
+              onCancel={() => { setShowWizard(false); setEditingIndex(null) }}
+              initialData={editingIndex !== null ? (() => {
+                const seg = segments[editingIndex]
+                return seg ? {
+                  activityType: seg.type,
+                  activityName: seg.activityName || seg.title,
+                  location: seg.locationName ? { name: seg.locationName, address: seg.locationAddress } : null,
+                  durationHours: String(Math.floor((seg.duration || 0) / 60)),
+                  durationMinutes: String((seg.duration || 0) % 60),
+                  importance: seg.importance || 'major',
+                  isOptional: !!seg.isOptional,
+                  additionalFee: !!seg.additionalFee,
+                } : null
+              })() : null}
+              taggedLocations={taggedLocations}
+            />
+          </div>
+        )}
+
+        {/* Segments */}
+        {segments.map((seg, i) => (
+          <SegmentCard
+            key={i}
+            segment={seg}
+            onEdit={() => { setEditingIndex(i); setShowWizard(true) }}
+            onRemove={() => removeItineraryEntry(globalIndexOf(i))}
+            onAddAfter={() => { setEditingIndex(null); setShowWizard(true) }}
+          />
+        ))}
+
+        {/* Dropoff row */}
+        <div className="flex items-center gap-4 py-3 relative z-10">
+          <OrangeCircle size={40} />
+          <div className="flex-1 flex items-center justify-between border-b border-slate-200 pb-3">
+            <div>
+              <p className="text-sm font-bold text-slate-900">{dropoffInfo.label}</p>
+              {dropoffInfo.sub && <p className="text-sm text-slate-500">{dropoffInfo.sub}</p>}
+            </div>
+            <button className="text-slate-400 hover:text-slate-600 shrink-0 ml-4" type="button">
+              <Info size={16} />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div className="flex justify-end mt-5">
+        <button
+          onClick={() => { setEditingIndex(null); setShowWizard(true) }}
+          className="px-6 py-2.5 bg-emerald-600 text-white rounded-full text-sm font-semibold hover:bg-emerald-700 transition-colors"
+        >
+          Add itinerary segment
+        </button>
+      </div>
+      <div className="flex justify-end mt-3">
+        <button className="px-6 py-2.5 bg-emerald-600 text-white rounded-full text-sm font-semibold hover:bg-emerald-700 transition-colors">
+          Publish itinerary
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ─── Multi-Day Segment Card (shows time, title, description, location) ─────────
+function DaySegmentCard({ segment, onEdit, onRemove, onAddAfter }) {
+  const [menuOpen, setMenuOpen] = useState(false)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setMenuOpen(false) }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [])
+
+  // Format time: stored as "HH:MM" 24h → display as "H:MM AM/PM"
+  function formatTime(t) {
+    if (!t) return ''
+    const [hStr, mStr] = t.split(':')
+    const h = parseInt(hStr)
+    const m = parseInt(mStr)
+    const ampm = h >= 12 ? 'PM' : 'AM'
+    const h12 = h % 12 || 12
+    return `${h12}:${String(m).padStart(2, '0')} ${ampm}`
+  }
+
+  const timeDisplay = formatTime(segment.time)
+  const titleDisplay = segment.activityName || segment.title || ''
+  const headline = [timeDisplay, titleDisplay].filter(Boolean).join(' – ')
+
+  return (
+    <div className="flex items-start gap-4 py-3 relative z-10">
+      <div className="relative z-10 w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-white shrink-0">
+        <Plus size={18} strokeWidth={2.5} />
+      </div>
+      <div className="flex-1 border-b border-slate-100 pb-3 min-w-0">
+        {headline && <p className="text-sm font-semibold text-slate-900">{headline}</p>}
+        {segment.description && segment.description !== ' ' && (
+          <p className="text-sm text-slate-600 mt-0.5 break-words">{segment.description}</p>
+        )}
+        {segment.locationName && (
+          <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
+            <MapPin size={11} /> {segment.locationName}
+          </p>
+        )}
+      </div>
+      <div className="relative shrink-0 mt-1 z-10" ref={ref}>
+        <button
+          onClick={() => setMenuOpen(!menuOpen)}
+          className="w-7 h-7 rounded-full border border-slate-300 flex items-center justify-center text-slate-500 hover:border-emerald-400 hover:text-emerald-600 transition-colors"
+        >
+          <MoreHorizontal size={14} />
+        </button>
+        {menuOpen && (
+          <div className="absolute right-0 top-full mt-1 w-52 bg-white border border-slate-200 rounded-xl shadow-lg z-30 py-1">
+            <button onClick={() => { onAddAfter(); setMenuOpen(false) }} className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5">
+              <Plus size={14} className="text-emerald-600" /> Add segment after
+            </button>
+            <button onClick={() => { onEdit(); setMenuOpen(false) }} className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-emerald-600">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
+              Edit segment
+            </button>
+            <button onClick={() => { onRemove(); setMenuOpen(false) }} className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2.5">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+              </svg>
+              Remove segment
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─── Time Picker Dropdown ─────────────────────────────────────────────────────
+function TimePicker({ value, onChange }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+
+  // Parse stored "HH:MM"
+  const [hours, setHours] = useState(() => value ? parseInt(value.split(':')[0]) : 9)
+  const [minutes, setMinutes] = useState(() => value ? parseInt(value.split(':')[1]) : 0)
+
+  useEffect(() => {
+    const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [])
+
+  function commit(h, m) {
+    onChange(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`)
+  }
+
+  function changeHours(delta) {
+    const next = (hours + delta + 24) % 24
+    setHours(next)
+    commit(next, minutes)
+  }
+
+  function changeMinutes(delta) {
+    const next = (minutes + delta + 60) % 60
+    setMinutes(next)
+    commit(hours, next)
+  }
+
+  // Display as 12h
+  const ampm = hours >= 12 ? 'PM' : 'AM'
+  const h12 = hours % 12 || 12
+  const displayVal = value
+    ? `${h12}:${String(minutes).padStart(2, '0')} ${ampm}`
+    : ''
+
+  return (
+    <div ref={ref} className="relative flex-1">
+      <div className="relative">
+        <input
+          readOnly
+          value={displayVal}
+          onClick={() => setOpen(!open)}
+          placeholder="Start time (optional)"
+          className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-500 pr-10"
+        />
+        <button type="button" onClick={() => setOpen(!open)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+          </svg>
+        </button>
+      </div>
+      {open && (
+        <div className="absolute z-50 top-full mt-1 left-0 bg-white border border-slate-200 rounded-xl shadow-lg p-4 w-40">
+          <div className="flex items-center justify-center gap-4">
+            {/* Hours */}
+            <div className="flex flex-col items-center gap-1">
+              <button type="button" onClick={() => changeHours(1)} className="p-1 hover:text-emerald-600">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 15l-6-6-6 6"/></svg>
+              </button>
+              <span className="text-lg font-bold text-slate-900 w-8 text-center">{String(h12).padStart(2, '0')}</span>
+              <button type="button" onClick={() => changeHours(-1)} className="p-1 hover:text-emerald-600">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M6 9l6 6 6-6"/></svg>
+              </button>
+            </div>
+            <span className="text-lg font-bold text-slate-400">:</span>
+            {/* Minutes */}
+            <div className="flex flex-col items-center gap-1">
+              <button type="button" onClick={() => changeMinutes(5)} className="p-1 hover:text-emerald-600">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 15l-6-6-6 6"/></svg>
+              </button>
+              <span className="text-lg font-bold text-slate-900 w-8 text-center">{String(minutes).padStart(2, '0')}</span>
+              <button type="button" onClick={() => changeMinutes(-5)} className="p-1 hover:text-emerald-600">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M6 9l6 6 6-6"/></svg>
+              </button>
+            </div>
+          </div>
+          <p className="text-center text-xs text-slate-400 mt-2">{ampm}</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Day Segment Form (single inline card matching screenshot) ────────────────
+function DaySegmentForm({ initialData, taggedLocations, photos = [], onSave, onCancel }) {
+  const [title, setTitle] = useState(initialData?.activityName || initialData?.title || '')
+  const [description, setDescription] = useState(
+    initialData?.description && initialData.description !== ' ' ? initialData.description : ''
+  )
+  const [location, setLocation] = useState(
+    initialData?.locationName ? { name: initialData.locationName, address: initialData.locationAddress } : null
+  )
+  const [time, setTime] = useState(initialData?.time || '')
+  const [showPhotoModal, setShowPhotoModal] = useState(false)
+  const [selectedPhoto, setSelectedPhoto] = useState(initialData?.photo || '')
+
+  function handleSave() {
+    onSave({
+      activityName: title,
+      description: description || ' ',
+      location,
+      time,
+      photo: selectedPhoto,
+      // Pass through other fields unchanged or with defaults
+      activityType: initialData?.activityType || 'activity',
+      durationHours: initialData?.durationHours || '',
+      durationMinutes: initialData?.durationMinutes || '',
+      importance: initialData?.importance || 'major',
+      isOptional: initialData?.isOptional || false,
+      additionalFee: initialData?.additionalFee || false,
+    })
+  }
+
+  return (
+    <div className="ml-0 my-3 border border-slate-200 rounded-xl bg-white overflow-hidden">
+      <div className="px-6 py-5 space-y-4">
+        <h3 className="text-lg font-bold text-slate-900">What's next on this day?</h3>
+
+        {/* Segment title */}
+        <div>
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value.slice(0, 60))}
+            placeholder="Segment title"
+            className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          />
+          <div className="text-right text-xs text-slate-400 mt-1">{title.length} / 60</div>
+        </div>
+
+        {/* Description + photo upload side by side */}
+        <div className="flex gap-3 items-stretch">
+          <div className="flex-1">
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value.slice(0, 500))}
+              placeholder="What can travellers expect to do?"
+              rows={4}
+              className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
+            />
+            <div className="text-right text-xs text-slate-400 mt-1">{description.length} / 500</div>
+          </div>
+          {/* Photo upload */}
+          <button
+            type="button"
+            onClick={() => setShowPhotoModal(true)}
+            className="w-20 shrink-0 border-2 border-dashed border-slate-200 rounded-xl flex items-center justify-center text-slate-400 hover:border-emerald-400 hover:text-emerald-500 transition-colors overflow-hidden"
+          >
+            {selectedPhoto
+              ? <img src={selectedPhoto} alt="" className="w-full h-full object-cover" />
+              : <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
+                  <path d="M21 15l-5-5L5 21"/>
+                  <path d="M12 12l2-2 1 1"/>
+                </svg>
+            }
+          </button>
+        </div>
+
+        {/* Location search + time picker */}
+        <div className="flex gap-3">
+          <div className="flex-1">
+            <LocationSearch
+              selected={location}
+              onSelect={setLocation}
+              taggedLocations={taggedLocations}
+            />
+            <div className="text-xs text-slate-400 mt-1">{location ? '1' : '0'} / 1</div>
+          </div>
+          <TimePicker value={time} onChange={setTime} />
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="px-5 py-2 text-sm font-medium text-slate-600 border border-slate-300 rounded-full hover:bg-slate-50 transition-colors"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={handleSave}
+          className="px-6 py-2 text-sm font-semibold text-white bg-emerald-600 rounded-full hover:bg-emerald-700 transition-colors"
+        >
+          {initialData ? 'Update' : 'Add'}
+        </button>
+      </div>
+
+      {/* Photo modal */}
+      {showPhotoModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl">
+            <div className="flex items-center justify-between px-6 pt-5 pb-3 border-b border-slate-100">
+              <h3 className="text-base font-bold text-slate-900">Choose a photo</h3>
+              <button onClick={() => setShowPhotoModal(false)} className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-100">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-6">
+              <p className="text-sm text-slate-500 mb-4">Pick one photo from your gallery to represent this segment. Each photo can only be used once.</p>
+              <div className="grid grid-cols-4 gap-3">
+                <button
+                  type="button"
+                  onClick={() => { setSelectedPhoto(''); setShowPhotoModal(false) }}
+                  className={`aspect-square rounded-xl border-2 flex items-center justify-center text-xs text-slate-400 transition-colors ${!selectedPhoto ? 'border-emerald-500' : 'border-slate-200 hover:border-slate-300'}`}
+                >
+                  None
+                </button>
+                {photos.map((p, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => { setSelectedPhoto(p.url); setShowPhotoModal(false) }}
+                    className={`aspect-square rounded-xl border-2 overflow-hidden transition-colors ${selectedPhoto === p.url ? 'border-emerald-500' : 'border-slate-200 hover:border-slate-300'}`}
+                  >
+                    <img src={p.url} alt="" className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+              {photos.length === 0 && (
+                <p className="text-sm text-slate-400 text-center py-4">No photos uploaded yet. Add photos in the Photos step first.</p>
+              )}
+            </div>
+            <div className="flex justify-end px-6 pb-5">
+              <button onClick={() => setShowPhotoModal(false)} className="px-5 py-2 text-sm font-semibold text-white bg-emerald-600 rounded-full hover:bg-emerald-700">
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Multi-Day Builder ─────────────────────────────────────────────────────────
+function MultiDayBuilder({ numDays, pickupInfo, taggedLocations }) {
+  const itinerary = useProductBuilderStore((s) => s.itinerary)
+  const itineraryOverview = useProductBuilderStore((s) => s.itineraryOverview)
+  const additionalItineraryInfo = useProductBuilderStore((s) => s.additionalItineraryInfo)
+  const dayTitles = useProductBuilderStore((s) => s.dayTitles)
+  const photos = useProductBuilderStore((s) => s.photos)
   const addItinerarySegment = useProductBuilderStore((s) => s.addItinerarySegment)
   const updateItineraryEntry = useProductBuilderStore((s) => s.updateItineraryEntry)
   const removeItineraryEntry = useProductBuilderStore((s) => s.removeItineraryEntry)
-  const reorderItineraryEntry = useProductBuilderStore((s) => s.reorderItineraryEntry)
-  const insertItineraryEntry = useProductBuilderStore((s) => s.insertItineraryEntry)
-  const errors = useStepErrors(15)
+  const setField = useProductBuilderStore((s) => s.setField)
 
-  const [activeLocSearch, setActiveLocSearch] = useState(null)
-  const [locSearchQueries, setLocSearchQueries] = useState({})
-  const searchRefs = useRef({})
-  const { search: geoSearch, results: geoResults, loading: geoLoading, clear: geoClear } = useGeocoding()
+  const tabs = ['Overview', ...Array.from({ length: numDays }, (_, i) => `Day ${i + 1}`), 'Additional info']
+  const [activeTab, setActiveTab] = useState('Overview')
+  const [editingIndex, setEditingIndex] = useState(null)
+  const [showWizard, setShowWizard] = useState(false)
 
-  const [dragIdx, setDragIdx] = useState(null)
-  const [dragOverIdx, setDragOverIdx] = useState(null)
+  const activeDay = activeTab.startsWith('Day ') ? parseInt(activeTab.replace('Day ', '')) : null
 
-  const uniqueDays = useMemo(() => {
-    const days = [...new Set(itinerary.map((e) => e.day))]
-    return days.sort((a, b) => a - b)
-  }, [itinerary])
-
-  function getEntriesForDay(day) {
+  const daySegments = useMemo(() => {
+    if (!activeDay) return []
     return itinerary
-      .map((entry, idx) => ({ ...entry, _index: idx }))
-      .filter((e) => e.day === day)
-  }
+      .map((e, globalIdx) => ({ ...e, globalIdx }))
+      .filter((e) => e.day === activeDay)
+  }, [itinerary, activeDay])
 
-  function handleDragStart(index) {
-    setDragIdx(index)
-  }
-
-  function handleDragOver(e, index) {
-    e.preventDefault()
-    setDragOverIdx(index)
-  }
-
-  function handleDrop(index) {
-    if (dragIdx === null || dragIdx === index) return
-    reorderItineraryEntry(dragIdx, index)
-    setDragIdx(null)
-    setDragOverIdx(null)
-  }
-
-  function handleDragEnd() {
-    setDragIdx(null)
-    setDragOverIdx(null)
-  }
-
-  function handleDuplicate(index) {
-    const entry = itinerary[index]
-    if (!entry) return
-    const { _index, ...rest } = entry
-    insertItineraryEntry(index + 1, rest)
-  }
-
-  function handleLocSearchChange(entryIdx, value) {
-    setLocSearchQueries((prev) => ({ ...prev, [entryIdx]: value }))
-    if (value.trim()) {
-      geoSearch(value)
+  function handleComplete(data) {
+    const totalMin = (parseInt(data.durationHours) || 0) * 60 + (parseInt(data.durationMinutes) || 0)
+    const entry = {
+      day: activeDay,
+      time: data.time || '09:00',
+      duration: totalMin || 0,
+      durationUnit: 'minute',
+      title: data.activityName || '',
+      description: data.description || data.activityName || ' ',
+      type: data.activityType === 'transfer' ? 'transfer' : 'activity',
+      visitType: 'visit',
+      locationName: data.location?.name || '',
+      locationAddress: data.location?.address || '',
+      locationLat: data.location?.lat || null,
+      locationLng: data.location?.lng || null,
+      isCustomLocation: false,
+      isOptional: !!data.isOptional,
+      additionalFee: !!data.additionalFee,
+      activityName: data.activityName || '',
+      importance: data.importance || 'major',
+      photo: data.photo || '',
+    }
+    if (editingIndex !== null) {
+      updateItineraryEntry(daySegments[editingIndex].globalIdx, entry)
     } else {
-      geoClear()
+      addItinerarySegment(activeDay)
+      const newIdx = itinerary.length
+      setTimeout(() => updateItineraryEntry(newIdx, entry), 0)
+    }
+    setShowWizard(false)
+    setEditingIndex(null)
+  }
+
+  // Get initial data for edit
+  function getEditInitial(i) {
+    const seg = daySegments[i]
+    if (!seg) return null
+    return {
+      activityType: seg.type,
+      activityName: seg.activityName || seg.title,
+      location: seg.locationName ? { name: seg.locationName, address: seg.locationAddress } : null,
+      durationHours: String(Math.floor((seg.duration || 0) / 60)),
+      durationMinutes: String((seg.duration || 0) % 60),
+      importance: seg.importance || 'major',
+      isOptional: !!seg.isOptional,
+      additionalFee: !!seg.additionalFee,
     }
   }
 
-  function openLocSearch(entryIdx) {
-    setActiveLocSearch(entryIdx)
-    const query = locSearchQueries[entryIdx] || ''
-    if (query.trim()) geoSearch(query)
-    setTimeout(() => searchRefs.current[entryIdx]?.focus(), 50)
-  }
+  return (
+    <div>
+      {/* Tab bar */}
+      <div className="flex items-end gap-0 border-b border-slate-200 mb-6 overflow-x-auto">
+        {tabs.map((tab) => {
+          const isDay = tab.startsWith('Day ')
+          return (
+            <button
+              key={tab}
+              onClick={() => { setActiveTab(tab); setShowWizard(false); setEditingIndex(null) }}
+              className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                activeTab === tab
+                  ? 'border-emerald-600 text-emerald-600'
+                  : 'border-transparent text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              {isDay && <Calendar size={14} />}
+              {tab}
+            </button>
+          )
+        })}
+      </div>
 
-  function selectLocResult(entryIdx, item) {
-    const name = item.formatted || item.city || item.name || locSearchQueries[entryIdx] || ''
-    updateItineraryEntry(entryIdx, {
-      locationName: name,
-      locationAddress: item.formatted || '',
-      locationLat: item.latitude ?? null,
-      locationLng: item.longitude ?? null,
-      isCustomLocation: false,
-    })
-    setLocSearchQueries((prev) => ({ ...prev, [entryIdx]: '' }))
-    setActiveLocSearch(null)
-    geoClear()
-  }
+      {/* Overview tab */}
+      {activeTab === 'Overview' && (
+        <div>
+          <h3 className="text-sm font-bold text-slate-900 mb-1">Overview <span className="font-normal text-slate-400">(optional)</span></h3>
+          <p className="text-sm text-slate-500 mb-3">Write an introductory overview to summarize your itinerary. Highlight the must-see sights, memorable activities, and the general atmosphere travelers can expect.</p>
+          <textarea
+            value={itineraryOverview}
+            onChange={(e) => setField('itineraryOverview', e.target.value.slice(0, 400))}
+            rows={8}
+            className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-y"
+            placeholder=""
+          />
+          <div className="text-right text-xs text-slate-400 mt-1">{itineraryOverview.length} / 400</div>
+        </div>
+      )}
 
-  function setCustomLocation(entryIdx) {
-    const val = (locSearchQueries[entryIdx] || '').trim()
-    if (!val) return
-    updateItineraryEntry(entryIdx, {
-      locationName: val,
-      locationAddress: '',
-      locationLat: null,
-      locationLng: null,
-      isCustomLocation: true,
-    })
-    setLocSearchQueries((prev) => ({ ...prev, [entryIdx]: '' }))
-    setActiveLocSearch(null)
-    geoClear()
-  }
+      {/* Day tabs */}
+      {activeDay && (
+        <div>
+          {/* Day title */}
+          <div className="mb-5">
+            <h4 className="text-sm font-bold text-slate-900 mb-1">Day title</h4>
+            <div className="relative">
+              <input
+                type="text"
+                value={dayTitles?.[activeDay] || ''}
+                onChange={(e) => setField('dayTitles', { ...dayTitles, [activeDay]: e.target.value.slice(0, 60) })}
+                placeholder="Summarize where you're going or what you're doing on this day"
+                className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+              <div className="text-right text-xs text-slate-400 mt-1">{(dayTitles?.[activeDay] || '').length} / 60</div>
+            </div>
+          </div>
 
-  function clearLocation(entryIdx) {
-    updateItineraryEntry(entryIdx, {
-      locationName: '',
-      locationAddress: '',
-      locationLat: null,
-      locationLng: null,
-      isCustomLocation: false,
-    })
-    setLocSearchQueries((prev) => ({ ...prev, [entryIdx]: '' }))
-  }
+          {/* Itinerary section */}
+          <h4 className="text-sm font-bold text-slate-900 mb-1">Itinerary</h4>
+          <p className="text-sm text-slate-500 mb-4">Create a timeline of what customers can expect on this day. Add each key activity as a separate segment.</p>
 
-  function handleLocKeyDown(e, entryIdx) {
-    if (e.key === 'Enter') {
-      e.preventDefault()
-      if (geoResults.length > 0) {
-        selectLocResult(entryIdx, geoResults[0])
-      } else if ((locSearchQueries[entryIdx] || '').trim()) {
-        setCustomLocation(entryIdx)
+          {/* Timeline */}
+          <div className="relative">
+            <div className="absolute left-5 top-8 bottom-8 w-0.5 bg-emerald-600 z-0" />
+
+            {/* Starting location */}
+            <div className="flex items-center gap-4 py-3 relative z-10">
+              <GIcon size={40} />
+              <div className="flex-1 flex items-center justify-between border-b border-slate-200 pb-3 self-stretch">
+                <div className="flex flex-col justify-center">
+                  <p className="text-sm font-bold text-slate-900">Starting location:</p>
+                  {pickupInfo.sub && <p className="text-sm text-slate-500">{pickupInfo.sub}</p>}
+                </div>
+                <button className="text-slate-400 hover:text-slate-600 shrink-0 ml-4" type="button">
+                  <Info size={16} />
+                </button>
+              </div>
+            </div>
+
+            {/* Inline segment form — single card matching screenshot */}
+            {showWizard && (
+              <DaySegmentForm
+                initialData={editingIndex !== null ? getEditInitial(editingIndex) : null}
+                taggedLocations={taggedLocations}
+                photos={photos}
+                onSave={handleComplete}
+                onCancel={() => { setShowWizard(false); setEditingIndex(null) }}
+              />
+            )}
+
+            {/* Segments */}
+            {daySegments.map((seg, i) => (
+              <DaySegmentCard
+                key={seg.globalIdx}
+                segment={seg}
+                onEdit={() => { setEditingIndex(i); setShowWizard(true) }}
+                onRemove={() => removeItineraryEntry(seg.globalIdx)}
+                onAddAfter={() => { setEditingIndex(null); setShowWizard(true) }}
+              />
+            ))}
+
+            {/* Add segment inline button */}
+            {!showWizard && (
+              <div className="flex items-center gap-4 py-2 relative z-10">
+                <div className="w-10 shrink-0" />
+                <button
+                  onClick={() => { setEditingIndex(null); setShowWizard(true) }}
+                  className="px-5 py-2 border border-emerald-600 text-emerald-600 text-sm font-semibold rounded-full hover:bg-emerald-50 transition-colors"
+                >
+                  Add itinerary segment
+                </button>
+              </div>
+            )}
+
+            {/* End of day */}
+            <div className="flex items-center gap-4 py-3 relative z-10">
+              <CalendarNode size={40} />
+              <p className="text-sm font-bold text-slate-900">End of day {activeDay}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Additional info tab */}
+      {activeTab === 'Additional info' && (
+        <div>
+          <h3 className="text-sm font-bold text-slate-900 mb-1">Additional itinerary info <span className="font-normal text-slate-400">(optional)</span></h3>
+          <p className="text-sm text-slate-500 mb-3">Share information about anything that may change in the itinerary (e.g. seasonal changes) or additional information that wasn't covered in the itinerary.</p>
+          <textarea
+            value={additionalItineraryInfo}
+            onChange={(e) => setField('additionalItineraryInfo', e.target.value.slice(0, 400))}
+            rows={8}
+            className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-y"
+            placeholder=""
+          />
+          <div className="text-right text-xs text-slate-400 mt-1">{additionalItineraryInfo.length} / 400</div>
+        </div>
+      )}
+
+      {/* Footer actions */}
+      <div className="flex items-center justify-between mt-8 pt-4 border-t border-slate-100">
+        <button className="px-5 py-2.5 border border-slate-300 text-sm font-medium text-slate-700 rounded-full hover:bg-slate-50 transition-colors">
+          Save and exit
+        </button>
+        <button
+          onClick={() => {
+            const nextIdx = tabs.indexOf(activeTab) + 1
+            if (nextIdx < tabs.length) setActiveTab(tabs[nextIdx])
+          }}
+          className="px-6 py-2.5 bg-emerald-600 text-white rounded-full text-sm font-semibold hover:bg-emerald-700 transition-colors"
+        >
+          Continue
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ─── Main Export ──────────────────────────────────────────────────────────────
+export default function Step16Itinerary() {
+  // ── Store reads ──
+  const itinerary      = useProductBuilderStore((s) => s.itinerary)
+  const duration       = useProductBuilderStore((s) => s.duration)
+  const durationUnit   = useProductBuilderStore((s) => s.durationUnit)
+  const locations      = useProductBuilderStore((s) => s.locations)
+  // Meeting/pickup fields (from Step 13)
+  const meetingMode         = useProductBuilderStore((s) => s.meetingMode)
+  const meetingPoint        = useProductBuilderStore((s) => s.meetingPoint)
+  const pickupType          = useProductBuilderStore((s) => s.pickupType)
+  const pickupLocations     = useProductBuilderStore((s) => s.pickupLocations)
+  const pickupAreas         = useProductBuilderStore((s) => s.pickupAreas)
+  // Dropoff fields
+  const dropoffOption       = useProductBuilderStore((s) => s.dropoffOption)
+  const dropoffLocation     = useProductBuilderStore((s) => s.dropoffLocation)
+
+  // ── Derived state ──
+  const numDays = getNumDays(duration, durationUnit)
+  const isMultiDay = numDays > 1
+
+  const [started, setStarted] = useState(() => itinerary?.length > 0)
+
+  // All tagged locations (product locations + pickup locations) for segment location search
+  const taggedLocations = useMemo(() => {
+    const locs = (locations || []).map((l) => ({ name: l.name, address: l.address, lat: l.lat, lng: l.lng }))
+    const picks = (pickupLocations || []).map((l) => ({ name: l.name, address: l.address, lat: l.lat, lng: l.lng }))
+    return [...locs, ...picks]
+  }, [locations, pickupLocations])
+
+  // ── Build pickup info label from Step 13 data ──
+  const pickupInfo = useMemo(() => {
+    if (meetingMode === 'pickup') {
+      if (pickupType === 'address' && pickupLocations?.length > 0) {
+        const count = pickupLocations.length
+        const names = pickupLocations.map((l) => l.name || l.address).filter(Boolean).join(', ')
+        return {
+          label: `${count} pickup location option${count > 1 ? 's' : ''}:`,
+          sub: names || '',
+        }
+      }
+      if (pickupType === 'area' && pickupAreas?.length > 0) {
+        const count = pickupAreas.length
+        const names = pickupAreas.map((a) => a.name).filter(Boolean).join(', ')
+        return {
+          label: `${count} pickup area${count > 1 ? 's' : ''}:`,
+          sub: names || '',
+        }
+      }
+      return { label: 'Pickup location:', sub: '' }
+    }
+    if (meetingMode === 'meeting_point' && meetingPoint) {
+      return {
+        label: 'Starting location:',
+        sub: meetingPoint.name || meetingPoint.address || '',
       }
     }
-    if (e.key === 'Escape') {
-      setActiveLocSearch(null)
-      geoClear()
+    // Fallback: derive from tagged locations
+    if (locations?.length > 0) {
+      return { label: 'Starting location:', sub: locations[0].name || '' }
     }
-  }
+    return { label: 'Pickup location:', sub: '' }
+  }, [meetingMode, meetingPoint, pickupType, pickupLocations, pickupAreas, locations])
 
-  if (!CATEGORIES_WITH_ITINERARY.includes(category)) {
+  // ── Build dropoff info ──
+  const dropoffInfo = useMemo(() => {
+    if (dropoffOption === 'same_location') {
+      return { label: 'Returns to starting point:', sub: pickupInfo.sub }
+    }
+    if (dropoffOption === 'different_location' && dropoffLocation) {
+      return { label: 'Drop-off location:', sub: dropoffLocation.name || dropoffLocation.address || '' }
+    }
+    if (dropoffOption === 'service') {
+      return { label: 'Drop-off service:', sub: '' }
+    }
+    // Mirror pickup
+    if (meetingMode === 'pickup') {
+      const count = pickupType === 'address' ? (pickupLocations?.length || 0) : (pickupAreas?.length || 0)
+      const names = pickupType === 'address'
+        ? (pickupLocations || []).map((l) => l.name || l.address).filter(Boolean).join(', ')
+        : (pickupAreas || []).map((a) => a.name).filter(Boolean).join(', ')
+      return {
+        label: count > 0 ? `${count} drop-off location${count > 1 ? 's' : ''}:` : 'Drop-off location:',
+        sub: names,
+      }
+    }
+    if (meetingMode === 'meeting_point' && meetingPoint) {
+      return { label: 'Drop-off location:', sub: meetingPoint.name || meetingPoint.address || '' }
+    }
+    return { label: 'Drop-off location:', sub: '' }
+  }, [dropoffOption, dropoffLocation, pickupInfo, meetingMode, meetingPoint, pickupType, pickupLocations, pickupAreas])
+
+  // ── Header (subtitle line only — page already renders the "Itinerary" h2) ──
+  const header = (
+    <div className="flex items-center gap-2 mb-6">
+      <span className="text-sm font-semibold text-slate-500">Itinerary builder</span>
+      <HelpCircle size={15} className="text-slate-400" />
+    </div>
+  )
+
+  // ── Welcome ──
+  if (!started) {
     return (
-      <div className="max-w-[720px]">
-        <p className="text-[13px] text-slate-500 leading-relaxed">
-          Itinerary builder is not available for {category.toLowerCase()} products.
-          It is supported for: {CATEGORIES_WITH_ITINERARY.join(', ')}.
-        </p>
+      <div className="max-w-[860px]">
+        {header}
+        <WelcomeScreen
+          isMultiDay={isMultiDay}
+          onStart={() => setStarted(true)}
+        />
       </div>
     )
   }
 
   return (
-    <div className="max-w-[840px]">
-      <label className="block text-sm font-semibold mb-2 text-slate-800">
-        {category === 'Multi-day tour'
-          ? 'Build your day-by-day itinerary'
-          : 'Build your activity itinerary'}
-      </label>
-      <p className="text-[13px] text-slate-500 mb-4 leading-relaxed">
-        Add segments with times, locations, and descriptions to show travelers what each day looks like.
-      </p>
-
-      {/* Info banner: start/end points */}
-      {(meetingPoint?.name || pickupDescription || dropoffDescription) && (
-        <div className="flex items-start gap-3 mb-6 p-4 rounded-xl border border-emerald-200/60 bg-emerald-50/60">
-          <Info size={16} className="text-emerald-600 mt-0.5 shrink-0" />
-          <div className="text-[13px] text-slate-600 leading-relaxed space-y-1">
-            {meetingPoint?.name && (
-              <p><span className="font-medium text-slate-700">Start:</span> {meetingPoint.name}{meetingPoint.address ? `, ${meetingPoint.address}` : ''}</p>
-            )}
-            {dropoffDescription && (
-              <p><span className="font-medium text-slate-700">End:</span> {dropoffDescription}</p>
-            )}
-            {pickupDescription && !meetingPoint?.name && (
-              <p><span className="font-medium text-slate-700">Pickup:</span> {pickupDescription}</p>
-            )}
-          </div>
-        </div>
-      )}
-
-      {itinerary.length === 0 ? (
-        <div className="text-center py-12 border-2 border-dashed border-slate-200 rounded-2xl">
-          <p className="text-sm text-slate-400 mb-3">No itinerary entries yet</p>
-          <button
-            type="button"
-            onClick={addItineraryEntry}
-            className="px-5 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-medium hover:bg-emerald-700 transition-colors"
-          >
-            + Add first day
-          </button>
-        </div>
+    <div className="max-w-[860px]">
+      {header}
+      {isMultiDay ? (
+        <MultiDayBuilder
+          numDays={numDays}
+          pickupInfo={pickupInfo}
+          taggedLocations={taggedLocations}
+        />
       ) : (
-        <div data-field="itinerary">
-          {/* Days wrapper with timeline rail */}
-          <div className="relative">
-            <div className="absolute left-[23px] top-0 bottom-0 w-0.5 bg-linear-to-b from-emerald-300 via-emerald-400 to-emerald-300 rounded-full opacity-60" />
-
-            {uniqueDays.map((day) => {
-              const entries = getEntriesForDay(day)
-
-              return (
-                <div key={day} className="mb-8 last:mb-0">
-                  {/* Day header */}
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="h-px flex-1 bg-linear-to-r from-emerald-200/40 to-transparent" />
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/60 shadow-sm">
-                      Day {day}
-                    </span>
-                    <div className="h-px flex-1 bg-linear-to-l from-emerald-200/40 to-transparent" />
-                  </div>
-
-                  {/* Entries for this day */}
-                  <div className="space-y-3">
-                    {entries.map((entry) => {
-                    const isDragging = dragIdx === entry._index
-                    const isDragOver = dragOverIdx === entry._index
-                    const isLocSearchOpen = activeLocSearch === entry._index
-                    const locQuery = locSearchQueries[entry._index] || ''
-                    const hasLocation = entry.locationName
-
-                    return (
-                      <div
-                        key={entry._index}
-                        className={`relative pl-[46px] transition-opacity ${isDragging ? 'opacity-40' : ''}`}
-                        draggable
-                        onDragStart={() => handleDragStart(entry._index)}
-                        onDragOver={(e) => handleDragOver(e, entry._index)}
-                        onDrop={() => handleDrop(entry._index)}
-                        onDragEnd={handleDragEnd}
-                      >
-                        {/* Timeline dot */}
-                        <div className="absolute left-[17px] top-[22px] z-10">
-                          <div className="w-[13px] h-[13px] rounded-full bg-emerald-500 ring-[3px] ring-emerald-100 shadow-sm" />
-                        </div>
-
-                        {/* Drag hint line */}
-                        {isDragOver && (
-                          <div className="absolute left-[46px] right-0 top-0 h-0.5 bg-emerald-400 rounded-full" />
-                        )}
-
-                        {/* Entry card */}
-                        <div className={`rounded-xl border border-slate-200 bg-white shadow-sm shadow-slate-900/5 transition-shadow ${isDragOver ? 'shadow-md shadow-emerald-200/40 ring-1 ring-emerald-200' : ''}`}>
-                          {/* Top row: drag handle + type toggle + time */}
-                          <div className="flex items-center gap-2 p-4 pb-0">
-                            <span className="cursor-grab active:cursor-grabbing text-slate-300 hover:text-slate-400 shrink-0" title="Drag to reorder">
-                              <GripVertical size={16} />
-                            </span>
-
-                            {/* Type toggle */}
-                            <div className="flex rounded-lg border border-slate-200 overflow-hidden">
-                              <button
-                                type="button"
-                                onClick={() => updateItineraryEntry(entry._index, { type: 'activity' })}
-                                className={`flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium transition-colors ${entry.type === 'activity' ? 'bg-emerald-600 text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}
-                              >
-                                <MapPin size={13} />
-                                Activity
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => updateItineraryEntry(entry._index, { type: 'transfer' })}
-                                className={`flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium transition-colors ${entry.type === 'transfer' ? 'bg-amber-500 text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}
-                              >
-                                <Navigation size={13} />
-                                Transfer
-                              </button>
-                            </div>
-
-                            {/* Visit type */}
-                            <Select
-                              value={entry.visitType || 'visit'}
-                              onValueChange={(v) => updateItineraryEntry(entry._index, { visitType: v })}
-                            >
-                              <SelectTrigger
-                                onClick={(e) => e.stopPropagation()}
-                                className="min-h-[30px] h-[30px] text-[13px] px-2 py-0 border-slate-200 rounded-lg w-[120px] shrink-0"
-                              >
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {VISIT_TYPES.map((vt) => (
-                                  <SelectItem key={vt.value} value={vt.value}>{vt.label}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-
-                            {/* Time input */}
-                            <div className="flex items-center gap-1.5 ml-auto">
-                              <Clock size={14} className="text-slate-400" />
-                              <input
-                                type="time"
-                                className="min-h-[32px] rounded-lg border border-slate-200 bg-white px-2 py-1 text-sm transition-all focus-ring w-[120px]"
-                                value={entry.time || ''}
-                                onChange={(e) => updateItineraryEntry(entry._index, { time: e.target.value })}
-                              />
-                            </div>
-
-                            {/* 3-dot menu */}
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <button
-                                  type="button"
-                                  className="p-1 rounded-lg hover:bg-slate-100 text-slate-400 transition-colors bg-transparent cursor-pointer"
-                                >
-                                  <MoreVertical size={16} />
-                                </button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-[180px]">
-                                <DropdownMenuItem onClick={() => handleDuplicate(entry._index)}>
-                                  Duplicate segment
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => removeItineraryEntry(entry._index)}
-                                  className="!text-red-600 focus:!text-red-700 focus:!bg-red-50"
-                                >
-                                  Remove
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-
-                          {/* Duration row */}
-                          <div className="flex items-center gap-2 px-4 pt-3">
-                            <div className="flex items-center gap-1.5 text-[13px] text-slate-500 font-medium w-[70px] shrink-0">
-                              <Clock size={14} className="text-slate-400" />
-                              Duration
-                            </div>
-                            <input
-                              type="number"
-                              min="0"
-                              step="0.5"
-                              className="min-h-[36px] rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm transition-all focus-ring w-[70px] text-center"
-                              value={entry.duration ?? ''}
-                              placeholder="0"
-                              onChange={(e) => updateItineraryEntry(entry._index, { duration: e.target.value ? Number(e.target.value) : null })}
-                            />
-                            <Select
-                              value={entry.durationUnit || 'hour'}
-                              onValueChange={(v) => updateItineraryEntry(entry._index, { durationUnit: v })}
-                            >
-                              <SelectTrigger className="min-h-[36px] h-9 text-sm px-2 border-slate-200 rounded-lg">
-                                <SelectValue placeholder="Unit" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="minute">min</SelectItem>
-                                <SelectItem value="hour">hr</SelectItem>
-                                <SelectItem value="day">day</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          {/* Location row */}
-                          <div className="flex items-start gap-2 px-4 pt-3">
-                            <div className="flex items-center gap-1.5 text-[13px] text-slate-500 font-medium w-[70px] shrink-0 mt-1.5">
-                              <MapPin size={14} className="text-slate-400" />
-                              Location
-                            </div>
-                            <div className="flex-1 relative">
-                              {hasLocation && !isLocSearchOpen ? (
-                                <div className="flex items-center gap-2 min-h-[36px] px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50">
-                                  <span className="text-sm text-slate-700 flex-1 truncate">
-                                    {entry.locationName}
-                                    {entry.locationAddress && entry.locationAddress !== entry.locationName && (
-                                      <span className="text-slate-400 ml-1">— {entry.locationAddress}</span>
-                                    )}
-                                  </span>
-                                  <button
-                                    type="button"
-                                    onClick={() => openLocSearch(entry._index)}
-                                    className="text-xs text-emerald-600 hover:text-emerald-700 font-medium bg-transparent border-0 cursor-pointer shrink-0"
-                                  >
-                                    Change
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => clearLocation(entry._index)}
-                                    className="text-slate-400 hover:text-slate-600 bg-transparent border-0 cursor-pointer p-0.5"
-                                  >
-                                    <X size={14} />
-                                  </button>
-                                </div>
-                              ) : (
-                                <div className="relative">
-                                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                                  <input
-                                    ref={(el) => { searchRefs.current[entry._index] = el }}
-                                    type="text"
-                                    className="w-full min-h-[36px] rounded-lg border border-slate-200 bg-white pl-[34px] pr-3 py-1.5 text-sm transition-all focus-ring"
-                                    placeholder="Search location..."
-                                    value={locQuery}
-                                    onChange={(e) => handleLocSearchChange(entry._index, e.target.value)}
-                                    onKeyDown={(e) => handleLocKeyDown(e, entry._index)}
-                                  />
-                                  {locQuery && (
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setLocSearchQueries((prev) => ({ ...prev, [entry._index]: '' }))
-                                        geoClear()
-                                      }}
-                                      className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 bg-transparent border-0 cursor-pointer p-0.5"
-                                    >
-                                      <X size={14} />
-                                    </button>
-                                  )}
-
-                                  {/* Autocomplete dropdown */}
-                                  {locQuery.trim() && (
-                                    <div className="absolute z-20 left-0 right-0 top-full mt-1 rounded-xl border border-slate-200 bg-white shadow-lg shadow-slate-900/10 overflow-hidden">
-                                      {geoLoading ? (
-                                        <div className="px-4 py-3 text-[13px] text-slate-400">Searching...</div>
-                                      ) : geoResults.length > 0 ? (
-                                        <div>
-                                          {geoResults.map((item, i) => {
-                                            const label = item.formatted || item.city || item.name || ''
-                                            return (
-                                              <button
-                                                key={i}
-                                                type="button"
-                                                onClick={() => selectLocResult(entry._index, item)}
-                                                className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors border-0 bg-transparent cursor-pointer"
-                                              >
-                                                <span className="font-medium">{label}</span>
-                                                {item.country && <span className="text-slate-400 ml-1">· {item.country}</span>}
-                                              </button>
-                                            )
-                                          })}
-                                          <div className="border-t border-slate-100">
-                                            <button
-                                              type="button"
-                                              onClick={() => setCustomLocation(entry._index)}
-                                              className="w-full text-left px-4 py-2.5 text-sm text-slate-500 hover:bg-slate-50 transition-colors border-0 bg-transparent cursor-pointer"
-                                            >
-                                              Use &ldquo;{locQuery.trim()}&rdquo; as custom location
-                                            </button>
-                                          </div>
-                                        </div>
-                                      ) : (
-                                        <div>
-                                          <div className="px-4 py-3 text-[13px] text-slate-400">No results found</div>
-                                          <div className="border-t border-slate-100">
-                                            <button
-                                              type="button"
-                                              onClick={() => setCustomLocation(entry._index)}
-                                              className="w-full text-left px-4 py-2.5 text-sm text-slate-500 hover:bg-slate-50 transition-colors border-0 bg-transparent cursor-pointer"
-                                            >
-                                              Use &ldquo;{locQuery.trim()}&rdquo; as custom location
-                                            </button>
-                                          </div>
-                                        </div>
-                                      )}
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Description */}
-                          <div className="flex items-start gap-2 px-4 pt-3">
-                            <div className="text-[13px] text-slate-500 font-medium w-[70px] shrink-0 mt-1.5">Description</div>
-                            <textarea
-                              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm transition-all focus-ring resize-vertical"
-                              rows={2}
-                              value={entry.description}
-                              onChange={(e) => updateItineraryEntry(entry._index, { description: e.target.value })}
-                              placeholder="What happens at this point? Main sites, activities, meals..."
-                            />
-                          </div>
-
-                          {/* Toggles + segment end padding */}
-                          <div className="flex items-center justify-between px-4 pt-3 pb-4">
-                            <div className="flex items-center gap-4">
-                              <label className="flex items-center gap-1.5 cursor-pointer text-[13px] text-slate-500">
-                                <input
-                                  type="checkbox"
-                                  checked={!!entry.isOptional}
-                                  onChange={(e) => updateItineraryEntry(entry._index, { isOptional: e.target.checked })}
-                                  className="w-[16px] h-[16px] cursor-pointer"
-                                />
-                                Optional
-                              </label>
-                              <label className="flex items-center gap-1.5 cursor-pointer text-[13px] text-slate-500">
-                                <input
-                                  type="checkbox"
-                                  checked={!!entry.additionalFee}
-                                  onChange={(e) => updateItineraryEntry(entry._index, { additionalFee: e.target.checked })}
-                                  className="w-[16px] h-[16px] cursor-pointer"
-                                />
-                                Additional fee
-                              </label>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-
-                {/* Add segment to this day */}
-                <div className="pl-[46px] mt-3">
-                  <button
-                    type="button"
-                    onClick={() => addItinerarySegment(day)}
-                    className="px-3 py-1.5 text-[13px] font-medium text-emerald-600 border border-emerald-200 rounded-lg hover:bg-emerald-50 transition-colors bg-transparent cursor-pointer"
-                  >
-                    + Add segment
-                  </button>
-                </div>
-              </div>
-            )
-          })}
-
-          </div>
-
-          {/* Add day button — outside the timeline rail */}
-          <div className="mt-6 pt-4 border-t border-slate-100">
-            <button
-              type="button"
-              onClick={addItineraryEntry}
-              className="px-4 py-2.5 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors bg-transparent cursor-pointer"
-            >
-              + Add day
-            </button>
-          </div>
-        </div>
-      )}
-
-      {errors.itinerary && (
-        <span className="text-[13px] text-red-600 font-medium mt-3 flex items-center gap-1">
-          {errors.itinerary[0]}
-        </span>
+        <SingleDayBuilder
+          pickupInfo={pickupInfo}
+          dropoffInfo={dropoffInfo}
+          taggedLocations={taggedLocations}
+        />
       )}
     </div>
   )
 }
+
+
+
+

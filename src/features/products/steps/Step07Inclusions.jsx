@@ -7,12 +7,18 @@ import {
   SelectContent,
   SelectItem,
 } from '@/components/ui/select'
-import { Info, HelpCircle, Plus, X, Check } from 'lucide-react'
+import { Info, HelpCircle, Plus, X, Check, ChevronDown } from 'lucide-react'
 import { useProductBuilderStore } from '@/features/products/productBuilderStore'
-import { GYG_ACTIVITIES } from '@/constants/gygLists'
+import { GYG_ACTIVITIES, DIETARY_OPTIONS } from '@/constants/gygLists'
 
 const MEAL_TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Brunch', 'Lunch or dinner, depending on starting time']
-const MEAL_FORMATS = ['Full meal', 'Food tasting', 'Cooking class', 'Buffet', 'Snack', 'Picnic', 'Packed meal', 'BBQ']
+const MEAL_FORMATS_BY_TYPE = {
+  'Breakfast': ['Buffet', 'Continental', 'Full meal', 'Light breakfast', 'Pastry', 'Packed meal'],
+  'Lunch': ['Buffet', 'Full meal', 'Food tasting', 'Light lunch', 'Packed meal', 'Picnic'],
+  'Dinner': ['BBQ', 'Buffet', 'Fine dining', 'Food tasting', 'Full meal', 'Light dinner'],
+  'Brunch': ['Buffet', 'Food tasting', 'Full meal', 'Light meal'],
+  'Lunch or dinner, depending on starting time': ['Buffet', 'Full meal', 'Food tasting', 'Light meal'],
+}
 
 function TagList({ items, onAdd, onRemove, placeholder, suggestions = [] }) {
   const inputRef = useRef(null)
@@ -74,7 +80,7 @@ function TagList({ items, onAdd, onRemove, placeholder, suggestions = [] }) {
           }}
         />
         <button
-          onClick={handleAdd}
+          onClick={() => handleAdd()}
           className="shrink-0 h-[46px] px-4 rounded-xl bg-emerald-600 text-white text-sm font-semibold border-0 cursor-pointer hover:bg-emerald-700 transition-colors"
           type="button"
           disabled={!inputValue.trim()}
@@ -107,6 +113,47 @@ function TagList({ items, onAdd, onRemove, placeholder, suggestions = [] }) {
   )
 }
 
+function DietarySelect({ selected, onAdd, onRemove }) {
+  function toggle(opt) {
+    if (selected.includes(opt)) onRemove(selected.indexOf(opt))
+    else onAdd(opt)
+  }
+
+  return (
+    <div className="mt-3">
+      <label className="block text-sm font-semibold text-slate-800 mb-1">Which dietary restrictions can you accommodate?</label>
+      <p className="text-[13px] text-slate-500 mb-3">Please select all that are relevant</p>
+      <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+        {DIETARY_OPTIONS.map((opt) => {
+          const isChecked = selected.includes(opt)
+          return (
+            <label key={opt} className="flex items-center gap-2.5 cursor-pointer group">
+              <div className="relative">
+                <input
+                  type="checkbox"
+                  checked={isChecked}
+                  onChange={() => toggle(opt)}
+                  className="peer sr-only"
+                />
+                <div className={`w-[18px] h-[18px] rounded border-2 flex items-center justify-center transition-all ${
+                  isChecked ? 'bg-emerald-600 border-emerald-600' : 'border-slate-300 group-hover:border-slate-400'
+                }`}>
+                  {isChecked && (
+                    <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                      <path d="M1 4l2.5 2.5L9 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                </div>
+              </div>
+              <span className="text-sm text-slate-700 group-hover:text-slate-900">{opt}</span>
+            </label>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 function InclusionList({ items, field, placeholder, accent }) {
   const addInclusionItem = useProductBuilderStore((s) => s.addInclusionItem)
   const removeInclusionItem = useProductBuilderStore((s) => s.removeInclusionItem)
@@ -135,11 +182,6 @@ function InclusionList({ items, field, placeholder, accent }) {
             transition={{ duration: 0.18 }}
             className="flex items-center gap-2.5"
           >
-            <span className={`shrink-0 w-6 h-6 rounded-full grid place-items-center ${
-              isEmerald ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-600'
-            }`}>
-              {isEmerald ? <Check size={13} /> : <X size={13} />}
-            </span>
             <input
               ref={(el) => { inputRefs.current[i] = el }}
               className="flex-1 h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm transition-all focus-ring"
@@ -264,7 +306,7 @@ function ActivityList() {
           onKeyDown={handleKeyDown}
         />
         <button
-          onClick={handleAdd}
+          onClick={() => handleAdd()}
           className="shrink-0 h-[46px] px-4 rounded-xl bg-emerald-600 text-white text-sm font-semibold border-0 cursor-pointer hover:bg-emerald-700 transition-colors"
           type="button"
           disabled={!inputValue.trim()}
@@ -399,7 +441,12 @@ export default function Step07Inclusions() {
                 <div key={i} className="flex items-end gap-3">
                   <div className="flex-1">
                     <label className="block text-sm font-medium text-slate-700 mb-1.5">Type of meal</label>
-                    <Select value={meal.type} onValueChange={(v) => updateMeal(i, 'type', v)}>
+                    <Select value={meal.type} onValueChange={(v) => {
+                      const formats = MEAL_FORMATS_BY_TYPE[v] || []
+                      const newFormat = formats.includes(meal.format) ? meal.format : ''
+                      updateMeal(i, 'type', v)
+                      if (newFormat !== meal.format) updateMeal(i, 'format', newFormat)
+                    }}>
                       <SelectTrigger className="h-10 text-sm">
                         <SelectValue placeholder="Please select" />
                       </SelectTrigger>
@@ -417,33 +464,23 @@ export default function Step07Inclusions() {
                         <SelectValue placeholder="Please select" />
                       </SelectTrigger>
                       <SelectContent>
-                        {MEAL_FORMATS.map((f) => (
+                        {(MEAL_FORMATS_BY_TYPE[meal.type] || []).map((f) => (
                           <SelectItem key={f} value={f}>{f}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
-                  {meals.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeMeal(i)}
-                      className="shrink-0 h-10 w-10 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={addMeal}
+                    className="shrink-0 flex items-center gap-1.5 h-10 px-3 text-sm font-medium text-emerald-600 hover:text-emerald-700 transition-colors"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span className="underline">Meal</span>
+                  </button>
                 </div>
               ))}
             </div>
-
-            <button
-              type="button"
-              onClick={addMeal}
-              className="flex items-center gap-1.5 text-sm font-medium text-emerald-600 hover:text-emerald-700 transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              <span className="underline">Meal</span>
-            </button>
 
             {/* Drinks checkbox */}
             <label className="flex items-center gap-2.5 cursor-pointer pt-2">
@@ -478,14 +515,11 @@ export default function Step07Inclusions() {
             </div>
 
             {showDietaryRestrictions && (
-              <div className="mt-2">
-                <TagList
-                  items={dietaryOptions}
-                  onAdd={addDietaryOption}
-                  onRemove={removeDietaryOption}
-                  placeholder="e.g. Vegetarian, Vegan, Gluten-free"
-                />
-              </div>
+              <DietarySelect
+                selected={dietaryOptions}
+                onAdd={addDietaryOption}
+                onRemove={removeDietaryOption}
+              />
             )}
           </div>
         )}

@@ -125,8 +125,8 @@ export const stepSchemas = {
     activitiesIncluded: z.array(z.string()).optional(),
     foodProvided: z.boolean(),
     meals: z.array(z.object({
-      type: z.string().min(1, 'Select a meal type'),
-      format: z.string().min(1, 'Select a format'),
+      type: z.string().optional(),
+      format: z.string().optional(),
     })).optional(),
     drinksIncluded: z.boolean().optional(),
     showDietaryRestrictions: z.boolean().optional(),

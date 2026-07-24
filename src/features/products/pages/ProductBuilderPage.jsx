@@ -118,9 +118,9 @@ function tourToProduct(tour) {
     transportationProvided: !!content.transportationProvided,
     transportationType: content.transportationType || '',
     crossCityTravel: !!content.crossCityTravel,
-    cutoffMinutes: content.cutoffMinutes ?? 20,
-    lastMinuteBookings: !!content.lastMinuteBookings,
-    perSlotCutoff: !!content.perSlotCutoff,
+    cutoffMinutes: booking.cutoffMinutes ?? 20,
+    lastMinuteBookings: !!booking.lastMinuteBookings,
+    perSlotCutoff: !!booking.perSlotCutoff,
     notSuitableFor: content.healthRestrictions || [],
     notAllowed: content.notAllowed || [],
     petFriendly: !!content.petFriendly,
@@ -166,6 +166,9 @@ function tourToProduct(tour) {
     dropoffDescription: content.dropoffDescription || '',
     cutoffHours: booking.cancellationPolicy?.cutoffHours ?? 0,
     itinerary: Array.isArray(content.itinerary) ? content.itinerary : [],
+    itineraryOverview: content.itineraryOverview || tour.itineraryOverview || '',
+    additionalItineraryInfo: content.additionalItineraryInfo || tour.additionalItineraryInfo || '',
+    dayTitles: content.dayTitles || tour.dayTitles || {},
     pricingModel: td.pricingModel || 'perPerson',
     pricingApproach: td.pricingApproach || 'dependsOnAge',
     uniformPrice: td.uniformPrice ?? (td.pricingApproach === 'sameForEveryone'
@@ -399,7 +402,10 @@ export default function ProductBuilderPage() {
     delete payload.availableTimeSlots
     delete payload.currentScheduleStep
     delete payload.editingScheduleIndex
-    delete payload.schedules
+    delete payload.stepErrors
+    delete payload.savedProductId
+    delete payload.showAdvancedCategorySettings
+    // Note: do NOT delete schedules — backend uses it for schedule nesting
 
     if (!payload.copyrightConfirmed) delete payload.copyrightConfirmed
 

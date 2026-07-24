@@ -1,3 +1,34 @@
+export const ITINERARY_ACTIVITY_CATEGORIES = {
+  'General tourism': {
+    'General tourism': ['Break time', 'Photo stop', 'Visit', 'Guided tour', 'Free time', 'Shopping', 'Sightseeing', 'Walk', 'Class', 'Safety briefing', 'Self-guided tour', 'Overnight stay', 'Pass by', 'Sunset', 'Scenic views on the way', 'Sunrise', 'Hotel or resort activities', 'Yoga class'],
+    'On wheels': ['Hop-on Hop-off stop', 'Bus tour', 'Scenic drive', 'Bike tour', 'Scooter ride', 'Cable car ride', 'Segway ride', 'Panoramic train ride', 'Electric bike ride'],
+  },
+  'Animals & adventure': {
+    'Animals & adventure': ['Sandboarding', 'Hiking', 'Camp activities', 'Shooting range', 'Zipline', 'Sledding'],
+    'Air': ['Balloon flight', 'Helicopter flight', 'Aerial view'],
+    'Animals': ['Camel ride', 'Game drive', 'Shark viewing', 'Horse-drawn carriage ride', 'Horse riding', 'Wildlife viewing'],
+    'Motorized': ['Dune bashing', 'Snowmobile ride', 'Quad bike ride', 'Off-road adventure', 'Mountain bike ride', 'Motorcycle ride'],
+  },
+  'Food & culture': {
+    'Art': ['Concert', 'Dance show', 'Traditional dance show', 'Arts & crafts market visit', 'Workshop'],
+    'Food & drink': ['Food market visit', 'Wine tasting', 'Cooking class', 'Tea ceremony', 'Food tasting', 'Champagne tasting', 'Whiskey tasting', 'Cheese tasting', 'Coffee tasting'],
+    'Drink types': ['Aperitif', 'Beer', 'Cocktail', 'Coffee', 'Spirits', 'Tea', 'Wine'],
+    'Food types': ['Picnic', 'Street food', 'BBQ', 'Local snacks', 'Regional food', 'Tapas'],
+    'Meals': ['Breakfast', 'Brunch', 'Dessert', 'Dinner', 'Lunch', 'Meal onboard', 'Welcome refreshments'],
+  },
+  'Water activities': {
+    'Water activities': ['Swimming', 'Snorkeling', 'Scuba diving', 'Parasailing', 'Stand up paddleboarding', 'Surfing'],
+    'Water animals': ['Dolphin watching', 'Marine life viewing', 'Whale watching'],
+    'Boats': ['Boat cruise', 'Kayaking', 'Long-tail boat ride', 'Bamboo rafting', 'Gondola ride', 'Rafting', 'Sailing', 'Airboat ride', 'Glass bottom boat ride', 'Canoeing', 'Duck boat ride', 'Banana boat ride', 'Jetskiing'],
+  },
+}
+
+export const DIETARY_OPTIONS = [
+  'Diabetic', 'Egg-free', 'Gluten-free', 'Halal', 'Keto', 'Kosher',
+  'Lactose-free', 'Low-carb', 'Nut-free', 'Pescatarian',
+  'Seafood/fish-free', 'Vegan', 'Vegetarian',
+]
+
 export const VISIT_TYPES = [
   { value: 'visit', label: 'Visit' },
   { value: 'pass_by', label: 'Pass by' },
