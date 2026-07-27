@@ -12,18 +12,50 @@ export function transformImage(urlOrObj, opts = {}) {
     const marker = '/upload/';
     const idx = url.indexOf(marker);
     if (idx === -1) return url;
-    const before = url.slice(0, idx + marker.length);
+
+    const base = url.slice(0, idx + marker.length);
     const after = url.slice(idx + marker.length);
+
+    const parts = after.split('/');
+    let version = '';
+    let path = [];
+    for (let i = 0; i < parts.length; i++) {
+      const seg = parts[i];
+      if (/^v\d+$/i.test(seg)) {
+        version = seg + '/';
+        path = parts.slice(i + 1);
+        break;
+      }
+      if (!seg.includes('_')) {
+        path = parts.slice(i);
+        break;
+      }
+    }
 
     const transforms = [];
     if (opts.crop) transforms.push(`c_${opts.crop}`);
     if (opts.width) transforms.push(`w_${opts.width}`);
     if (opts.height) transforms.push(`h_${opts.height}`);
-    transforms.push(`q_${opts.quality || 'auto'}`);
-    transforms.push(`f_${opts.format || 'auto'}`);
+    if (opts.quality) transforms.push(`q_${opts.quality}`);
+    if (opts.format) transforms.push(`f_${opts.format}`);
 
-    return `${before}${transforms.join(',')}/${after}`;
+    if (transforms.length === 0) {
+      transforms.push('q_auto', 'f_auto');
+    }
+
+    const pathStr = path.join('/');
+    return `${base}${transforms.join(',')}/${version}${pathStr}`;
   }
 
   return url;
+}
+
+export function getSrcSet(url, widths, opts = {}) {
+  if (!url || !widths || widths.length === 0) return '';
+  return widths
+    .map((w) => {
+      const img = transformImage(url, { ...opts, width: w });
+      return `${img} ${w}w`;
+    })
+    .join(', ');
 }

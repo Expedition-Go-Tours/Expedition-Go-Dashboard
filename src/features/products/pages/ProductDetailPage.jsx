@@ -15,23 +15,8 @@ import { fetchTourAvailability } from "@/features/availability/api";
 import StatusBadge from "@/components/shared/StatusBadge";
 import { PRODUCT_STATUSES } from "@/lib/constants";
 import { formatCurrency, formatDate, formatTime, cn } from "@/lib/utils";
-import config from "@/config";
 import { normalizeItinerary } from "@/features/products/utils/normalizeItinerary";
-import { transformImage } from "@/lib/image";
-
-function useImageError(proxyUrlFn) {
-  const handleError = useCallback((e, photoIndex) => {
-    const fallback = proxyUrlFn(photoIndex);
-    if (!e.target.src || e.target.src !== fallback) {
-      e.target.src = fallback;
-      return;
-    }
-    if (e.target.parentElement) {
-      e.target.parentElement.classList.add("image-failed");
-    }
-  }, [proxyUrlFn]);
-  return handleError;
-}
+import { transformImage, getSrcSet } from "@/lib/image";
 
 function reorderPhotos(tour) {
   const rawPhotos = (tour?.photos || []).filter(Boolean);
@@ -163,8 +148,9 @@ function PhotoGalleryModal({ displayPhotos, index: lightboxIndex, setLightboxInd
           <img
             src={getCloudinaryUrl(photo, 1600, 1066)}
             alt={`${tour?.title} - Photo ${lightboxIndex + 1}`}
+            width="1600"
+            height="1066"
             className="max-h-[80vh] w-auto max-w-full object-contain rounded-xl shadow-2xl"
-            onError={(e) => handleImageError(e, lightboxIndex)}
           />
         </div>
         <div className="flex items-center gap-4 mt-5">
@@ -374,8 +360,6 @@ export default function ProductDetailPage() {
   };
 
   const displayPhotos = useMemo(() => tour ? reorderPhotos(tour) : [], [tour]);
-  const proxyUrlFn = useCallback((photoIndex) => `${config.api.baseURL}/tours/${id}/photo?index=${photoIndex}`, [id]);
-  const handleImageError = useImageError(proxyUrlFn);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -558,7 +542,7 @@ export default function ProductDetailPage() {
             <div className="grid grid-cols-1 md:grid-cols-4 md:grid-rows-2 gap-1 rounded-xl overflow-hidden shadow-sm shadow-slate-900/5">
               {displayPhotos.slice(0, 5).map((photo, i) => (
                 <button key={i} onClick={() => setLightboxIndex(i)} className={cn("relative overflow-hidden bg-slate-100 group cursor-pointer", i === 0 ? "md:col-span-2 md:row-span-2 min-h-[260px] md:min-h-[440px]" : "min-h-[130px] md:min-h-[219px]")}>
-                  <img src={i === 0 ? getCloudinaryHero(photo) : getCloudinaryUrl(photo, 600, 450)} alt={`${tour.title} - Photo ${i + 1}`} loading={i === 0 ? undefined : "lazy"} className="absolute inset-0 w-full h-full object-cover transition-all duration-700 group-hover:scale-105" onError={(e) => handleImageError(e, i)} />
+                  <img src={i === 0 ? getCloudinaryHero(photo) : getCloudinaryUrl(photo, 600, 450)} alt={`${tour.title} - Photo ${i + 1}`} width={i === 0 ? 2400 : 600} height={i === 0 ? 1200 : 450} loading={i === 0 ? undefined : "lazy"} className="absolute inset-0 w-full h-full object-cover transition-all duration-700 group-hover:scale-105" />
                   <div className="absolute inset-0 bg-linear-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300" />
                   {i === 0 && (
                     <div className="absolute bottom-3 right-3 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-white/10 backdrop-blur-sm border border-white/20 shadow-sm opacity-0 group-hover:opacity-100 transition-all duration-300">
@@ -569,7 +553,7 @@ export default function ProductDetailPage() {
               ))}
               {displayPhotos.length > 5 && (
                 <button onClick={() => setGalleryOpen(true)} className="relative overflow-hidden bg-slate-100 min-h-[130px] md:min-h-[219px] group cursor-pointer">
-                  <img src={getCloudinaryUrl(displayPhotos[5], 600, 450)} alt={`${tour.title} - Photo 6`} loading="lazy" className="absolute inset-0 w-full h-full object-cover transition-all duration-500 group-hover:scale-105" onError={(e) => handleImageError(e, 5)} />
+                  <img src={getCloudinaryUrl(displayPhotos[5], 600, 450)} alt={`${tour.title} - Photo 6`} width="600" height="450" loading="lazy" className="absolute inset-0 w-full h-full object-cover transition-all duration-500 group-hover:scale-105" />
                   <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/30 to-transparent flex items-end justify-center pb-4 sm:pb-5 transition-all duration-300 group-hover:from-black/80">
                     <span className="text-xs font-semibold text-white/90 bg-white/10 backdrop-blur-sm border border-white/20 px-3 py-1.5 rounded-lg">+{displayPhotos.length - 5} more</span>
                   </div>

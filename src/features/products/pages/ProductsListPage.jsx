@@ -13,7 +13,7 @@ import { formatCurrency, formatDate, cn } from "@/lib/utils";
 import { listMyProducts, listProducts, deleteProduct } from "@/features/products/api";
 import EmptyState from "@/components/shared/EmptyState";
 import { getAuthToken, useAuthStore } from "@/stores/authStore";
-import config from "@/config";
+import { transformImage } from "@/lib/image";
 import {
   Select,
   SelectContent,
@@ -169,8 +169,7 @@ export default function ProductsListPage() {
   const getPhotoSrc = useCallback((product) => {
     const url = product.coverPhoto || product.photos?.find((p) => p);
     if (!url) return null;
-    if (url.startsWith("http://") || url.startsWith("https://")) return url;
-    return `${config.api.baseURL}/tours/${product.id}/photo`;
+    return transformImage(url, { width: 560, height: 420, crop: 'fill' });
   }, []);
 
   const stats = useMemo(() => {
@@ -427,13 +426,13 @@ export default function ProductsListPage() {
                         <img
                           src={src}
                           alt={product.title}
+                          width="560"
+                          height="420"
                           className={`absolute inset-0 w-full h-full object-cover transition-all duration-500 group-hover:scale-105 ${imgLoaded[pid] ? "opacity-100" : "opacity-0"}`}
                           loading="lazy"
                           onLoad={() => setImgLoaded((prev) => ({ ...prev, [pid]: true }))}
-                          onError={(e) => {
+                          onError={() => {
                             setImgErrors((prev) => ({ ...prev, [pid]: true }));
-                            const proxy = `${config.api.baseURL}/tours/${product.id}/photo`;
-                            if (e.target.src !== proxy) { e.target.src = proxy; } else { e.target.style.display = "none"; }
                           }}
                         />
                       </>
