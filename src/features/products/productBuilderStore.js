@@ -719,6 +719,20 @@ export const useProductBuilderStore = create(
     }),
     {
       name: 'product-builder-draft',
+      version: 1,
+      migrate: (persistedState, version) => {
+        if (version < 1) {
+          return {
+            ...persistedState,
+            currentStep: 0,
+            currentSectionId: 'getting-started',
+            currentStepId: 'language',
+            completedStepIds: [],
+            stepErrors: {},
+          }
+        }
+        return persistedState
+      },
       partialize: (state) => {
         const { isDirty, isSaving, isSubmitting, lastSaved, hasHydrated, _pendingFiles, _uploadedUrls, ...rest } = state
         return rest
