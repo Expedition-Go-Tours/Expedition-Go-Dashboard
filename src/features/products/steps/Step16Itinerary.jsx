@@ -1,11 +1,36 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useProductBuilderStore } from '@/features/products/productBuilderStore'
+import { createProduct, updateProduct } from '@/features/products/api'
+import { buildPayload } from '@/features/products/useAutoSave'
 import { useGeocoding } from '@/hooks/useGeocoding'
 import { ITINERARY_ACTIVITY_CATEGORIES } from '@/constants/gygLists'
 import {
   HelpCircle, Info, Search, X, Plus, ArrowLeft, MoreHorizontal, Calendar, MapPin,
 } from 'lucide-react'
+
+async function saveCurrentProduct() {
+  const s = useProductBuilderStore.getState()
+  const payload = buildPayload(s)
+  s.setSaving(true)
+  try {
+    if (s.savedProductId) {
+      await updateProduct(s.savedProductId, payload, { skipGlobalErrorHandler: true })
+    } else {
+      const res = await createProduct(payload, { skipGlobalErrorHandler: true })
+      const newId = res.data?.data?.tour?.id
+      if (newId) s.setSavedProductId(newId)
+    }
+    s.markSaved()
+    return true
+  } catch (err) {
+    console.error('[Itinerary] Save failed:', err.message)
+    return false
+  } finally {
+    s.setSaving(false)
+  }
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -418,6 +443,15 @@ function SegmentCard({ segment, onEdit, onRemove, onAddAfter }) {
         {actDisplay && <p className="text-sm text-slate-600">{actDisplay}</p>}
         {segment.isOptional && <p className="text-xs text-emerald-600 mt-0.5">Optional</p>}
       </div>
+      <button
+        onClick={() => onEdit()}
+        className="w-7 h-7 rounded-full flex items-center justify-center text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors shrink-0"
+        title="Edit segment"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+        </svg>
+      </button>
       <div className="relative shrink-0" ref={ref}>
         <button
           onClick={() => setMenuOpen(!menuOpen)}
@@ -427,16 +461,11 @@ function SegmentCard({ segment, onEdit, onRemove, onAddAfter }) {
         </button>
         {menuOpen && (
           <div className="absolute right-0 top-full mt-1 w-56 bg-white border border-slate-200 rounded-xl shadow-lg z-20 py-1">
-            <button onClick={() => { onAddAfter(); setMenuOpen(false) }} className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5">
+            <button onClick={(e) => { e.stopPropagation(); onAddAfter(); setMenuOpen(false) }} className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 cursor-pointer">
               <Plus size={14} className="text-emerald-600" /> Add itinerary segment
             </button>
-            <button onClick={() => { onEdit(); setMenuOpen(false) }} className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-emerald-600">
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-              </svg>
-              Edit itinerary segment
-            </button>
-            <button onClick={() => { onRemove(); setMenuOpen(false) }} className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2.5">
+
+            <button onClick={(e) => { e.stopPropagation(); onRemove(); setMenuOpen(false) }} className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2.5 cursor-pointer">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
               </svg>
@@ -569,6 +598,7 @@ function WelcomeScreen({ isMultiDay, onStart }) {
 
 // ─── Single-Day Timeline Builder ─────────────────────────────────────────────
 function SingleDayBuilder({ pickupInfo, dropoffInfo, taggedLocations }) {
+  const navigate = useNavigate()
   const itinerary = useProductBuilderStore((s) => s.itinerary)
   const addItineraryEntry = useProductBuilderStore((s) => s.addItineraryEntry)
   const updateItineraryEntry = useProductBuilderStore((s) => s.updateItineraryEntry)
@@ -604,7 +634,7 @@ function SingleDayBuilder({ pickupInfo, dropoffInfo, taggedLocations }) {
       importance: data.importance || 'major',
     }
     if (editingIndex !== null) {
-      updateItineraryEntry(editingIndex, entry)
+      updateItineraryEntry(globalIndexOf(editingIndex), entry)
     } else {
       const newIdx = itinerary.length
       addItineraryEntry()
@@ -636,7 +666,7 @@ function SingleDayBuilder({ pickupInfo, dropoffInfo, taggedLocations }) {
           <div className="flex-1 flex items-center justify-between border-b border-slate-200 pb-3">
             <div>
               <p className="text-sm font-bold text-slate-900">{pickupInfo.label}</p>
-              {pickupInfo.sub && <p className="text-sm text-slate-500">{pickupInfo.sub}</p>}
+              {typeof pickupInfo.sub === 'string' && <p className="text-sm text-slate-500">{pickupInfo.sub}</p>}
             </div>
             <button className="text-slate-400 hover:text-slate-600 shrink-0 ml-4" type="button">
               <Info size={16} />
@@ -644,47 +674,38 @@ function SingleDayBuilder({ pickupInfo, dropoffInfo, taggedLocations }) {
           </div>
         </div>
 
-        {/* Inline wizard — sits outside the node rows so it doesn't break the line */}
-        <AnimatePresence>
-          {showWizard && (
-            <motion.div
-              className="ml-14 mb-2"
-              initial={{ opacity: 0, x: 24 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 24 }}
-              transition={{ duration: 0.2, ease: 'easeInOut' }}
-            >
-              <SegmentWizard
-                onComplete={handleComplete}
-                onCancel={() => { setShowWizard(false); setEditingIndex(null) }}
-                initialData={editingIndex !== null ? (() => {
-                  const seg = segments[editingIndex]
-                  return seg ? {
-                    activityType: seg.type,
-                    activityName: seg.activityName || seg.title,
-                    location: seg.locationName ? { name: seg.locationName, address: seg.locationAddress } : null,
-                    durationHours: String(Math.floor((seg.duration || 0) / 60)),
-                    durationMinutes: String((seg.duration || 0) % 60),
-                    importance: seg.importance || 'major',
-                    isOptional: !!seg.isOptional,
-                    additionalFee: !!seg.additionalFee,
-                  } : null
-                })() : null}
-                taggedLocations={taggedLocations}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
-
         {/* Segments */}
         {segments.map((seg, i) => (
-          <SegmentCard
-            key={i}
-            segment={seg}
-            onEdit={() => { setEditingIndex(i); setShowWizard(true) }}
-            onRemove={() => removeItineraryEntry(globalIndexOf(i))}
-            onAddAfter={() => { setEditingIndex(null); setShowWizard(true) }}
-          />
+          <div key={i}>
+            <SegmentCard
+              segment={seg}
+              onEdit={() => { setEditingIndex(i); setShowWizard(true) }}
+              onRemove={() => removeItineraryEntry(globalIndexOf(i))}
+              onAddAfter={() => { setEditingIndex(null); setShowWizard(true) }}
+            />
+            {showWizard && editingIndex === i && (
+              <div className="ml-14 mb-2">
+                <SegmentWizard
+                  onComplete={handleComplete}
+                  onCancel={() => { setShowWizard(false); setEditingIndex(null) }}
+                  initialData={(() => {
+                    const s = segments[editingIndex]
+                    return s ? {
+                      activityType: s.type,
+                      activityName: s.activityName || s.title,
+                      location: s.locationName ? { name: s.locationName, address: s.locationAddress } : null,
+                      durationHours: String(Math.floor((s.duration || 0) / 60)),
+                      durationMinutes: String((s.duration || 0) % 60),
+                      importance: s.importance || 'major',
+                      isOptional: !!s.isOptional,
+                      additionalFee: !!s.additionalFee,
+                    } : null
+                  })()}
+                  taggedLocations={taggedLocations}
+                />
+              </div>
+            )}
+          </div>
         ))}
 
         {/* Dropoff row */}
@@ -693,7 +714,7 @@ function SingleDayBuilder({ pickupInfo, dropoffInfo, taggedLocations }) {
           <div className="flex-1 flex items-center justify-between border-b border-slate-200 pb-3">
             <div>
               <p className="text-sm font-bold text-slate-900">{dropoffInfo.label}</p>
-              {dropoffInfo.sub && <p className="text-sm text-slate-500">{dropoffInfo.sub}</p>}
+              {typeof dropoffInfo.sub === 'string' && <p className="text-sm text-slate-500">{dropoffInfo.sub}</p>}
             </div>
             <button className="text-slate-400 hover:text-slate-600 shrink-0 ml-4" type="button">
               <Info size={16} />
@@ -701,6 +722,18 @@ function SingleDayBuilder({ pickupInfo, dropoffInfo, taggedLocations }) {
           </div>
         </div>
       </div>
+
+      {/* Add-new wizard (editingIndex is null → show below dropoff) */}
+      {showWizard && editingIndex === null && (
+        <div className="mb-2">
+          <SegmentWizard
+            onComplete={handleComplete}
+            onCancel={() => { setShowWizard(false) }}
+            initialData={null}
+            taggedLocations={taggedLocations}
+          />
+        </div>
+      )}
 
       {/* Actions */}
       <div className="flex justify-end mt-5">
@@ -712,8 +745,14 @@ function SingleDayBuilder({ pickupInfo, dropoffInfo, taggedLocations }) {
         </button>
       </div>
       <div className="flex justify-end mt-3">
-        <button className="px-6 py-2.5 bg-emerald-600 text-white rounded-full text-sm font-semibold hover:bg-emerald-700 transition-colors">
-          Publish itinerary
+        <button
+          onClick={async () => {
+            await saveCurrentProduct()
+            useProductBuilderStore.getState().completeStep('itinerary')
+          }}
+          className="px-6 py-2.5 bg-emerald-600 text-white rounded-full text-sm font-semibold hover:bg-emerald-700 transition-colors"
+        >
+          Save itinerary
         </button>
       </div>
     </div>
@@ -762,6 +801,15 @@ function DaySegmentCard({ segment, onEdit, onRemove, onAddAfter }) {
           </p>
         )}
       </div>
+      <button
+        onClick={() => onEdit()}
+        className="w-7 h-7 rounded-full flex items-center justify-center text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors shrink-0 mt-1"
+        title="Edit segment"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+        </svg>
+      </button>
       <div className="relative shrink-0 mt-1 z-10" ref={ref}>
         <button
           onClick={() => setMenuOpen(!menuOpen)}
@@ -771,16 +819,11 @@ function DaySegmentCard({ segment, onEdit, onRemove, onAddAfter }) {
         </button>
         {menuOpen && (
           <div className="absolute right-0 top-full mt-1 w-52 bg-white border border-slate-200 rounded-xl shadow-lg z-30 py-1">
-            <button onClick={() => { onAddAfter(); setMenuOpen(false) }} className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5">
+            <button onClick={(e) => { e.stopPropagation(); onAddAfter(); setMenuOpen(false) }} className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 cursor-pointer">
               <Plus size={14} className="text-emerald-600" /> Add segment after
             </button>
-            <button onClick={() => { onEdit(); setMenuOpen(false) }} className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-emerald-600">
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-              </svg>
-              Edit segment
-            </button>
-            <button onClick={() => { onRemove(); setMenuOpen(false) }} className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2.5">
+
+            <button onClick={(e) => { e.stopPropagation(); onRemove(); setMenuOpen(false) }} className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2.5 cursor-pointer">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
               </svg>
@@ -1036,6 +1079,7 @@ function DaySegmentForm({ initialData, taggedLocations, photos = [], onSave, onC
 
 // ─── Multi-Day Builder ─────────────────────────────────────────────────────────
 function MultiDayBuilder({ numDays, pickupInfo, taggedLocations }) {
+  const navigate = useNavigate()
   const itinerary = useProductBuilderStore((s) => s.itinerary)
   const itineraryOverview = useProductBuilderStore((s) => s.itineraryOverview)
   const additionalItineraryInfo = useProductBuilderStore((s) => s.additionalItineraryInfo)
@@ -1212,7 +1256,7 @@ function MultiDayBuilder({ numDays, pickupInfo, taggedLocations }) {
                 <div className="flex-1 flex items-center justify-between border-b border-slate-200 pb-3 self-stretch">
                   <div className="flex flex-col justify-center">
                     <p className="text-sm font-bold text-slate-900">Starting location:</p>
-                    {pickupInfo.sub && <p className="text-sm text-slate-500">{pickupInfo.sub}</p>}
+                    {typeof pickupInfo.sub === 'string' && <p className="text-sm text-slate-500">{pickupInfo.sub}</p>}
                   </div>
                   <button className="text-slate-400 hover:text-slate-600 shrink-0 ml-4" type="button">
                     <Info size={16} />
@@ -1224,6 +1268,7 @@ function MultiDayBuilder({ numDays, pickupInfo, taggedLocations }) {
               <AnimatePresence>
                 {showWizard && (
                   <motion.div
+                    key="multi-day-wizard"
                     initial={{ opacity: 0, x: 24 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: 24 }}
@@ -1299,7 +1344,14 @@ function MultiDayBuilder({ numDays, pickupInfo, taggedLocations }) {
 
       {/* Footer actions */}
       <div className="flex items-center justify-between mt-8 pt-4 border-t border-slate-100">
-        <button className="px-5 py-2.5 border border-slate-300 text-sm font-medium text-slate-700 rounded-full hover:bg-slate-50 transition-colors">
+        <button
+          onClick={async () => {
+            await saveCurrentProduct()
+            useProductBuilderStore.getState().completeStep('itinerary')
+            navigate('/products')
+          }}
+          className="px-5 py-2.5 border border-slate-300 text-sm font-medium text-slate-700 rounded-full hover:bg-slate-50 transition-colors"
+        >
           Save and exit
         </button>
         <button

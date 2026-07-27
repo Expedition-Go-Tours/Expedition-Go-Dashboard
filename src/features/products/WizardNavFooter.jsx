@@ -1,10 +1,9 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
-import { toast } from 'sonner'
 import { validateStep } from './stepValidation'
 import { useProductBuilderStore } from './productBuilderStore'
-import { scrollToField, getFieldLabel, getSectionLabel } from './fieldLabels'
+import { scrollToField, getFieldLabel } from './fieldLabels'
 
 export default function WizardNavFooter({ currentStep, totalSteps, onBack, onNext, onSave, saving }) {
   const navigate = useNavigate()
@@ -13,20 +12,21 @@ export default function WizardNavFooter({ currentStep, totalSteps, onBack, onNex
   const clearStepErrors = useProductBuilderStore((s) => s.clearStepErrors)
   const completeStep = useProductBuilderStore((s) => s.completeStep)
   const stepErrors = useProductBuilderStore((s) => s.stepErrors)
+  const isSaving = useProductBuilderStore((s) => s.isSaving)
+  const lastSaved = useProductBuilderStore((s) => s.lastSaved)
   const [savedText, setSavedText] = useState('')
-  const timerRef = useRef(null)
 
   useEffect(() => {
-    const unsub = useProductBuilderStore.subscribe(() => {
-      setSavedText('Saving...')
-      if (timerRef.current) clearTimeout(timerRef.current)
-      timerRef.current = setTimeout(() => {
-        setSavedText('Draft saved')
-        setTimeout(() => setSavedText(''), 2000)
-      }, 400)
-    })
-    return () => { unsub(); if (timerRef.current) clearTimeout(timerRef.current) }
-  }, [])
+    if (isSaving) setSavedText('Saving...')
+  }, [isSaving])
+
+  useEffect(() => {
+    if (lastSaved && !isSaving) {
+      setSavedText('Draft saved')
+      const t = setTimeout(() => setSavedText(''), 2500)
+      return () => clearTimeout(t)
+    }
+  }, [lastSaved, isSaving])
 
   const isFirstStep = currentStep === 1
   const isLastStep = currentStep === totalSteps
@@ -57,7 +57,6 @@ export default function WizardNavFooter({ currentStep, totalSteps, onBack, onNex
     try {
       await onSave?.()
       completeStep('itinerary')
-      toast.success('Product saved successfully')
       navigate('/products')
     } catch {
       // Error already handled by the global interceptor + handleSave catch

@@ -2,7 +2,6 @@ import { useParams, useSearchParams, useNavigate, useBlocker } from 'react-route
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { Loader2, AlertCircle, X } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { toast } from 'sonner'
 import { useProductBuilderStore } from '@/features/products/productBuilderStore'
 import { getMyProduct, createProduct, updateProduct, cleanupMediaUrls } from '@/features/products/api'
 import { useAutoSave } from '@/features/products/useAutoSave'
@@ -38,8 +37,8 @@ const STEP_COMPONENTS = {
   7: Step07Inclusions,
   8: Step08Transportation,
   9: Step09GuideInfo,
-  10: Step10Photos,
-  11: Step11ExtraInfo,
+   10: Step11ExtraInfo,
+   11: Step10Photos,
   12: Step12Options,
   13: Step13MeetingPoint,
   14: Step14PricingAvailability,
@@ -57,8 +56,8 @@ const STEP_LABELS = {
   7: 'Inclusions',
   8: 'Transportation',
   9: 'Guide information',
-  10: 'Photos',
-  11: 'Extra information',
+   10: 'Extra information',
+   11: 'Photos',
   12: 'Options',
   13: 'Meeting Point or Pickup',
   14: 'Pricing & Availability',
@@ -196,6 +195,35 @@ function tourToProduct(tour) {
     operatingHoursStart: avail.operatingHoursStart || '09:00',
     operatingHoursEnd: avail.operatingHoursEnd || '17:00',
     dateExceptions: Array.isArray(schedule.dateExceptions) ? schedule.dateExceptions : [],
+    schedules: (Array.isArray(ps.schedules) && ps.schedules.length > 0)
+      ? ps.schedules.map((sched) => ({
+          name: sched.name || '',
+          type: avail.scheduleType || 'fixedTimeSlot',
+          startDate: sched.startDate || '',
+          hasEndDate: !!sched.hasEndDate,
+          endDate: sched.hasEndDate ? (sched.endDate || '') : '',
+          weeklySchedule: avail.weeklySchedule || { Monday: [], Tuesday: [], Wednesday: [], Thursday: [], Friday: [], Saturday: [], Sunday: [] },
+          dateExceptions: Array.isArray(sched.dateExceptions) ? sched.dateExceptions : [],
+          pricingModel: td.pricingModel || 'perPerson',
+          currency: ps.currency || 'USD',
+          pricingApproach: td.pricingApproach || 'dependsOnAge',
+          uniformPrice: td.uniformPrice ?? null,
+          pricingCategories: (Array.isArray(td.pricingCategories) && td.pricingCategories.length > 0)
+            ? td.pricingCategories.map((c) => ({ ...c, tiers: c.tiers || [] }))
+            : (Array.isArray(td.ageGroups) && td.ageGroups.length > 0)
+              ? td.ageGroups.map((c) => ({ ...c, tiers: [] }))
+              : [{ name: 'Adult', price: null, minAge: 13, maxAge: 99, notAllowed: false, ticketNotRequired: false, needsAdult: false, idRequired: false, idType: '', tiers: [] }],
+          minParticipants: td.minParticipants ?? 1,
+          maxParticipants: td.maxParticipants ?? 10,
+        }))
+      : [],
+    contactPhone: content.contactPhone || null,
+    isPrivateActivity: !!content.isPrivateActivity,
+    passportRequired: !!content.passportRequired,
+    flightInfoRequired: !!content.flightInfoRequired,
+    shipInfoRequired: !!content.shipInfoRequired,
+    trainInfoRequired: !!content.trainInfoRequired,
+    hotelInfoRequired: !!content.hotelInfoRequired,
     metaTitle: tour.metaTitle || '',
     metaDescription: tour.metaDescription || '',
   }
@@ -292,43 +320,10 @@ export default function ProductBuilderPage() {
     contentRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
   }, [currentStep])
 
-  const [showResumePrompt, setShowResumePrompt] = useState(false)
-
   useEffect(() => {
     if (id !== 'new' || !hasHydrated) return
-    if (sessionStorage.getItem('pb-draft-discarded') === 'true') {
-      reset()
-      return
-    }
-    try {
-      const raw = localStorage.getItem('product-builder-draft')
-      if (raw) {
-        const parsed = JSON.parse(raw)
-        const hasData = Object.keys(parsed).some(
-          (k) => !['hasHydrated', 'currentStep', 'currentSectionId', 'currentStepId', 'completedStepIds', 'stepErrors', 'savedProductId'].includes(k)
-            && parsed[k] != null && parsed[k] !== '' && (!Array.isArray(parsed[k]) || parsed[k].length > 0)
-        )
-        if (hasData) {
-          setShowResumePrompt(true)
-          return
-        }
-      }
-    } catch {}
     reset()
-  }, [id, hasHydrated])
-
-  function handleResumeDraft() {
-    setShowResumePrompt(false)
-  }
-
-  function handleDiscardDraft() {
-    const urls = useProductBuilderStore.getState()._uploadedUrls
-    if (urls.length > 0) cleanupMediaUrls(urls)
-    useProductBuilderStore.getState().clearUploadedUrls()
-    sessionStorage.setItem('pb-draft-discarded', 'true')
-    setShowResumePrompt(false)
-    reset()
-  }
+  }, [id, hasHydrated, navigate])
 
   useEffect(() => {
     if (!id || id === 'new' || !hasHydrated) return
@@ -392,9 +387,8 @@ export default function ProductBuilderPage() {
       existingPhotos: (state.photos || []).map((p) => (typeof p === 'string' ? p : p.url || '')).filter(Boolean),
       meetingPoint: normalizeLocationPoint(state.meetingPoint),
       dropoffLocation: normalizeLocationPoint(state.dropoffLocation),
-      options: (state.options || []).filter((o) => o.title && o.languages?.length),
+      options: (state.options || []),
       itinerary: (state.itinerary || [])
-        .filter((e) => e.description)
         .map((e) => ({
           ...e,
           type: ['activity', 'transfer'].includes(e.type) ? e.type : 'activity',
@@ -406,6 +400,7 @@ export default function ProductBuilderPage() {
     delete payload._pendingFiles
     delete payload._hasHydrated
     delete payload._version
+    delete payload._uploadedUrls
     delete payload.currentStep
     delete payload.currentSectionId
     delete payload.currentStepId
@@ -428,8 +423,8 @@ export default function ProductBuilderPage() {
     setSaving(true)
     try {
       const res = savedProductId
-        ? await updateProduct(savedProductId, payload)
-        : await createProduct(payload)
+        ? await updateProduct(savedProductId, payload, { skipGlobalErrorHandler: true })
+        : await createProduct(payload, { skipGlobalErrorHandler: true })
       const newId = savedProductId || res.data?.data?.tour?.id
       if (newId) setStoreSavedProductId(newId)
       state.markSaved()
@@ -437,10 +432,14 @@ export default function ProductBuilderPage() {
       if (gygStepNumber === 16) {
         useProductBuilderStore.getState().completeStep('itinerary')
         navigate('/products')
+      } else if (!savedProductId && newId) {
+        const section = searchParams.get('section') || GYG_STEPS[0]?.sectionId
+        const step = searchParams.get('step') || GYG_STEPS[0]?.stepId
+        navigate(`/products/build/${newId}?section=${section}&step=${step}`, { replace: true })
       }
       return res
     } catch (err) {
-      toast.error(err.response?.data?.message || err.message || 'Failed to save product')
+      console.error('[ProductBuilder] Save failed:', err.response?.data?.message || err.message)
       throw err
     } finally {
       state.setSaving(false)
@@ -570,31 +569,7 @@ export default function ProductBuilderPage() {
           </div>
         </div>
 
-        {/* Resume Draft Prompt */}
-        {showResumePrompt && (
-          <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50">
-            <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full mx-4 p-6">
-              <h3 className="text-lg font-semibold text-slate-900 mb-2">Unsaved draft found</h3>
-              <p className="text-sm text-slate-600 mb-6">
-                You have an unsaved draft from your previous session. Would you like to resume editing or start fresh?
-              </p>
-              <div className="flex gap-3 justify-end">
-                <button
-                  onClick={handleDiscardDraft}
-                  className="px-4 py-2 text-sm font-medium text-slate-600 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors"
-                >
-                  Discard draft
-                </button>
-                <button
-                  onClick={handleResumeDraft}
-                  className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-xl hover:bg-emerald-700 transition-colors"
-                >
-                  Resume editing
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+
 
         {/* Exit Warning Modal */}
         {showExitWarning && (

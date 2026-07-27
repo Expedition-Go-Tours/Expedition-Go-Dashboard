@@ -1,5 +1,4 @@
 import { useEffect, useRef } from 'react'
-import { toast } from 'sonner'
 import { useProductBuilderStore } from './productBuilderStore'
 import { createProduct, updateProduct } from './api'
 
@@ -18,9 +17,8 @@ function buildPayload(state) {
     existingPhotos: (state.photos || []).map((p) => (typeof p === 'string' ? p : p.url || '')).filter(Boolean),
     meetingPoint: normalizeLocationPoint(state.meetingPoint),
     dropoffLocation: normalizeLocationPoint(state.dropoffLocation),
-    options: (state.options || []).filter((o) => o.title && o.languages?.length),
+    options: (state.options || []),
     itinerary: (state.itinerary || [])
-      .filter((e) => e.description)
       .map((e) => ({
         ...e,
         type: ['activity', 'transfer'].includes(e.type) ? e.type : 'activity',
@@ -30,12 +28,13 @@ function buildPayload(state) {
   }
 
   const omit = [
-    '_pendingFiles', '_hasHydrated', '_version',
+    '_pendingFiles', '_hasHydrated', '_version', '_uploadedUrls',
     'currentStep', 'currentSectionId', 'currentStepId',
     'completedStepIds', 'isDirty', 'isSaving', 'isSubmitting',
     'hasHydrated', 'lastSaved', 'availableTimeSlots',
     'currentScheduleStep', 'editingScheduleIndex',
     'stepErrors', 'savedProductId',
+    'showAdvancedCategorySettings',
   ]
   for (const key of omit) delete payload[key]
   if (!payload.copyrightConfirmed) delete payload.copyrightConfirmed
@@ -43,16 +42,19 @@ function buildPayload(state) {
   return payload
 }
 
+export { buildPayload }
+
 export function useAutoSave() {
   const timerRef = useRef(null)
   const savingRef = useRef(false)
-  const lastToastRef = useRef(0)
 
   useEffect(() => {
     const unsub = useProductBuilderStore.subscribe((state) => {
       if (savingRef.current) return
       if (!state.isDirty) return
       if (state.isSaving || state.isSubmitting) return
+      const stepNum = state.currentStep + 1
+      if (state.stepErrors?.[stepNum] && Object.keys(state.stepErrors[stepNum]).length > 0) return
 
       if (timerRef.current) clearTimeout(timerRef.current)
       timerRef.current = setTimeout(async () => {
@@ -66,27 +68,20 @@ export function useAutoSave() {
           const payload = buildPayload(s)
           const id = s.savedProductId
           const res = id
-            ? await updateProduct(id, payload)
-            : await createProduct(payload)
+            ? await updateProduct(id, payload, { skipGlobalErrorHandler: true })
+            : await createProduct(payload, { skipGlobalErrorHandler: true })
 
           const newId = id || res.data?.data?.tour?.id
           if (newId) s.setSavedProductId(newId)
           s.markSaved()
         } catch (err) {
-          if (err?.code !== 'ERR_CANCELED' && err?.message !== 'AUTH_REQUIRED') {
-            console.warn('[AutoSave] Failed:', err.message)
-            const status = err?.response?.status
-            if (status >= 400 && status < 500) {
-              // Validation error — stop retrying, no toast (inline errors shown in WizardNavFooter)
-              useProductBuilderStore.getState().markSaved()
-            } else {
-              // Server/network error — throttle toast, keep retrying
-              const now = Date.now()
-              if (now - lastToastRef.current > 10000) {
-                lastToastRef.current = now
-                toast.error(err.response?.data?.message || err.message || 'Failed to save draft')
-              }
-            }
+          const status = err?.response?.status
+          if (status >= 400 && status < 500) {
+            // Validation — stop retrying, inline errors shown in WizardNavFooter
+            useProductBuilderStore.getState().markSaved()
+          } else if (err?.code !== 'ERR_CANCELED' && err?.message !== 'AUTH_REQUIRED') {
+            // Server/network error — keep isDirty so we retry on next change
+            console.warn('[AutoSave] Save failed, will retry:', err.message)
           }
         } finally {
           savingRef.current = false
