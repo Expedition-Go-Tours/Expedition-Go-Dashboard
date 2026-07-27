@@ -75,10 +75,17 @@ export function useAutoSave() {
         } catch (err) {
           if (err?.code !== 'ERR_CANCELED' && err?.message !== 'AUTH_REQUIRED') {
             console.warn('[AutoSave] Failed:', err.message)
-            const now = Date.now()
-            if (now - lastToastRef.current > 10000) {
-              lastToastRef.current = now
-              toast.error(err.response?.data?.message || err.message || 'Failed to save draft')
+            const status = err?.response?.status
+            if (status >= 400 && status < 500) {
+              // Validation error — stop retrying, no toast (inline errors shown in WizardNavFooter)
+              useProductBuilderStore.getState().markSaved()
+            } else {
+              // Server/network error — throttle toast, keep retrying
+              const now = Date.now()
+              if (now - lastToastRef.current > 10000) {
+                lastToastRef.current = now
+                toast.error(err.response?.data?.message || err.message || 'Failed to save draft')
+              }
             }
           }
         } finally {
