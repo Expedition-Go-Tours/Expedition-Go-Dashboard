@@ -2,7 +2,6 @@ import { z } from 'zod'
 
 export const locationSchema = z.object({
   name: z.string().min(1, 'Location name is required').max(200),
-  visitType: z.string().max(50).optional(),
   address: z.string().max(300).optional(),
   lat: z.number().optional(),
   lng: z.number().optional(),
@@ -66,7 +65,6 @@ export const itineraryEntrySchema = z.object({
   day: z.number().min(1, 'Day number must be 1 or greater'),
   time: z.string().min(1, 'Start time is required'),
   type: z.enum(['activity', 'transfer']),
-  visitType: z.string().max(50).optional(),
   locationName: z.string().optional(),
   locationAddress: z.string().optional(),
   locationLat: z.number().nullable().optional(),
@@ -145,14 +143,6 @@ export const stepSchemas = {
     }),
   }),
   10: z.object({
-    photos: z
-      .array(z.object({ id: z.string(), url: z.string() }))
-      .min(4, 'Upload at least 4 photos'),
-    copyrightConfirmed: z.literal(true, {
-      message: 'You must confirm copyright ownership',
-    }),
-  }),
-  11: z.object({
     notSuitableFor: z.array(z.string()).optional(),
     notAllowed: z.array(z.string()).optional(),
     petFriendly: z.boolean().optional(),
@@ -161,6 +151,14 @@ export const stepSchemas = {
     emergencyCountryCode: z.string().max(5).optional(),
     emergencyPhone: z.string().max(20).optional(),
     voucherInfo: z.string().max(500).optional(),
+  }),
+  11: z.object({
+    photos: z
+      .array(z.object({ id: z.string(), url: z.string() }))
+      .min(4, 'Upload at least 4 photos'),
+    copyrightConfirmed: z.literal(true, {
+      message: 'You must confirm copyright ownership',
+    }),
   }),
   12: z.object({
     options: z

@@ -21,7 +21,7 @@ export default function Step10Photos() {
   const setCoverPhoto = useProductBuilderStore((s) => s.setCoverPhoto)
   const trackUploadedUrl = useProductBuilderStore((s) => s.trackUploadedUrl)
   const setField = useProductBuilderStore((s) => s.setField)
-  const errors = useStepErrors(9)
+  const errors = useStepErrors(11)
 
   const [uploading, setUploading] = useState(new Set())
   const [uploadErrors, setUploadErrors] = useState({})
