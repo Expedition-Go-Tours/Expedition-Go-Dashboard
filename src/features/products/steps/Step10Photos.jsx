@@ -19,6 +19,7 @@ export default function Step10Photos() {
   const reorderPhotos = useProductBuilderStore((s) => s.reorderPhotos)
   const setPhotoUrl = useProductBuilderStore((s) => s.setPhotoUrl)
   const setCoverPhoto = useProductBuilderStore((s) => s.setCoverPhoto)
+  const trackUploadedUrl = useProductBuilderStore((s) => s.trackUploadedUrl)
   const setField = useProductBuilderStore((s) => s.setField)
   const errors = useStepErrors(9)
 
@@ -58,6 +59,7 @@ export default function Step10Photos() {
       const urls = res.data?.data?.photos || []
       if (urls.length > 0) {
         setPhotoUrl(id, urls[0])
+        trackUploadedUrl(urls[0])
         if (!coverPhoto) setCoverPhoto(urls[0])
       }
     } catch (err) {
@@ -69,7 +71,7 @@ export default function Step10Photos() {
         return n
       })
     }
-  }, [setPhotoUrl, setCoverPhoto, coverPhoto])
+  }, [setPhotoUrl, trackUploadedUrl, setCoverPhoto, coverPhoto])
 
   const onDrop = useCallback(
     (acceptedFiles) => {

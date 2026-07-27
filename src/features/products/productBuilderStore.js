@@ -56,6 +56,7 @@ const INITIAL_FORM = {
   voucherInfo: '',
   photos: [],
   _pendingFiles: {},
+  _uploadedUrls: [],
   coverPhoto: '',
   copyrightConfirmed: false,
   options: [],
@@ -271,6 +272,11 @@ export const useProductBuilderStore = create(
           return { photos, isDirty: true }
         }),
       setCoverPhoto: (url) => set({ coverPhoto: url, isDirty: true }),
+      trackUploadedUrl: (url) =>
+        set((s) => ({
+          _uploadedUrls: s._uploadedUrls.includes(url) ? s._uploadedUrls : [...s._uploadedUrls, url],
+        })),
+      clearUploadedUrls: () => set({ _uploadedUrls: [] }),
 
       addOption: () =>
         set((s) => ({
@@ -714,7 +720,7 @@ export const useProductBuilderStore = create(
     {
       name: 'product-builder-draft',
       partialize: (state) => {
-        const { isDirty, isSaving, isSubmitting, lastSaved, hasHydrated, _pendingFiles, ...rest } = state
+        const { isDirty, isSaving, isSubmitting, lastSaved, hasHydrated, _pendingFiles, _uploadedUrls, ...rest } = state
         return rest
       },
       onRehydrateStorage: () => (state) => {

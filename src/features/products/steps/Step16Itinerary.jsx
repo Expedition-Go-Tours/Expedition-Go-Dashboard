@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useProductBuilderStore } from '@/features/products/productBuilderStore'
 import { useGeocoding } from '@/hooks/useGeocoding'
 import { ITINERARY_ACTIVITY_CATEGORIES } from '@/constants/gygLists'
@@ -644,28 +645,36 @@ function SingleDayBuilder({ pickupInfo, dropoffInfo, taggedLocations }) {
         </div>
 
         {/* Inline wizard — sits outside the node rows so it doesn't break the line */}
-        {showWizard && (
-          <div className="ml-14 mb-2">
-            <SegmentWizard
-              onComplete={handleComplete}
-              onCancel={() => { setShowWizard(false); setEditingIndex(null) }}
-              initialData={editingIndex !== null ? (() => {
-                const seg = segments[editingIndex]
-                return seg ? {
-                  activityType: seg.type,
-                  activityName: seg.activityName || seg.title,
-                  location: seg.locationName ? { name: seg.locationName, address: seg.locationAddress } : null,
-                  durationHours: String(Math.floor((seg.duration || 0) / 60)),
-                  durationMinutes: String((seg.duration || 0) % 60),
-                  importance: seg.importance || 'major',
-                  isOptional: !!seg.isOptional,
-                  additionalFee: !!seg.additionalFee,
-                } : null
-              })() : null}
-              taggedLocations={taggedLocations}
-            />
-          </div>
-        )}
+        <AnimatePresence>
+          {showWizard && (
+            <motion.div
+              className="ml-14 mb-2"
+              initial={{ opacity: 0, x: 24 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 24 }}
+              transition={{ duration: 0.2, ease: 'easeInOut' }}
+            >
+              <SegmentWizard
+                onComplete={handleComplete}
+                onCancel={() => { setShowWizard(false); setEditingIndex(null) }}
+                initialData={editingIndex !== null ? (() => {
+                  const seg = segments[editingIndex]
+                  return seg ? {
+                    activityType: seg.type,
+                    activityName: seg.activityName || seg.title,
+                    location: seg.locationName ? { name: seg.locationName, address: seg.locationAddress } : null,
+                    durationHours: String(Math.floor((seg.duration || 0) / 60)),
+                    durationMinutes: String((seg.duration || 0) % 60),
+                    importance: seg.importance || 'major',
+                    isOptional: !!seg.isOptional,
+                    additionalFee: !!seg.additionalFee,
+                  } : null
+                })() : null}
+                taggedLocations={taggedLocations}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Segments */}
         {segments.map((seg, i) => (
@@ -1039,8 +1048,24 @@ function MultiDayBuilder({ numDays, pickupInfo, taggedLocations }) {
 
   const tabs = ['Overview', ...Array.from({ length: numDays }, (_, i) => `Day ${i + 1}`), 'Additional info']
   const [activeTab, setActiveTab] = useState('Overview')
+  const [tabDirection, setTabDirection] = useState(1)
   const [editingIndex, setEditingIndex] = useState(null)
   const [showWizard, setShowWizard] = useState(false)
+
+  const tabVariants = {
+    initial: (d) => ({ opacity: 0, x: d * 24 }),
+    animate: { opacity: 1, x: 0 },
+    exit: (d) => ({ opacity: 0, x: d * -24 }),
+  }
+
+  function handleTabChange(tab) {
+    const currentIdx = tabs.indexOf(activeTab)
+    const nextIdx = tabs.indexOf(tab)
+    setTabDirection(nextIdx >= currentIdx ? 1 : -1)
+    setActiveTab(tab)
+    setShowWizard(false)
+    setEditingIndex(null)
+  }
 
   const activeDay = activeTab.startsWith('Day ') ? parseInt(activeTab.replace('Day ', '')) : null
 
@@ -1109,7 +1134,7 @@ function MultiDayBuilder({ numDays, pickupInfo, taggedLocations }) {
           return (
             <button
               key={tab}
-              onClick={() => { setActiveTab(tab); setShowWizard(false); setEditingIndex(null) }}
+              onClick={() => handleTabChange(tab)}
               className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === tab
                   ? 'border-emerald-600 text-emerald-600'
@@ -1123,121 +1148,154 @@ function MultiDayBuilder({ numDays, pickupInfo, taggedLocations }) {
         })}
       </div>
 
-      {/* Overview tab */}
-      {activeTab === 'Overview' && (
-        <div>
-          <h3 className="text-sm font-bold text-slate-900 mb-1">Overview <span className="font-normal text-slate-400">(optional)</span></h3>
-          <p className="text-sm text-slate-500 mb-3">Write an introductory overview to summarize your itinerary. Highlight the must-see sights, memorable activities, and the general atmosphere travelers can expect.</p>
-          <textarea
-            value={itineraryOverview}
-            onChange={(e) => setField('itineraryOverview', e.target.value.slice(0, 400))}
-            rows={8}
-            className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-y"
-            placeholder=""
-          />
-          <div className="text-right text-xs text-slate-400 mt-1">{itineraryOverview.length} / 400</div>
-        </div>
-      )}
+      {/* Tab content with animated transitions */}
+      <AnimatePresence mode="wait" custom={tabDirection}>
+        {activeTab === 'Overview' && (
+          <motion.div
+            key="overview"
+            custom={tabDirection}
+            variants={tabVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            transition={{ duration: 0.2, ease: 'easeInOut' }}
+          >
+            <h3 className="text-sm font-bold text-slate-900 mb-1">Overview <span className="font-normal text-slate-400">(optional)</span></h3>
+            <p className="text-sm text-slate-500 mb-3">Write an introductory overview to summarize your itinerary. Highlight the must-see sights, memorable activities, and the general atmosphere travelers can expect.</p>
+            <textarea
+              value={itineraryOverview}
+              onChange={(e) => setField('itineraryOverview', e.target.value.slice(0, 400))}
+              rows={8}
+              className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-y"
+              placeholder=""
+            />
+            <div className="text-right text-xs text-slate-400 mt-1">{itineraryOverview.length} / 400</div>
+          </motion.div>
+        )}
 
-      {/* Day tabs */}
-      {activeDay && (
-        <div>
-          {/* Day title */}
-          <div className="mb-5">
-            <h4 className="text-sm font-bold text-slate-900 mb-1">Day title</h4>
+        {activeDay && (
+          <motion.div
+            key={`day-${activeDay}`}
+            custom={tabDirection}
+            variants={tabVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            transition={{ duration: 0.2, ease: 'easeInOut' }}
+          >
+            {/* Day title */}
+            <div className="mb-5">
+              <h4 className="text-sm font-bold text-slate-900 mb-1">Day title</h4>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={dayTitles?.[activeDay] || ''}
+                  onChange={(e) => setField('dayTitles', { ...dayTitles, [activeDay]: e.target.value.slice(0, 60) })}
+                  placeholder="Summarize where you're going or what you're doing on this day"
+                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+                <div className="text-right text-xs text-slate-400 mt-1">{(dayTitles?.[activeDay] || '').length} / 60</div>
+              </div>
+            </div>
+
+            {/* Itinerary section */}
+            <h4 className="text-sm font-bold text-slate-900 mb-1">Itinerary</h4>
+            <p className="text-sm text-slate-500 mb-4">Create a timeline of what customers can expect on this day. Add each key activity as a separate segment.</p>
+
+            {/* Timeline */}
             <div className="relative">
-              <input
-                type="text"
-                value={dayTitles?.[activeDay] || ''}
-                onChange={(e) => setField('dayTitles', { ...dayTitles, [activeDay]: e.target.value.slice(0, 60) })}
-                placeholder="Summarize where you're going or what you're doing on this day"
-                className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-              <div className="text-right text-xs text-slate-400 mt-1">{(dayTitles?.[activeDay] || '').length} / 60</div>
-            </div>
-          </div>
+              <div className="absolute left-5 top-8 bottom-8 w-0.5 bg-emerald-600 z-0" />
 
-          {/* Itinerary section */}
-          <h4 className="text-sm font-bold text-slate-900 mb-1">Itinerary</h4>
-          <p className="text-sm text-slate-500 mb-4">Create a timeline of what customers can expect on this day. Add each key activity as a separate segment.</p>
-
-          {/* Timeline */}
-          <div className="relative">
-            <div className="absolute left-5 top-8 bottom-8 w-0.5 bg-emerald-600 z-0" />
-
-            {/* Starting location */}
-            <div className="flex items-center gap-4 py-3 relative z-10">
-              <GIcon size={40} />
-              <div className="flex-1 flex items-center justify-between border-b border-slate-200 pb-3 self-stretch">
-                <div className="flex flex-col justify-center">
-                  <p className="text-sm font-bold text-slate-900">Starting location:</p>
-                  {pickupInfo.sub && <p className="text-sm text-slate-500">{pickupInfo.sub}</p>}
+              {/* Starting location */}
+              <div className="flex items-center gap-4 py-3 relative z-10">
+                <GIcon size={40} />
+                <div className="flex-1 flex items-center justify-between border-b border-slate-200 pb-3 self-stretch">
+                  <div className="flex flex-col justify-center">
+                    <p className="text-sm font-bold text-slate-900">Starting location:</p>
+                    {pickupInfo.sub && <p className="text-sm text-slate-500">{pickupInfo.sub}</p>}
+                  </div>
+                  <button className="text-slate-400 hover:text-slate-600 shrink-0 ml-4" type="button">
+                    <Info size={16} />
+                  </button>
                 </div>
-                <button className="text-slate-400 hover:text-slate-600 shrink-0 ml-4" type="button">
-                  <Info size={16} />
-                </button>
+              </div>
+
+              {/* Inline segment form — single card matching screenshot */}
+              <AnimatePresence>
+                {showWizard && (
+                  <motion.div
+                    initial={{ opacity: 0, x: 24 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 24 }}
+                    transition={{ duration: 0.2, ease: 'easeInOut' }}
+                  >
+                    <DaySegmentForm
+                      initialData={editingIndex !== null ? getEditInitial(editingIndex) : null}
+                      taggedLocations={taggedLocations}
+                      photos={photos}
+                      onSave={handleComplete}
+                      onCancel={() => { setShowWizard(false); setEditingIndex(null) }}
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Segments */}
+              {daySegments.map((seg, i) => (
+                <DaySegmentCard
+                  key={seg.globalIdx}
+                  segment={seg}
+                  onEdit={() => { setEditingIndex(i); setShowWizard(true) }}
+                  onRemove={() => removeItineraryEntry(seg.globalIdx)}
+                  onAddAfter={() => { setEditingIndex(null); setShowWizard(true) }}
+                />
+              ))}
+
+              {/* Add segment inline button */}
+              {!showWizard && (
+                <div className="flex items-center gap-4 py-2 relative z-10">
+                  <div className="w-10 shrink-0" />
+                  <button
+                    onClick={() => { setEditingIndex(null); setShowWizard(true) }}
+                    className="px-5 py-2 border border-emerald-600 text-emerald-600 text-sm font-semibold rounded-full hover:bg-emerald-50 transition-colors"
+                  >
+                    Add itinerary segment
+                  </button>
+                </div>
+              )}
+
+              {/* End of day */}
+              <div className="flex items-center gap-4 py-3 relative z-10">
+                <CalendarNode size={40} />
+                <p className="text-sm font-bold text-slate-900">End of day {activeDay}</p>
               </div>
             </div>
+          </motion.div>
+        )}
 
-            {/* Inline segment form — single card matching screenshot */}
-            {showWizard && (
-              <DaySegmentForm
-                initialData={editingIndex !== null ? getEditInitial(editingIndex) : null}
-                taggedLocations={taggedLocations}
-                photos={photos}
-                onSave={handleComplete}
-                onCancel={() => { setShowWizard(false); setEditingIndex(null) }}
-              />
-            )}
-
-            {/* Segments */}
-            {daySegments.map((seg, i) => (
-              <DaySegmentCard
-                key={seg.globalIdx}
-                segment={seg}
-                onEdit={() => { setEditingIndex(i); setShowWizard(true) }}
-                onRemove={() => removeItineraryEntry(seg.globalIdx)}
-                onAddAfter={() => { setEditingIndex(null); setShowWizard(true) }}
-              />
-            ))}
-
-            {/* Add segment inline button */}
-            {!showWizard && (
-              <div className="flex items-center gap-4 py-2 relative z-10">
-                <div className="w-10 shrink-0" />
-                <button
-                  onClick={() => { setEditingIndex(null); setShowWizard(true) }}
-                  className="px-5 py-2 border border-emerald-600 text-emerald-600 text-sm font-semibold rounded-full hover:bg-emerald-50 transition-colors"
-                >
-                  Add itinerary segment
-                </button>
-              </div>
-            )}
-
-            {/* End of day */}
-            <div className="flex items-center gap-4 py-3 relative z-10">
-              <CalendarNode size={40} />
-              <p className="text-sm font-bold text-slate-900">End of day {activeDay}</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Additional info tab */}
-      {activeTab === 'Additional info' && (
-        <div>
-          <h3 className="text-sm font-bold text-slate-900 mb-1">Additional itinerary info <span className="font-normal text-slate-400">(optional)</span></h3>
-          <p className="text-sm text-slate-500 mb-3">Share information about anything that may change in the itinerary (e.g. seasonal changes) or additional information that wasn't covered in the itinerary.</p>
-          <textarea
-            value={additionalItineraryInfo}
-            onChange={(e) => setField('additionalItineraryInfo', e.target.value.slice(0, 400))}
-            rows={8}
-            className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-y"
-            placeholder=""
-          />
-          <div className="text-right text-xs text-slate-400 mt-1">{additionalItineraryInfo.length} / 400</div>
-        </div>
-      )}
+        {activeTab === 'Additional info' && (
+          <motion.div
+            key="additional"
+            custom={tabDirection}
+            variants={tabVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            transition={{ duration: 0.2, ease: 'easeInOut' }}
+          >
+            <h3 className="text-sm font-bold text-slate-900 mb-1">Additional itinerary info <span className="font-normal text-slate-400">(optional)</span></h3>
+            <p className="text-sm text-slate-500 mb-3">Share information about anything that may change in the itinerary (e.g. seasonal changes) or additional information that wasn't covered in the itinerary.</p>
+            <textarea
+              value={additionalItineraryInfo}
+              onChange={(e) => setField('additionalItineraryInfo', e.target.value.slice(0, 400))}
+              rows={8}
+              className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-y"
+              placeholder=""
+            />
+            <div className="text-right text-xs text-slate-400 mt-1">{additionalItineraryInfo.length} / 400</div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Footer actions */}
       <div className="flex items-center justify-between mt-8 pt-4 border-t border-slate-100">
@@ -1247,7 +1305,7 @@ function MultiDayBuilder({ numDays, pickupInfo, taggedLocations }) {
         <button
           onClick={() => {
             const nextIdx = tabs.indexOf(activeTab) + 1
-            if (nextIdx < tabs.length) setActiveTab(tabs[nextIdx])
+            if (nextIdx < tabs.length) handleTabChange(tabs[nextIdx])
           }}
           className="px-6 py-2.5 bg-emerald-600 text-white rounded-full text-sm font-semibold hover:bg-emerald-700 transition-colors"
         >
@@ -1358,35 +1416,62 @@ export default function Step16Itinerary() {
     </div>
   )
 
-  // ── Welcome ──
-  if (!started) {
-    return (
-      <div className="max-w-[860px]">
-        {header}
-        <WelcomeScreen
-          isMultiDay={isMultiDay}
-          onStart={() => setStarted(true)}
-        />
-      </div>
-    )
+  const pageVariants = {
+    initial: { opacity: 0, y: 16 },
+    animate: { opacity: 1, y: 0 },
+    exit: { opacity: 0, y: -16 },
   }
 
   return (
     <div className="max-w-[860px]">
       {header}
-      {isMultiDay ? (
-        <MultiDayBuilder
-          numDays={numDays}
-          pickupInfo={pickupInfo}
-          taggedLocations={taggedLocations}
-        />
-      ) : (
-        <SingleDayBuilder
-          pickupInfo={pickupInfo}
-          dropoffInfo={dropoffInfo}
-          taggedLocations={taggedLocations}
-        />
-      )}
+      <AnimatePresence mode="wait">
+        {!started ? (
+          <motion.div
+            key="welcome"
+            variants={pageVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            transition={{ duration: 0.2, ease: 'easeInOut' }}
+          >
+            <WelcomeScreen
+              isMultiDay={isMultiDay}
+              onStart={() => setStarted(true)}
+            />
+          </motion.div>
+        ) : isMultiDay ? (
+          <motion.div
+            key="multi"
+            variants={pageVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            transition={{ duration: 0.2, ease: 'easeInOut' }}
+          >
+            <MultiDayBuilder
+              numDays={numDays}
+              pickupInfo={pickupInfo}
+              taggedLocations={taggedLocations}
+            />
+          </motion.div>
+        ) : (
+          <motion.div
+            key="single"
+            variants={pageVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            transition={{ duration: 0.2, ease: 'easeInOut' }}
+          >
+            <SingleDayBuilder
+              pickupInfo={pickupInfo}
+              dropoffInfo={dropoffInfo}
+              taggedLocations={taggedLocations}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

@@ -17,6 +17,7 @@ import { PRODUCT_STATUSES } from "@/lib/constants";
 import { formatCurrency, formatDate, formatTime, cn } from "@/lib/utils";
 import { normalizeItinerary } from "@/features/products/utils/normalizeItinerary";
 import { transformImage, getSrcSet } from "@/lib/image";
+import DeleteModal from "@/components/ui/DeleteModal";
 
 function reorderPhotos(tour) {
   const rawPhotos = (tour?.photos || []).filter(Boolean);
@@ -302,6 +303,7 @@ export default function ProductDetailPage() {
   });
 
   const [deleting, setDeleting] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(null);
@@ -349,9 +351,9 @@ export default function ProductDetailPage() {
     }
   };
 
-  const handleDelete = () => {
+  const handleDeleteConfirm = () => {
+    setDeleteModalOpen(false);
     setMenuOpen(false);
-    if (!window.confirm("Are you sure you want to delete this product? This action cannot be undone.")) return;
     setDeleting(true);
     deleteProduct(id)
       .then(() => { toast.success("Product deleted successfully"); navigate("/products"); })
@@ -518,8 +520,8 @@ export default function ProductDetailPage() {
                     <button onClick={() => { setMenuOpen(false); navigate(`/products/build/${id}/type`); }} className="w-full flex items-center gap-2 px-3 py-2 text-xs text-slate-600 hover:bg-slate-50 transition-colors">
                       <Edit size={13} /> Edit
                     </button>
-                    <button onClick={handleDelete} disabled={deleting} className="w-full flex items-center gap-2 px-3 py-2 text-xs text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50">
-                      {deleting ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />} Delete
+                    <button onClick={() => { setMenuOpen(false); setDeleteModalOpen(true); }} className="w-full flex items-center gap-2 px-3 py-2 text-xs text-red-600 hover:bg-red-50 transition-colors">
+                      <Trash2 size={13} /> Delete
                     </button>
                   </div>
                 )}
@@ -1573,6 +1575,14 @@ export default function ProductDetailPage() {
       {/* MODALS */}
       <AllPhotosModal displayPhotos={displayPhotos} open={galleryOpen} onClose={() => setGalleryOpen(false)} onSelect={setLightboxIndex} handleImageError={handleImageError} tour={tour} />
       <PhotoGalleryModal displayPhotos={displayPhotos} index={lightboxIndex} setLightboxIndex={setLightboxIndex} handleImageError={handleImageError} tour={tour} />
+      <DeleteModal
+        isOpen={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        onConfirm={handleDeleteConfirm}
+        title="Delete product"
+        entityName={tour?.title}
+        isLoading={deleting}
+      />
     </div>
   );
 }

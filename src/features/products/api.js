@@ -84,3 +84,11 @@ export const deleteProduct = (id) => api.delete(`/tours/${id}`);
  * @returns {Promise} Axios response
  */
 export const requestKeyword = (keyword) => api.post('/keywords/request', { keyword });
+
+/**
+ * Clean up uploaded but unsaved media URLs from Cloudinary
+ * @param {string[]} urls - Cloudinary URLs to clean up if still pending
+ * @returns {Promise} Axios response
+ */
+export const cleanupMediaUrls = (urls) =>
+  api.delete('/media/cleanup', { data: { urls } }).catch(() => {});

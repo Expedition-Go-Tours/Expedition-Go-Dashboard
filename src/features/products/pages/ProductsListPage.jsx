@@ -14,6 +14,7 @@ import { listMyProducts, listProducts, deleteProduct } from "@/features/products
 import EmptyState from "@/components/shared/EmptyState";
 import { getAuthToken, useAuthStore } from "@/stores/authStore";
 import { transformImage } from "@/lib/image";
+import DeleteModal from "@/components/ui/DeleteModal";
 import {
   Select,
   SelectContent,
@@ -121,6 +122,7 @@ export default function ProductsListPage() {
   const [statusFilter, setStatusFilter] = useState(location.state?.statusFilter || "all");
   const [imgErrors, setImgErrors] = useState({});
   const [imgLoaded, setImgLoaded] = useState({});
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   const { data, isLoading, isError, error, refetch, isRefetching } = useQuery({
     queryKey: ["products", "list"],
@@ -507,17 +509,11 @@ export default function ProductsListPage() {
                               <Edit size={14} />
                             </button>
                             <button
-                              onClick={() => {
-                                if (!window.confirm(`Delete "${product.title}"? This cannot be undone.`)) return;
-                                deleteMut.mutate(product.id);
-                              }}
-                              disabled={deleteMut.isPending && deleteMut.variables === product.id}
-                              className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-40"
+                              onClick={() => setDeleteTarget(product)}
+                              className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                               title="Delete"
                             >
-                              {deleteMut.isPending && deleteMut.variables === product.id
-                                ? <Loader2 size={14} className="animate-spin" />
-                                : <Trash2 size={14} />}
+                              <Trash2 size={14} />
                             </button>
                           </>
                         )}
@@ -594,12 +590,11 @@ export default function ProductsListPage() {
                             <>
                               <button onClick={() => navigate(`/products/build/${product.id}/type`)} className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" title="Edit"><Edit size={14} /></button>
                               <button
-                                onClick={() => { if (!window.confirm(`Delete "${product.title}"? This cannot be undone.`)) return; deleteMut.mutate(product.id); }}
-                                disabled={deleteMut.isPending && deleteMut.variables === product.id}
-                                className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-40"
+                                onClick={() => setDeleteTarget(product)}
+                                className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                                 title="Delete"
                               >
-                                {deleteMut.isPending && deleteMut.variables === product.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                                <Trash2 size={14} />
                               </button>
                             </>
                           )}
@@ -648,6 +643,17 @@ export default function ProductsListPage() {
           </motion.div>
         )
       )}
+
+      <DeleteModal
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => {
+          if (deleteTarget) deleteMut.mutate(deleteTarget.id);
+          setDeleteTarget(null);
+        }}
+        entityName={deleteTarget?.title}
+        isLoading={deleteMut.isPending}
+      />
     </div>
   );
 }

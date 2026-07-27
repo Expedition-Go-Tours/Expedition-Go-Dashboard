@@ -4,7 +4,7 @@ import { Loader2, AlertCircle, X } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
 import { useProductBuilderStore } from '@/features/products/productBuilderStore'
-import { getMyProduct, createProduct, updateProduct } from '@/features/products/api'
+import { getMyProduct, createProduct, updateProduct, cleanupMediaUrls } from '@/features/products/api'
 import { useAutoSave } from '@/features/products/useAutoSave'
 import { GYG_STEPS, GYG_SECTIONS } from '@/features/products/gygSteps'
 import ErrorBoundary from '@/components/shared/ErrorBoundary'
@@ -242,6 +242,9 @@ export default function ProductBuilderPage() {
   }, [blocker.state])
 
   const handleConfirmExit = () => {
+    const urls = useProductBuilderStore.getState()._uploadedUrls
+    if (urls.length > 0) cleanupMediaUrls(urls)
+    useProductBuilderStore.getState().clearUploadedUrls()
     setShowExitWarning(false)
     blocker.proceed?.()
   }
@@ -319,6 +322,9 @@ export default function ProductBuilderPage() {
   }
 
   function handleDiscardDraft() {
+    const urls = useProductBuilderStore.getState()._uploadedUrls
+    if (urls.length > 0) cleanupMediaUrls(urls)
+    useProductBuilderStore.getState().clearUploadedUrls()
     sessionStorage.setItem('pb-draft-discarded', 'true')
     setShowResumePrompt(false)
     reset()
@@ -352,6 +358,16 @@ export default function ProductBuilderPage() {
 
     return () => { cancelled = true }
   }, [id, hasHydrated])
+
+  useEffect(() => {
+    return () => {
+      const urls = useProductBuilderStore.getState()._uploadedUrls
+      if (urls.length > 0) {
+        cleanupMediaUrls(urls)
+        useProductBuilderStore.getState().clearUploadedUrls()
+      }
+    }
+  }, [])
 
   const [saving, setSaving] = useState(false)
   const savedProductId = useProductBuilderStore((s) => s.savedProductId)
@@ -417,6 +433,7 @@ export default function ProductBuilderPage() {
       const newId = savedProductId || res.data?.data?.tour?.id
       if (newId) setStoreSavedProductId(newId)
       state.markSaved()
+      state.clearUploadedUrls()
       if (gygStepNumber === 16) {
         useProductBuilderStore.getState().completeStep('itinerary')
         navigate('/products')
