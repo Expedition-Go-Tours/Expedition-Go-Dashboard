@@ -83,7 +83,12 @@ function tourToProduct(tour) {
   const avail = sp.availability || {}
   const theme = tour.theme || {}
 
-  return {
+  console.log('[tourToProduct] input tour keys:', Object.keys(tour))
+  console.log('[tourToProduct] content keys:', Object.keys(content))
+  console.log('[tourToProduct] content.locations:', JSON.stringify(content.locations?.length))
+  console.log('[tourToProduct] content.itinerary:', JSON.stringify(content.itinerary?.length))
+
+  const result = {
     language: content.writingLanguage || '',
     category: categorization.category || '',
     subcategory: categorization.subcategory || '',
@@ -101,8 +106,8 @@ function tourToProduct(tour) {
     attractions: content.attractions || [],
     keywords: tour.tags || [],
     activitiesIncluded: content.activitiesIncluded || [],
-    transportModes: content.transportModes || [],
-    transportServices: content.transportServices || [],
+    transportModes: categorization.transportModes || [],
+    transportServices: categorization.transportServices || [],
     pickupTransportTypes: content.pickupTransportTypes || [],
     whatsIncluded: content.included || [],
     whatsNotIncluded: content.excluded || [],
@@ -227,6 +232,10 @@ function tourToProduct(tour) {
     metaTitle: tour.metaTitle || '',
     metaDescription: tour.metaDescription || '',
   }
+
+  console.log('[tourToProduct] result locations:', result.locations?.length)
+  console.log('[tourToProduct] result itinerary:', result.itinerary?.length)
+  return result
 }
 
 export default function ProductBuilderPage() {
@@ -341,6 +350,11 @@ export default function ProductBuilderPage() {
           return
         }
         const product = tourToProduct(tour)
+        console.log('[ProductBuilderPage] product from tourToProduct:', {
+          locationsLen: product?.locations?.length,
+          itineraryLen: product?.itinerary?.length,
+          hasLocations: product?.locations && product.locations.length > 0,
+        })
         loadDraft(product)
       })
       .catch((err) => {
@@ -418,6 +432,10 @@ export default function ProductBuilderPage() {
     delete payload.showAdvancedCategorySettings
 
     if (!payload.copyrightConfirmed) delete payload.copyrightConfirmed
+
+    console.log('[handleSave] payload keys:', Object.keys(payload).length)
+    console.log('[handleSave] payload.locations length:', payload.locations?.length)
+    console.log('[handleSave] payload.itinerary length:', payload.itinerary?.length)
 
     state.setSaving(true)
     setSaving(true)
