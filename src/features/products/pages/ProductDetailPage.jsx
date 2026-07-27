@@ -361,6 +361,10 @@ export default function ProductDetailPage() {
       .finally(() => setDeleting(false));
   };
 
+  const handleImageError = useCallback((e) => {
+    e.target.style.display = 'none';
+  }, []);
+
   const displayPhotos = useMemo(() => tour ? reorderPhotos(tour) : [], [tour]);
 
   useEffect(() => {
