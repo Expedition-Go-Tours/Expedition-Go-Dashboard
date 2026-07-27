@@ -107,7 +107,7 @@ function tourToProduct(tour) {
     pickupTransportTypes: content.pickupTransportTypes || [],
     whatsIncluded: content.included || [],
     whatsNotIncluded: content.excluded || [],
-    guideType: content.guideType || 'tour-guide',
+    guideType: (content.guideType === 'greeter' ? 'host' : content.guideType) || 'tour-guide',
     guideMaterials: content.guideMaterials || { audioGuide: false, infoBooklet: false },
     foodProvided: !!content.foodProvided,
     meals: Array.isArray(content.meals) ? content.meals :
@@ -405,7 +405,6 @@ export default function ProductBuilderPage() {
     delete payload.stepErrors
     delete payload.savedProductId
     delete payload.showAdvancedCategorySettings
-    // Note: do NOT delete schedules — backend uses it for schedule nesting
 
     if (!payload.copyrightConfirmed) delete payload.copyrightConfirmed
 

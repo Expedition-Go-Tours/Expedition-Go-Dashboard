@@ -34,7 +34,7 @@ function buildPayload(state) {
     'currentStep', 'currentSectionId', 'currentStepId',
     'completedStepIds', 'isDirty', 'isSaving', 'isSubmitting',
     'hasHydrated', 'lastSaved', 'availableTimeSlots',
-    'currentScheduleStep', 'editingScheduleIndex', 'schedules',
+    'currentScheduleStep', 'editingScheduleIndex',
     'stepErrors', 'savedProductId',
   ]
   for (const key of omit) delete payload[key]
