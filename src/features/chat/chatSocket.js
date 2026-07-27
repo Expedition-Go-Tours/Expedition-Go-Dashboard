@@ -1,7 +1,14 @@
 import { io } from "socket.io-client";
 import config from "@/config";
 
-const SOCKET_URL = config.api.baseURL.replace("/api", "") || "";
+let SOCKET_URL = "";
+try {
+  const url = new URL(config.api.baseURL);
+  url.pathname = "";
+  SOCKET_URL = url.toString().replace(/\/$/, "");
+} catch {
+  SOCKET_URL = "";
+}
 let socket = null;
 let currentUserId = null;
 
