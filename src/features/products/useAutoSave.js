@@ -10,11 +10,13 @@ function buildPayload(state) {
     return loc
   }
 
+  const outgoingPhotos = (state.photos || []).map((p) => (typeof p === 'string' ? p : p.url || '')).filter(Boolean)
+
   const payload = {
     ...state,
     highlights: (state.highlights || []).filter(Boolean),
-    photos: (state.photos || []).map((p) => (typeof p === 'string' ? p : p.url || '')).filter(Boolean),
-    existingPhotos: (state.photos || []).map((p) => (typeof p === 'string' ? p : p.url || '')).filter(Boolean),
+    photos: outgoingPhotos,
+    ...(outgoingPhotos.length > 0 ? { existingPhotos: outgoingPhotos } : {}),
     meetingPoint: normalizeLocationPoint(state.meetingPoint),
     dropoffLocation: normalizeLocationPoint(state.dropoffLocation),
     options: (state.options || []),
