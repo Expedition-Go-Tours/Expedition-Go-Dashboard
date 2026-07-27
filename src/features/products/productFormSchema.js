@@ -84,19 +84,19 @@ export const stepSchemas = {
    1: z.object({
      language: z.string().min(1, 'Select a language'),
    }),
-   2: z.object({
-     category: z.enum(['tour', 'activity', 'transport'], { errorMap: () => ({ message: 'Select a product type' }) }),
-     activitiesIncluded: z.array(z.string()).optional(),
-     transportModes: z.array(z.string()).optional(),
-     transportServices: z.array(z.string()).optional(),
-     difficulty: z.string().min(1, 'Select a difficulty level'),
-     duration: z.number({ invalid_type_error: 'Duration is required' }).min(0.5, 'Duration must be at least 0.5').nullable().optional(),
-     durationUnit: z.enum(['minutes', 'hours', 'days']).optional(),
-   }),
-   3: z.object({
-    title: z.string().min(1, 'Title is required'),
-    referenceCode: z.string().optional(),
-  }),
+  2: z.object({
+      title: z.string().min(1, 'Title is required'),
+      referenceCode: z.string().optional(),
+    }),
+    3: z.object({
+      category: z.enum(['tour', 'activity', 'transport'], { errorMap: () => ({ message: 'Select a product type' }) }),
+      activitiesIncluded: z.array(z.string()).optional(),
+      transportModes: z.array(z.string()).optional(),
+      transportServices: z.array(z.string()).optional(),
+      difficulty: z.string().min(1, 'Select a difficulty level'),
+      duration: z.number({ invalid_type_error: 'Duration is required' }).min(0.5, 'Duration must be at least 0.5').nullable().optional(),
+      durationUnit: z.enum(['minutes', 'hours', 'days']).optional(),
+    }),
   4: z.object({
     shortDescription: z
       .string()
