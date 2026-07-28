@@ -4,6 +4,7 @@ import { Loader2 } from 'lucide-react'
 import { validateStep } from './stepValidation'
 import { useProductBuilderStore } from './productBuilderStore'
 import { scrollToField, getFieldLabel } from './fieldLabels'
+import { GYG_STEPS } from './gygSteps'
 
 export default function WizardNavFooter({ currentStep, totalSteps, onBack, onNext, onSave, saving, isEditing }) {
   const navigate = useNavigate()
@@ -43,6 +44,10 @@ export default function WizardNavFooter({ currentStep, totalSteps, onBack, onNex
       return
     }
     clearStepErrors(currentStep)
+    try {
+      const gygStep = GYG_STEPS[currentStep - 1]
+      if (gygStep?.stepId) completeStep(gygStep.stepId)
+    } catch {}
     onNext()
   }
 
