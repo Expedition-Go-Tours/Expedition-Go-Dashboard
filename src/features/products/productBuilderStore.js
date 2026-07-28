@@ -681,9 +681,13 @@ export const useProductBuilderStore = create(
         })),
 
       loadDraft: (data) => {
+        const clean = {}
+        for (const [key, value] of Object.entries(data)) {
+          if (value !== null && value !== undefined) clean[key] = value
+        }
         set((s) => ({
           ...INITIAL_FORM,
-          ...data,
+          ...clean,
           currentStep: s.currentStep,
           currentSectionId: s.currentSectionId,
           currentStepId: s.currentStepId,
