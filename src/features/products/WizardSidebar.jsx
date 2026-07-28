@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { ChevronDown, Flag, FileText, Image, Settings, Map, CheckCircle2 } from 'lucide-react'
 import { GYG_SECTIONS, GYG_STEPS } from './gygSteps'
 import { useProductBuilderStore } from './productBuilderStore'
+import { isStepComplete } from './stepValidation'
 
 const SECTION_ICONS = {
   'getting-started': Flag,
@@ -12,7 +13,7 @@ const SECTION_ICONS = {
 }
 
 export default function WizardSidebar({ currentStep, onSelectStep }) {
-  const completedStepIds = useProductBuilderStore((s) => s.completedStepIds)
+  const formData = useProductBuilderStore((s) => s.formData)
   const stepErrors = useProductBuilderStore((s) => s.stepErrors)
   const navRef = useRef(null)
   const activeRef = useRef(null)
@@ -49,9 +50,7 @@ export default function WizardSidebar({ currentStep, onSelectStep }) {
   }, [currentStep])
 
   const totalSteps = GYG_STEPS.length
-  const completedCount = GYG_STEPS.filter(
-    (s) => s.id !== currentStep && completedStepIds.includes(s.stepId),
-  ).length
+  const completedCount = GYG_STEPS.filter((s) => isStepComplete(s.id, formData)).length
   const progress = Math.round((completedCount / totalSteps) * 100)
 
   function toggleSection(id) {
@@ -64,9 +63,9 @@ export default function WizardSidebar({ currentStep, onSelectStep }) {
   }
 
   function isCompleted(stepId) {
-    if (stepId === currentStep) return false
     const step = GYG_STEPS.find((s) => s.id === stepId)
-    return step ? completedStepIds.includes(step.stepId) : false
+    if (!step) return false
+    return isStepComplete(step.id, formData)
   }
 
   function getStepsForSection(section) {
