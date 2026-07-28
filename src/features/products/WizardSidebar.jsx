@@ -50,7 +50,9 @@ export default function WizardSidebar({ currentStep, onSelectStep }) {
   }, [currentStep])
 
   const totalSteps = GYG_STEPS.length
-  const completedCount = GYG_STEPS.filter((s) => isStepComplete(s.id, formData)).length
+  const completedCount = formData
+    ? GYG_STEPS.filter((s) => isStepComplete(s.id, formData)).length
+    : 0
   const progress = Math.round((completedCount / totalSteps) * 100)
 
   function toggleSection(id) {
@@ -63,6 +65,7 @@ export default function WizardSidebar({ currentStep, onSelectStep }) {
   }
 
   function isCompleted(stepId) {
+    if (!formData) return false
     const step = GYG_STEPS.find((s) => s.id === stepId)
     if (!step) return false
     return isStepComplete(step.id, formData)

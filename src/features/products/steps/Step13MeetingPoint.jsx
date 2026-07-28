@@ -9,7 +9,7 @@ import {
 import { HelpCircle, Info, Upload, X, ChevronDown, Image, Loader2, MapPin } from 'lucide-react'
 import { useProductBuilderStore } from '@/features/products/productBuilderStore'
 import { GYG_PICKUP_TRANSPORT } from '@/constants/gygLists'
-import { useGeocoding } from '@/hooks/useGeocoding'
+import LocationMapPicker from '@/components/shared/LocationMapPicker'
 
 const ARRIVAL_OPTIONS = [
   { value: 'none', label: 'Not relevant for this activity' },
@@ -31,58 +31,21 @@ const PICKUP_TIME_OPTIONS = [
 ]
 
 function AddressModal({ title, description, onSave, onCancel, initialValues }) {
-  const [searchQuery, setSearchQuery] = useState(initialValues?.address || '')
-  const [selected, setSelected] = useState(initialValues ? { formatted: initialValues.address, latitude: initialValues.lat, longitude: initialValues.lng } : null)
-  const [open, setOpen] = useState(false)
-  const [dropdownPos, setDropdownPos] = useState(null)
-  const inputRef = useRef(null)
-  const listRef = useRef(null)
+  const [selected, setSelected] = useState(initialValues
+    ? { formatted: initialValues.address, latitude: initialValues.lat, longitude: initialValues.lng }
+    : null
+  )
   const scrollRef = useRef(null)
-  const { search, results, loading, error, clear } = useGeocoding()
 
   const handleSelect = (result) => {
-    setSearchQuery(result.formatted)
     setSelected(result)
-    setOpen(false)
   }
 
-  useEffect(() => {
-    search(searchQuery)
-    const shouldOpen = searchQuery.length > 0 && !selected
-    setOpen(shouldOpen)
-    if (shouldOpen && inputRef.current) {
-      const rect = inputRef.current.getBoundingClientRect()
-      setDropdownPos({ left: rect.left, top: rect.bottom + 4, width: rect.width })
-    }
-  }, [searchQuery])
-
-  useEffect(() => {
-    if (!open) return
-    const container = scrollRef.current
-    if (!container) return
-    const handleScroll = () => setOpen(false)
-    container.addEventListener('scroll', handleScroll, { passive: true })
-    return () => container.removeEventListener('scroll', handleScroll)
-  }, [open])
-
-  useEffect(() => {
-    function handleClickOutside(e) {
-      if (
-        listRef.current && !listRef.current.contains(e.target) &&
-        inputRef.current && !inputRef.current.contains(e.target)
-      ) {
-        setOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
   const handleSave = () => {
-    const loc = selected || { formatted: searchQuery, latitude: null, longitude: null }
+    const loc = selected || { formatted: '', latitude: null, longitude: null }
     onSave({
       name: loc.formatted?.split(',').slice(0, 2).join(',') || loc.formatted || '',
-      address: loc.formatted || searchQuery,
+      address: loc.formatted || '',
       lat: loc.latitude,
       lng: loc.longitude,
     })
@@ -104,35 +67,13 @@ function AddressModal({ title, description, onSave, onCancel, initialValues }) {
           </div>
           <p className="text-sm text-slate-600 text-center mb-5 leading-relaxed">{description}</p>
 
-          <div className="relative mb-4">
-            <input
-              ref={inputRef}
-              type="text"
-              value={searchQuery}
-              onChange={(e) => { setSearchQuery(e.target.value); setSelected(null) }}
-              placeholder="Search location"
-              className="w-full h-11 rounded-lg border border-slate-200 px-3.5 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
-            />
-            {loading && (
-              <Loader2 size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 animate-spin" />
-            )}
-          </div>
-
-          {selected && (
-            <div className="rounded-xl overflow-hidden border border-slate-200 h-[300px] bg-slate-100 flex items-center justify-center">
-              <div className="text-center text-slate-400">
-                <div className="w-8 h-8 bg-slate-200 rounded-full flex items-center justify-center mx-auto mb-2">
-                  <MapPin className="w-4 h-4 text-slate-400" />
-                </div>
-                <p className="text-sm font-medium text-slate-500">{selected.formatted}</p>
-                {selected.latitude && selected.longitude && (
-                  <p className="text-xs text-slate-400 mt-1">
-                    {selected.latitude.toFixed(4)}, {selected.longitude.toFixed(4)}
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
+          <LocationMapPicker
+            onSelect={handleSelect}
+            initialLat={initialValues?.lat}
+            initialLng={initialValues?.lng}
+            label="Search Location"
+            placeholder="Search for a location..."
+          />
         </div>
 
         <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100">
@@ -152,37 +93,6 @@ function AddressModal({ title, description, onSave, onCancel, initialValues }) {
           </button>
         </div>
       </div>
-
-      {open && dropdownPos && (
-        <div
-          ref={listRef}
-          style={{
-            position: 'fixed',
-            left: dropdownPos.left,
-            top: dropdownPos.top,
-            width: dropdownPos.width,
-          }}
-          className="z-50 bg-white border border-slate-200 rounded-lg shadow-lg max-h-[240px] overflow-y-auto"
-        >
-          {results.map((r, i) => (
-            <button
-              key={i}
-              type="button"
-              onClick={() => handleSelect(r)}
-              className="w-full text-left px-3.5 py-2.5 text-sm text-slate-700 hover:bg-emerald-50 transition-colors flex items-start gap-2 border-0 bg-transparent cursor-pointer"
-            >
-              <MapPin size={14} className="mt-0.5 shrink-0 text-slate-400" />
-              <span className="leading-snug">{r.formatted}</span>
-            </button>
-          ))}
-          {!loading && results.length === 0 && searchQuery.length > 1 && (
-            <p className="px-3.5 py-3 text-sm text-slate-400">No results found</p>
-          )}
-          {error && (
-            <p className="px-3.5 py-3 text-sm text-red-500">{error}</p>
-          )}
-        </div>
-      )}
     </div>
   )
 }
