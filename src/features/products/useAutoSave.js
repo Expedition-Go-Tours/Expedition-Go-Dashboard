@@ -2,14 +2,61 @@ import { useEffect, useRef } from 'react'
 import { useProductBuilderStore } from './productBuilderStore'
 import { createProduct, updateProduct } from './api'
 
-function buildPayload(state) {
-  function normalizeLocationPoint(loc) {
-    if (!loc || typeof loc !== 'object') return null
-    if (loc.lat == null || loc.lng == null) return null
-    if (!loc.name || !loc.address) return null
-    return loc
-  }
+function normalizeLocationPoint(loc) {
+  if (!loc || typeof loc !== 'object') return null
+  if (loc.lat == null || loc.lng == null) return null
+  if (!loc.name || !loc.address) return null
+  return loc
+}
 
+function buildSchedulesAndPricing(state) {
+  const schedules = Array.isArray(state.schedules) ? state.schedules : []
+  return {
+    travelerDetails: {
+      pricingModel: state.pricingModel || 'perPerson',
+      pricingApproach: state.pricingApproach || 'dependsOnAge',
+      uniformPrice: state.uniformPrice ?? null,
+      pricingCategories: Array.isArray(state.pricingCategories) ? state.pricingCategories : [],
+      minParticipants: state.minParticipants ?? null,
+      maxParticipants: state.maxParticipants ?? null,
+      groupSizes: Array.isArray(state.groupSizes) ? state.groupSizes : [],
+      additionalPersonsEnabled: !!state.additionalPersonsEnabled,
+      additionalPersonPrice: state.additionalPersonPrice ?? null,
+      maxGroupsPerTimeSlot: state.maxGroupsPerTimeSlot ?? 1,
+    },
+    pricingSchedules: {
+      currency: state.currency || 'USD',
+      schedules: schedules.length > 0
+        ? schedules.map(s => ({
+            name: s.name || '',
+            type: s.type || state.scheduleType || 'fixedTimeSlot',
+            startDate: s.startDate || '',
+            hasEndDate: !!s.hasEndDate,
+            endDate: s.hasEndDate ? (s.endDate || '') : null,
+            weeklySchedule: s.weeklySchedule || state.weeklySchedule || null,
+            dateExceptions: Array.isArray(s.dateExceptions) ? s.dateExceptions : [],
+            timeSlots: Array.isArray(s.timeSlots) ? s.timeSlots : [],
+            pricingModel: s.pricingModel || state.pricingModel || 'perPerson',
+            currency: s.currency || state.currency || 'USD',
+            pricingApproach: s.pricingApproach || state.pricingApproach || 'dependsOnAge',
+            uniformPrice: s.uniformPrice ?? state.uniformPrice ?? null,
+            pricingCategories: Array.isArray(s.pricingCategories) ? s.pricingCategories : (Array.isArray(state.pricingCategories) ? state.pricingCategories : []),
+            minParticipants: s.minParticipants ?? state.minParticipants ?? null,
+            maxParticipants: s.maxParticipants ?? state.maxParticipants ?? null,
+          }))
+        : [],
+    },
+    availability: {
+      scheduleType: state.scheduleType || 'fixedTimeSlot',
+      operatingHoursStart: state.operatingHoursStart || '09:00',
+      operatingHoursEnd: state.operatingHoursEnd || '17:00',
+      weeklySchedule: state.weeklySchedule || null,
+      timeSlots: Array.isArray(state.timeSlots) ? state.timeSlots.map(t => typeof t === 'string' ? t : t.startTime) : [],
+    },
+  }
+}
+
+export function buildPayload(state) {
   const outgoingPhotos = (state.photos || []).map((p) => (typeof p === 'string' ? p : p.url || '')).filter(Boolean)
 
   const payload = {
@@ -27,6 +74,7 @@ function buildPayload(state) {
         duration: typeof e.duration === 'number' ? e.duration : 1,
         durationUnit: ['minute', 'hour', 'day'].includes(e.durationUnit) ? e.durationUnit : 'hour',
       })),
+    schedulesAndPricing: buildSchedulesAndPricing(state),
   }
 
   const omit = [
@@ -41,10 +89,10 @@ function buildPayload(state) {
   for (const key of omit) delete payload[key]
   if (!payload.copyrightConfirmed) delete payload.copyrightConfirmed
 
+  delete payload.schedulesAndPricing.availability.daysOfWeek
+
   return payload
 }
-
-export { buildPayload }
 
 export function useAutoSave() {
   const timerRef = useRef(null)
@@ -52,6 +100,7 @@ export function useAutoSave() {
 
   useEffect(() => {
     const unsub = useProductBuilderStore.subscribe((state) => {
+      if (!state.hasHydrated) return
       if (savingRef.current) return
       if (!state.isDirty) return
       if (state.isSaving || state.isSubmitting) return
@@ -79,10 +128,8 @@ export function useAutoSave() {
         } catch (err) {
           const status = err?.response?.status
           if (status >= 400 && status < 500) {
-            // Validation — stop retrying, inline errors shown in WizardNavFooter
             useProductBuilderStore.getState().markSaved()
           } else if (err?.code !== 'ERR_CANCELED' && err?.message !== 'AUTH_REQUIRED') {
-            // Server/network error — keep isDirty so we retry on next change
             console.warn('[AutoSave] Save failed, will retry:', err.message)
           }
         } finally {

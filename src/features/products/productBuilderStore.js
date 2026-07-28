@@ -688,10 +688,20 @@ export const useProductBuilderStore = create(
         set((s) => ({
           ...INITIAL_FORM,
           ...clean,
-          currentStep: s.currentStep,
-          currentSectionId: s.currentSectionId,
-          currentStepId: s.currentStepId,
-          completedStepIds: s.completedStepIds,
+          currentStep: 0,
+          currentSectionId: 'getting-started',
+          currentStepId: 'language',
+          completedStepIds: [],
+          currentScheduleStep: 1,
+          editingScheduleIndex: null,
+          scheduleName: '',
+          scheduleStartDate: '',
+          scheduleHasEndDate: false,
+          scheduleEndDate: '',
+          timeSlots: [],
+          weeklySchedule: { Monday: [], Tuesday: [], Wednesday: [], Thursday: [], Friday: [], Saturday: [], Sunday: [] },
+          dateExceptions: [],
+          stepErrors: {},
           isDirty: false,
         }))
       },
@@ -741,7 +751,7 @@ export const useProductBuilderStore = create(
         return persistedState
       },
       partialize: (state) => {
-        const { isDirty, isSaving, isSubmitting, lastSaved, hasHydrated, _pendingFiles, _uploadedUrls, ...rest } = state
+        const { isDirty, isSaving, isSubmitting, lastSaved, hasHydrated, _pendingFiles, _uploadedUrls, stepErrors, ...rest } = state
         return rest
       },
       onRehydrateStorage: () => (state) => {

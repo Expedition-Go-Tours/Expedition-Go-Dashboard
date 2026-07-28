@@ -4,7 +4,7 @@ import { Loader2, AlertCircle, X } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useProductBuilderStore } from '@/features/products/productBuilderStore'
 import { getMyProduct, createProduct, updateProduct, cleanupMediaUrls } from '@/features/products/api'
-import { useAutoSave } from '@/features/products/useAutoSave'
+import { buildPayload, useAutoSave } from '@/features/products/useAutoSave'
 import { GYG_STEPS, GYG_SECTIONS } from '@/features/products/gygSteps'
 import ErrorBoundary from '@/components/shared/ErrorBoundary'
 import WizardSidebar from '@/features/products/WizardSidebar'
@@ -384,55 +384,12 @@ export default function ProductBuilderPage() {
 
   useAutoSave()
 
-  function normalizeLocationPoint(loc) {
-    if (!loc || typeof loc !== 'object') return null
-    if (loc.lat == null || loc.lng == null) return null
-    if (!loc.name || !loc.address) return null
-    return loc
-  }
-
   async function handleSave() {
     const state = useProductBuilderStore.getState()
 
-    const outgoingPhotos = (state.photos || []).map((p) => (typeof p === 'string' ? p : p.url || '')).filter(Boolean)
-    const payload = {
-      ...state,
-      highlights: (state.highlights || []).filter(Boolean),
-      photos: outgoingPhotos,
-      ...(outgoingPhotos.length > 0 ? { existingPhotos: outgoingPhotos } : {}),
-      meetingPoint: normalizeLocationPoint(state.meetingPoint),
-      dropoffLocation: normalizeLocationPoint(state.dropoffLocation),
-      options: (state.options || []),
-      itinerary: (state.itinerary || [])
-        .map((e) => ({
-          ...e,
-          type: ['activity', 'transfer'].includes(e.type) ? e.type : 'activity',
-          duration: typeof e.duration === 'number' ? e.duration : 1,
-          durationUnit: ['minute', 'hour', 'day'].includes(e.durationUnit) ? e.durationUnit : 'hour',
-        })),
-    }
+    if (!state.isDirty) return
 
-    delete payload._pendingFiles
-    delete payload._hasHydrated
-    delete payload._version
-    delete payload._uploadedUrls
-    delete payload.currentStep
-    delete payload.currentSectionId
-    delete payload.currentStepId
-    delete payload.completedStepIds
-    delete payload.isDirty
-    delete payload.isSaving
-    delete payload.isSubmitting
-    delete payload.hasHydrated
-    delete payload.lastSaved
-    delete payload.availableTimeSlots
-    delete payload.currentScheduleStep
-    delete payload.editingScheduleIndex
-    delete payload.stepErrors
-    delete payload.savedProductId
-    delete payload.showAdvancedCategorySettings
-
-    if (!payload.copyrightConfirmed) delete payload.copyrightConfirmed
+    const payload = buildPayload(state)
 
     console.log('[handleSave] payload keys:', Object.keys(payload).length)
     console.log('[handleSave] payload.locations length:', payload.locations?.length)
@@ -452,8 +409,8 @@ export default function ProductBuilderPage() {
         useProductBuilderStore.getState().completeStep('itinerary')
         navigate('/products')
       } else if (!savedProductId && newId) {
-        const section = searchParams.get('section') || GYG_STEPS[0]?.sectionId
-        const step = searchParams.get('step') || GYG_STEPS[0]?.stepId
+        const section = GYG_STEPS[0]?.sectionId
+        const step = GYG_STEPS[0]?.stepId
         navigate(`/products/build/${newId}?section=${section}&step=${step}`, { replace: true })
       }
       return res
