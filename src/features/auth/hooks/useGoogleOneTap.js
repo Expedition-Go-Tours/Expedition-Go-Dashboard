@@ -16,7 +16,7 @@ export function useGoogleOneTap() {
     const isAuthenticated = useAuthStore.getState().isAuthenticated;
     const clientId = config.google.clientId;
 
-    if (!clientId || isAuthenticated || getAuthToken() || !callbackRef.current) {
+    if (!clientId || isAuthenticated || getAuthToken()) {
       return;
     }
 
