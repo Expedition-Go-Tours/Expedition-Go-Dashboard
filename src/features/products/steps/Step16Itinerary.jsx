@@ -249,29 +249,86 @@ function LocationSearch({ selected, onSelect, taggedLocations = [] }) {
   )
 }
 
-// ─── 7-step Segment Wizard ───────────────────────────────────────────────────
+// ─── Transport Mode Icon ─────────────────────────────────────────────────────
+function TransportIcon({ mode, size = 18 }) {
+  const icons = {
+    car: 'M5 11l1.5-4.5h11L19 11M5 11v5h2v-2h10v2h2v-5M7 15a1.5 1.5 0 100 3 1.5 1.5 0 000-3zm10 0a1.5 1.5 0 100 3 1.5 1.5 0 000-3z',
+    minivan: 'M3 12l2-5h14l2 5M3 12v4h2v-2h14v2h2v-4M5 16a2 2 0 104 0 2 2 0 00-4 0zm10 0a2 2 0 104 0 2 2 0 00-4 0z',
+    bus: 'M4 16V6a2 2 0 012-2h12a2 2 0 012 2v10M4 16h16M4 16v2a1 1 0 001 1h2a1 1 0 001-1v-2m10 0v2a1 1 0 001 1h2a1 1 0 001-1v-2M7 10h10M7 13h10',
+    boat: 'M2 20l10-4 10 4M12 4v12M8 8l4-4 4 4',
+    plane: 'M21 16v-2l-8-5V3.5A1.5 1.5 0 0011.5 2 1.5 1.5 0 0010 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z',
+    train: 'M5 4h14M5 4v12a2 2 0 002 2h10a2 2 0 002-2V4M5 4h14M8 20h8M8 20l-1 2M16 20l1 2M8 10h8M8 13h8',
+    bicycle: 'M12 4a1 1 0 100-2 1 1 0 000 2zM5 17a3 3 0 100-6 3 3 0 000 6zM19 17a3 3 0 100-6 3 3 0 000 6zM12 5l-3 5 4 1 2 4',
+    on_foot: 'M12 2a2 2 0 100 4 2 2 0 000-4zM10 20v-6l-3-2 1-4 4 2 4-2 1 4-3 2v6',
+  }
+  const d = icons[mode] || icons.car
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d={d} />
+    </svg>
+  )
+}
+
+const TRANSPORT_MODES = [
+  { id: 'car', label: 'Car' },
+  { id: 'minivan', label: 'Minivan' },
+  { id: 'bus', label: 'Bus' },
+  { id: 'boat', label: 'Boat' },
+  { id: 'plane', label: 'Plane' },
+  { id: 'train', label: 'Train' },
+  { id: 'bicycle', label: 'Bicycle' },
+  { id: 'on_foot', label: 'On foot' },
+]
+
+// ─── Segment Wizard (dynamic steps by type) ─────────────────────────────────
 function SegmentWizard({ onComplete, onCancel, initialData, taggedLocations }) {
   const [step, setStep] = useState(1)
   const [data, setData] = useState({
     activityType: 'activity',
     activityName: '',
     location: null,
+    fromLocation: null,
+    toLocation: null,
+    transportMode: 'car',
     durationHours: '',
     durationMinutes: '',
     importance: 'major',
     isOptional: false,
     additionalFee: false,
+    description: '',
     ...(initialData || {}),
   })
   const [showActivityModal, setShowActivityModal] = useState(false)
+  const [showDropdown, setShowDropdown] = useState(false)
+  const dropdownRef = useRef(null)
+
+  const isTransfer = data.activityType === 'transfer'
+  const maxStep = isTransfer ? 5 : 7
+
+  const allActivities = useMemo(() =>
+    Object.values(ITINERARY_ACTIVITY_CATEGORIES)
+      .flatMap((cat) => Object.values(cat))
+      .flat()
+      .sort(),
+  [])
+
+  useEffect(() => {
+    const h = (e) => { if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setShowDropdown(false) }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [])
 
   const update = useCallback((overrides) => setData((p) => ({ ...p, ...overrides })), [])
 
-  function next() { if (step < 7) setStep(step + 1); else onComplete(data) }
+  function next() {
+    if (step === 2 && isTransfer && !data.transportMode) return
+    if (step === 2 && !isTransfer && !data.activityName.trim()) return
+    if (step < maxStep) setStep(step + 1); else onComplete(data)
+  }
   function back() { if (step > 1) setStep(step - 1); else onCancel() }
 
   return (
-    <div className="border border-slate-200 rounded-xl bg-white overflow-hidden">
+    <div className="border border-slate-200 rounded-xl bg-white">
       <div className="px-6 py-6 min-h-[200px]">
 
         {step === 1 && (
@@ -292,21 +349,48 @@ function SegmentWizard({ onComplete, onCancel, initialData, taggedLocations }) {
           </>
         )}
 
-        {step === 2 && (
+        {step === 2 && !isTransfer && (
           <>
             <h3 className="text-xl font-bold text-slate-900 mb-1">What happens during this part of the experience?</h3>
             <p className="text-sm text-slate-500 mb-4">Enter what happens during this part of your experience into the search bar below.</p>
             <div className="flex items-center gap-3">
-              <div className="relative flex-1">
-                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <div ref={dropdownRef} className="relative flex-1">
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 z-10" />
                 <input
                   type="text" value={data.activityName}
-                  onChange={(e) => update({ activityName: e.target.value })}
+                  onChange={(e) => { update({ activityName: e.target.value }); setShowDropdown(true) }}
+                  onFocus={() => setShowDropdown(true)}
                   placeholder="Enter activity here"
                   className="w-full pl-9 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
+                {showDropdown && data.activityName.length > 0 && (
+                  <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
+                    <div className="max-h-64 overflow-y-auto py-1">
+                      {allActivities
+                        .filter((a) => a.toLowerCase().includes(data.activityName.toLowerCase()))
+                        .sort((a, b) => {
+                          const iA = a.toLowerCase().indexOf(data.activityName.toLowerCase())
+                          const iB = b.toLowerCase().indexOf(data.activityName.toLowerCase())
+                          return iA - iB
+                        })
+                        .map((item) => (
+                          <button
+                            key={item}
+                            type="button"
+                            onClick={() => { update({ activityName: item }); setShowDropdown(false) }}
+                            className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 transition-colors cursor-pointer"
+                          >
+                            {item}
+                          </button>
+                        ))}
+                      {allActivities.filter((a) => a.toLowerCase().includes(data.activityName.toLowerCase())).length === 0 && (
+                        <p className="px-4 py-3 text-sm text-slate-400">No matching activities found</p>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
-              <button onClick={() => setShowActivityModal(true)} className="text-sm font-medium text-emerald-600 hover:text-emerald-700 whitespace-nowrap">
+              <button onClick={() => setShowActivityModal(true)} className="text-sm font-medium text-emerald-600 hover:text-emerald-700 whitespace-nowrap shrink-0">
                 or <span className="underline">Select from list</span>
               </button>
             </div>
@@ -320,7 +404,31 @@ function SegmentWizard({ onComplete, onCancel, initialData, taggedLocations }) {
           </>
         )}
 
-        {step === 3 && (
+        {step === 2 && isTransfer && (
+          <>
+            <h3 className="text-xl font-bold text-slate-900 mb-1">How are travellers getting there?</h3>
+            <p className="text-sm text-slate-500 mb-4">Select the mode of transport for this transfer.</p>
+            <div className="grid grid-cols-4 gap-3">
+              {TRANSPORT_MODES.map(({ id, label }) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => update({ transportMode: id })}
+                  className={`flex flex-col items-center gap-2 px-3 py-4 rounded-xl border-2 text-sm font-medium transition-colors cursor-pointer ${
+                    data.transportMode === id
+                      ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                      : 'border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50'
+                  }`}
+                >
+                  <TransportIcon mode={id} size={24} />
+                  {label}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+
+        {step === 3 && !isTransfer && (
           <>
             <h3 className="text-xl font-bold text-slate-900 mb-1">Where does this part of your experience take place?</h3>
             <p className="text-sm text-slate-500 mb-4">Select one of the locations tagged to your experience from the list below or use a non-specific location.</p>
@@ -331,11 +439,30 @@ function SegmentWizard({ onComplete, onCancel, initialData, taggedLocations }) {
           </>
         )}
 
+        {step === 3 && isTransfer && (
+          <>
+            <h3 className="text-xl font-bold text-slate-900 mb-1">Where does this transfer start and end?</h3>
+            <p className="text-sm text-slate-500 mb-4">Select the pickup and drop-off locations for this transfer.</p>
+            <div className="space-y-4">
+              <div>
+                <p className="text-sm font-semibold text-slate-700 mb-1.5">From</p>
+                <LocationSearch selected={data.fromLocation} onSelect={(l) => update({ fromLocation: l })} taggedLocations={taggedLocations} />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-700 mb-1.5">To</p>
+                <LocationSearch selected={data.toLocation} onSelect={(l) => update({ toLocation: l })} taggedLocations={taggedLocations} />
+              </div>
+            </div>
+          </>
+        )}
+
         {step === 4 && (
           <>
             <h3 className="text-xl font-bold text-slate-900 mb-1">How long does this part of your experience last?</h3>
             <p className="text-sm text-slate-500 mb-5">
-              Add a duration for this specific part of the experience. You may also skip adding a duration if you don't wish to display one for this segment (e.g. attractions you're passing by from a moving vehicle, etc).
+              {isTransfer
+                ? 'Add the estimated duration of this transfer.'
+                : 'Add a duration for this specific part of the experience. You may also skip adding a duration if you don\'t wish to display one for this segment (e.g. attractions you\'re passing by from a moving vehicle, etc).'}
             </p>
             <p className="text-sm font-bold text-slate-800 mb-3">Duration</p>
             <div className="flex items-center gap-3">
@@ -349,7 +476,7 @@ function SegmentWizard({ onComplete, onCancel, initialData, taggedLocations }) {
           </>
         )}
 
-        {step === 5 && (
+        {step === 5 && !isTransfer && (
           <>
             <h3 className="text-xl font-bold text-slate-900 mb-5">How important is this activity to the overall experience?</h3>
             <div className="space-y-3">
@@ -367,7 +494,22 @@ function SegmentWizard({ onComplete, onCancel, initialData, taggedLocations }) {
           </>
         )}
 
-        {step === 6 && (
+        {step === 5 && isTransfer && (
+          <>
+            <h3 className="text-xl font-bold text-slate-900 mb-1">Additional notes about this transfer</h3>
+            <p className="text-sm text-slate-500 mb-4">Describe what travellers can expect during this transfer (optional, but recommended).</p>
+            <textarea
+              value={data.description}
+              onChange={(e) => update({ description: e.target.value.slice(0, 500) })}
+              placeholder="e.g. Scenic drive along the coast, approx. 1 hour with a rest stop"
+              rows={4}
+              className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
+            />
+            <div className="text-right text-xs text-slate-400 mt-1">{data.description.length} / 500</div>
+          </>
+        )}
+
+        {(step === 6 && !isTransfer) && (
           <>
             <h3 className="text-xl font-bold text-slate-900 mb-5">Is this part of your experience optional?</h3>
             <div className="space-y-3">
@@ -382,7 +524,7 @@ function SegmentWizard({ onComplete, onCancel, initialData, taggedLocations }) {
           </>
         )}
 
-        {step === 7 && (
+        {(step === 7 && !isTransfer) && (
           <>
             <h3 className="text-xl font-bold text-slate-900 mb-5">Does this part of your experience require an additional fee?</h3>
             <div className="space-y-3">
@@ -407,7 +549,7 @@ function SegmentWizard({ onComplete, onCancel, initialData, taggedLocations }) {
             <button onClick={() => { update({ durationHours: '0', durationMinutes: '0' }); next() }} className="text-sm font-medium text-emerald-600 hover:text-emerald-700">Skip</button>
           )}
           <button onClick={next} className="px-5 py-2 text-sm font-semibold text-white bg-emerald-600 rounded-full hover:bg-emerald-600 transition-colors">
-            {step < 7 ? 'Next' : 'Save'}
+            {step < maxStep ? 'Next' : 'Save'}
           </button>
         </div>
       </div>
@@ -432,15 +574,38 @@ function SegmentCard({ segment, onEdit, onRemove, onAddAfter }) {
       ? (segment.duration || 0) * 60
       : (segment.duration || 0) * 1440
   const durLabel = durationLabel(totalMin)
-  const actDisplay = [segment.activityName || segment.title, durLabel].filter(Boolean).join(' ')
+  const isTransfer = segment.type === 'transfer'
+  const transportLabel = TRANSPORT_MODES.find((m) => m.id === segment.title)?.label || segment.title
 
   return (
     <div className="flex items-center gap-4 py-3 relative z-10">
-      <ActivityNode isOptional={segment.isOptional} />
+      {isTransfer ? (
+        <div className="relative z-10 w-10 h-10 rounded-full bg-amber-500 flex items-center justify-center text-white shrink-0">
+          <TransportIcon mode={segment.title || 'car'} size={18} />
+        </div>
+      ) : (
+        <ActivityNode isOptional={segment.isOptional} />
+      )}
       <div className="flex-1 border-b border-slate-100 pb-3 min-w-0 self-stretch flex flex-col justify-center">
-        <p className="text-sm font-bold text-slate-900">{segment.locationName || segment.location?.name || 'Location'}</p>
-        {actDisplay && <p className="text-sm text-slate-600">{actDisplay}</p>}
-        {segment.isOptional && <p className="text-xs text-emerald-600 mt-0.5">Optional</p>}
+        {isTransfer ? (
+          <>
+            <p className="text-sm font-bold text-slate-900">
+              {segment.locationName && segment.locationAddress
+                ? `${segment.locationName} \u2192 ${segment.locationAddress}`
+                : segment.locationName || segment.locationAddress || 'Transfer'}
+            </p>
+            <p className="text-sm text-slate-600">{transportLabel}{durLabel ? ` ${durLabel}` : ''}</p>
+            {segment.description && segment.description !== ' ' && (
+              <p className="text-xs text-slate-400 mt-0.5">{segment.description}</p>
+            )}
+          </>
+        ) : (
+          <>
+            <p className="text-sm font-bold text-slate-900">{segment.locationName || segment.location?.name || 'Location'}</p>
+            <p className="text-sm text-slate-600">{[segment.activityName || segment.title, durLabel].filter(Boolean).join(' ')}</p>
+            {segment.isOptional && <p className="text-xs text-emerald-600 mt-0.5">Optional</p>}
+          </>
+        )}
       </div>
       <button
         onClick={() => onEdit()}
@@ -615,13 +780,30 @@ function SingleDayBuilder({ pickupInfo, dropoffInfo, taggedLocations }) {
   }
 
   function handleComplete(data) {
+    const isTransfer = data.activityType === 'transfer'
     const totalMin = (parseInt(data.durationHours) || 0) * 60 + (parseInt(data.durationMinutes) || 0)
-    const entry = {
+    const entry = isTransfer ? {
+      day: 1, time: '09:00',
+      duration: totalMin || 1, durationUnit: 'minute',
+      title: data.transportMode || 'car',
+      description: data.description || `Transfer by ${TRANSPORT_MODES.find((m) => m.id === data.transportMode)?.label || 'car'}`,
+      type: 'transfer',
+      visitType: 'visit',
+      locationName: data.fromLocation?.name || '',
+      locationAddress: data.toLocation?.name || '',
+      locationLat: data.fromLocation?.lat || null,
+      locationLng: data.fromLocation?.lng || null,
+      isCustomLocation: false,
+      isOptional: false,
+      additionalFee: false,
+      activityName: '',
+      importance: 'minor',
+    } : {
       day: 1, time: '09:00',
       duration: totalMin || 1, durationUnit: 'minute',
       title: data.activityName || '',
-      description: data.activityName || '',
-      type: data.activityType === 'transfer' ? 'transfer' : 'activity',
+      description: data.activityName,
+      type: 'activity',
       visitType: 'visit',
       locationName: data.location?.name || '',
       locationAddress: data.location?.address || '',
@@ -687,8 +869,20 @@ function SingleDayBuilder({ pickupInfo, dropoffInfo, taggedLocations }) {
                   onCancel={() => { setShowWizard(false); setEditingIndex(null) }}
                   initialData={(() => {
                     const s = segments[editingIndex]
-                    return s ? {
-                      activityType: s.type,
+                    if (!s) return null
+                    if (s.type === 'transfer') {
+                      return {
+                        activityType: 'transfer',
+                        transportMode: s.title || 'car',
+                        fromLocation: s.locationName ? { name: s.locationName } : null,
+                        toLocation: s.locationAddress ? { name: s.locationAddress } : null,
+                        durationHours: String(Math.floor((s.duration || 0) / 60)),
+                        durationMinutes: String((s.duration || 0) % 60),
+                        description: s.description && s.description !== ' ' ? s.description : '',
+                      }
+                    }
+                    return {
+                      activityType: 'activity',
                       activityName: s.activityName || s.title,
                       location: s.locationName ? { name: s.locationName, address: s.locationAddress } : null,
                       durationHours: String(Math.floor((s.duration || 0) / 60)),
@@ -696,7 +890,7 @@ function SingleDayBuilder({ pickupInfo, dropoffInfo, taggedLocations }) {
                       importance: s.importance || 'major',
                       isOptional: !!s.isOptional,
                       additionalFee: !!s.additionalFee,
-                    } : null
+                    }
                   })()}
                   taggedLocations={taggedLocations}
                 />
@@ -704,6 +898,18 @@ function SingleDayBuilder({ pickupInfo, dropoffInfo, taggedLocations }) {
             )}
           </div>
         ))}
+
+        {/* Add-new wizard (inside timeline, above dropoff) */}
+        {showWizard && editingIndex === null && (
+          <div className="mb-2 ml-14">
+            <SegmentWizard
+              onComplete={handleComplete}
+              onCancel={() => { setShowWizard(false) }}
+              initialData={null}
+              taggedLocations={taggedLocations}
+            />
+          </div>
+        )}
 
         {/* Dropoff row */}
         <div className="flex items-center gap-4 py-3 relative z-10">
@@ -719,18 +925,6 @@ function SingleDayBuilder({ pickupInfo, dropoffInfo, taggedLocations }) {
           </div>
         </div>
       </div>
-
-      {/* Add-new wizard (editingIndex is null → show below dropoff) */}
-      {showWizard && editingIndex === null && (
-        <div className="mb-2">
-          <SegmentWizard
-            onComplete={handleComplete}
-            onCancel={() => { setShowWizard(false) }}
-            initialData={null}
-            taggedLocations={taggedLocations}
-          />
-        </div>
-      )}
 
       {/* Actions */}
       <div className="flex justify-end mt-5">
@@ -782,23 +976,50 @@ function DaySegmentCard({ segment, onEdit, onRemove, onAddAfter }) {
   }
 
   const timeDisplay = formatTime(segment.time)
-  const titleDisplay = segment.activityName || segment.title || ''
+  const isTransfer = segment.type === 'transfer'
+  const transportLabel = TRANSPORT_MODES.find((m) => m.id === segment.title)?.label || segment.title
+  const titleDisplay = isTransfer
+    ? transportLabel
+    : (segment.activityName || segment.title || '')
   const headline = [timeDisplay, titleDisplay].filter(Boolean).join(' – ')
 
   return (
     <div className="flex items-start gap-4 py-3 relative z-10">
-      <div className="relative z-10 w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-white shrink-0">
-        <Plus size={18} strokeWidth={2.5} />
-      </div>
+      {isTransfer ? (
+        <div className="relative z-10 w-10 h-10 rounded-full bg-amber-500 flex items-center justify-center text-white shrink-0">
+          <TransportIcon mode={segment.title || 'car'} size={18} />
+        </div>
+      ) : (
+        <div className="relative z-10 w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-white shrink-0">
+          <Plus size={18} strokeWidth={2.5} />
+        </div>
+      )}
       <div className="flex-1 border-b border-slate-100 pb-3 min-w-0">
         {headline && <p className="text-sm font-semibold text-slate-900">{headline}</p>}
-        {segment.description && segment.description !== ' ' && (
-          <p className="text-sm text-slate-600 mt-0.5 break-words">{segment.description}</p>
-        )}
-        {segment.locationName && (
-          <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
-            <MapPin size={11} /> {segment.locationName}
-          </p>
+        {isTransfer ? (
+          <>
+            {(segment.locationName || segment.locationAddress) && (
+              <p className="text-xs text-slate-500 mt-0.5">
+                {segment.locationName && segment.locationAddress
+                  ? `${segment.locationName} \u2192 ${segment.locationAddress}`
+                  : segment.locationName || segment.locationAddress}
+              </p>
+            )}
+            {segment.description && segment.description !== ' ' && (
+              <p className="text-sm text-slate-600 mt-0.5 break-words">{segment.description}</p>
+            )}
+          </>
+        ) : (
+          <>
+            {segment.description && segment.description !== ' ' && (
+              <p className="text-sm text-slate-600 mt-0.5 break-words">{segment.description}</p>
+            )}
+            {segment.locationName && (
+              <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
+                <MapPin size={11} /> {segment.locationName}
+              </p>
+            )}
+          </>
         )}
       </div>
       <button
@@ -936,9 +1157,13 @@ function DaySegmentForm({ initialData, taggedLocations, photos = [], onSave, onC
   const [selectedPhoto, setSelectedPhoto] = useState(initialData?.photo || '')
 
   function handleSave() {
+    if (!description.trim()) {
+      alert('Please enter a description for this segment')
+      return
+    }
     onSave({
       activityName: title,
-      description: description || '',
+      description,
       location,
       time,
       photo: selectedPhoto,
@@ -1122,15 +1347,35 @@ function MultiDayBuilder({ numDays, pickupInfo, taggedLocations }) {
   }, [itinerary, activeDay])
 
   function handleComplete(data) {
+    const isTransfer = data.activityType === 'transfer'
     const totalMin = (parseInt(data.durationHours) || 0) * 60 + (parseInt(data.durationMinutes) || 0)
-    const entry = {
+    const entry = isTransfer ? {
+      day: activeDay,
+      time: data.time || '09:00',
+      duration: totalMin || 0,
+      durationUnit: 'minute',
+      title: data.transportMode || 'car',
+      description: data.description || `Transfer by ${TRANSPORT_MODES.find((m) => m.id === data.transportMode)?.label || 'car'}`,
+      type: 'transfer',
+      visitType: 'visit',
+      locationName: data.fromLocation?.name || '',
+      locationAddress: data.toLocation?.name || '',
+      locationLat: data.fromLocation?.lat || null,
+      locationLng: data.fromLocation?.lng || null,
+      isCustomLocation: false,
+      isOptional: false,
+      additionalFee: false,
+      activityName: '',
+      importance: 'minor',
+      photo: data.photo || '',
+    } : {
       day: activeDay,
       time: data.time || '09:00',
       duration: totalMin || 0,
       durationUnit: 'minute',
       title: data.activityName || '',
-      description: data.description || data.activityName || '',
-      type: data.activityType === 'transfer' ? 'transfer' : 'activity',
+      description: data.description || data.activityName,
+      type: 'activity',
       visitType: 'visit',
       locationName: data.location?.name || '',
       locationAddress: data.location?.address || '',
@@ -1156,8 +1401,19 @@ function MultiDayBuilder({ numDays, pickupInfo, taggedLocations }) {
   function getEditInitial(i) {
     const seg = daySegments[i]
     if (!seg) return null
+    if (seg.type === 'transfer') {
+      return {
+        activityType: 'transfer',
+        transportMode: seg.title || 'car',
+        fromLocation: seg.locationName ? { name: seg.locationName } : null,
+        toLocation: seg.locationAddress ? { name: seg.locationAddress } : null,
+        durationHours: String(Math.floor((seg.duration || 0) / 60)),
+        durationMinutes: String((seg.duration || 0) % 60),
+        description: seg.description && seg.description !== ' ' ? seg.description : '',
+      }
+    }
     return {
-      activityType: seg.type,
+      activityType: 'activity',
       activityName: seg.activityName || seg.title,
       location: seg.locationName ? { name: seg.locationName, address: seg.locationAddress } : null,
       durationHours: String(Math.floor((seg.duration || 0) / 60)),
