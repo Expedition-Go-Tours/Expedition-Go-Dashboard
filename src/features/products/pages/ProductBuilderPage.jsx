@@ -344,6 +344,7 @@ export default function ProductBuilderPage() {
         }
         const product = tourToProduct(tour)
         loadDraft(product)
+        setStoreSavedProductId(id)
       })
       .catch((err) => {
         if (cancelled) return
