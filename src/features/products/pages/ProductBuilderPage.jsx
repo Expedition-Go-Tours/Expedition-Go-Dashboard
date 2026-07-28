@@ -83,11 +83,6 @@ function tourToProduct(tour) {
   const avail = sp.availability || {}
   const theme = tour.theme || {}
 
-  console.log('[tourToProduct] input tour keys:', Object.keys(tour))
-  console.log('[tourToProduct] content keys:', Object.keys(content))
-  console.log('[tourToProduct] content.locations:', JSON.stringify(content.locations?.length))
-  console.log('[tourToProduct] content.itinerary:', JSON.stringify(content.itinerary?.length))
-
   const result = {
     language: content.writingLanguage || '',
     category: categorization.category || '',
@@ -233,8 +228,6 @@ function tourToProduct(tour) {
     metaDescription: tour.metaDescription || '',
   }
 
-  console.log('[tourToProduct] result locations:', result.locations?.length)
-  console.log('[tourToProduct] result itinerary:', result.itinerary?.length)
   return result
 }
 
@@ -350,11 +343,6 @@ export default function ProductBuilderPage() {
           return
         }
         const product = tourToProduct(tour)
-        console.log('[ProductBuilderPage] product from tourToProduct:', {
-          locationsLen: product?.locations?.length,
-          itineraryLen: product?.itinerary?.length,
-          hasLocations: product?.locations && product.locations.length > 0,
-        })
         loadDraft(product)
       })
       .catch((err) => {
@@ -391,10 +379,6 @@ export default function ProductBuilderPage() {
 
     const payload = buildPayload(state)
 
-    console.log('[handleSave] payload keys:', Object.keys(payload).length)
-    console.log('[handleSave] payload.locations length:', payload.locations?.length)
-    console.log('[handleSave] payload.itinerary length:', payload.itinerary?.length)
-
     state.setSaving(true)
     setSaving(true)
     try {
@@ -415,7 +399,6 @@ export default function ProductBuilderPage() {
       }
       return res
     } catch (err) {
-      console.error('[ProductBuilder] Save failed:', err.response?.data?.message || err.message)
       throw err
     } finally {
       state.setSaving(false)

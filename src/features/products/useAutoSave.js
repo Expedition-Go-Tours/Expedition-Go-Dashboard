@@ -130,7 +130,6 @@ export function useAutoSave() {
           if (status >= 400 && status < 500) {
             useProductBuilderStore.getState().markSaved()
           } else if (err?.code !== 'ERR_CANCELED' && err?.message !== 'AUTH_REQUIRED') {
-            console.warn('[AutoSave] Save failed, will retry:', err.message)
           }
         } finally {
           savingRef.current = false

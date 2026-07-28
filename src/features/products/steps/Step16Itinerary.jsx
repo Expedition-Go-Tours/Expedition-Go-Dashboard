@@ -25,7 +25,6 @@ async function saveCurrentProduct() {
     s.markSaved()
     return true
   } catch (err) {
-    console.error('[Itinerary] Save failed:', err.message)
     return false
   } finally {
     s.setSaving(false)
