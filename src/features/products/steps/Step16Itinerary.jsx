@@ -404,7 +404,7 @@ function SegmentWizard({ onComplete, onCancel, initialData, taggedLocations }) {
         </button>
         <div className="flex items-center gap-3">
           {step === 4 && (
-            <button onClick={next} className="text-sm font-medium text-emerald-600 hover:text-emerald-700">Skip</button>
+            <button onClick={() => { update({ durationHours: '0', durationMinutes: '0' }); next() }} className="text-sm font-medium text-emerald-600 hover:text-emerald-700">Skip</button>
           )}
           <button onClick={next} className="px-5 py-2 text-sm font-semibold text-white bg-emerald-600 rounded-full hover:bg-emerald-600 transition-colors">
             {step < 7 ? 'Next' : 'Save'}
@@ -599,12 +599,13 @@ function WelcomeScreen({ isMultiDay, onStart }) {
 function SingleDayBuilder({ pickupInfo, dropoffInfo, taggedLocations }) {
   const navigate = useNavigate()
   const itinerary = useProductBuilderStore((s) => s.itinerary)
-  const addItineraryEntry = useProductBuilderStore((s) => s.addItineraryEntry)
+  const pushItineraryEntry = useProductBuilderStore((s) => s.pushItineraryEntry)
   const updateItineraryEntry = useProductBuilderStore((s) => s.updateItineraryEntry)
   const removeItineraryEntry = useProductBuilderStore((s) => s.removeItineraryEntry)
 
   const [editingIndex, setEditingIndex] = useState(null)
   const [showWizard, setShowWizard] = useState(false)
+  const [saving, setSaving] = useState(false)
 
   // Only day=1 segments
   const segments = itinerary.filter((e) => e.day === 1)
@@ -619,7 +620,7 @@ function SingleDayBuilder({ pickupInfo, dropoffInfo, taggedLocations }) {
       day: 1, time: '09:00',
       duration: totalMin || 1, durationUnit: 'minute',
       title: data.activityName || '',
-      description: data.activityName || ' ',
+      description: data.activityName || '',
       type: data.activityType === 'transfer' ? 'transfer' : 'activity',
       visitType: 'visit',
       locationName: data.location?.name || '',
@@ -635,10 +636,7 @@ function SingleDayBuilder({ pickupInfo, dropoffInfo, taggedLocations }) {
     if (editingIndex !== null) {
       updateItineraryEntry(globalIndexOf(editingIndex), entry)
     } else {
-      const newIdx = itinerary.length
-      addItineraryEntry()
-      // Zustand updates synchronously in the store, but React batches — use setTimeout(0)
-      setTimeout(() => updateItineraryEntry(newIdx, entry), 0)
+      pushItineraryEntry(entry)
     }
     setShowWizard(false)
     setEditingIndex(null)
@@ -746,12 +744,15 @@ function SingleDayBuilder({ pickupInfo, dropoffInfo, taggedLocations }) {
       <div className="flex justify-end mt-3">
         <button
           onClick={async () => {
-            await saveCurrentProduct()
-            useProductBuilderStore.getState().completeStep('itinerary')
+            setSaving(true)
+            const ok = await saveCurrentProduct()
+            setSaving(false)
+            if (ok) useProductBuilderStore.getState().completeStep('itinerary')
           }}
-          className="px-6 py-2.5 bg-emerald-600 text-white rounded-full text-sm font-semibold hover:bg-emerald-700 transition-colors"
+          disabled={saving}
+          className="px-6 py-2.5 bg-emerald-600 text-white rounded-full text-sm font-semibold hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Save itinerary
+          {saving ? 'Saving...' : 'Save itinerary'}
         </button>
       </div>
     </div>
@@ -937,14 +938,13 @@ function DaySegmentForm({ initialData, taggedLocations, photos = [], onSave, onC
   function handleSave() {
     onSave({
       activityName: title,
-      description: description || ' ',
+      description: description || '',
       location,
       time,
       photo: selectedPhoto,
-      // Pass through other fields unchanged or with defaults
       activityType: initialData?.activityType || 'activity',
-      durationHours: initialData?.durationHours || '',
-      durationMinutes: initialData?.durationMinutes || '',
+      durationHours: initialData?.durationHours || '0',
+      durationMinutes: initialData?.durationMinutes || '0',
       importance: initialData?.importance || 'major',
       isOptional: initialData?.isOptional || false,
       additionalFee: initialData?.additionalFee || false,
@@ -1084,7 +1084,7 @@ function MultiDayBuilder({ numDays, pickupInfo, taggedLocations }) {
   const additionalItineraryInfo = useProductBuilderStore((s) => s.additionalItineraryInfo)
   const dayTitles = useProductBuilderStore((s) => s.dayTitles)
   const photos = useProductBuilderStore((s) => s.photos)
-  const addItinerarySegment = useProductBuilderStore((s) => s.addItinerarySegment)
+  const pushItineraryEntry = useProductBuilderStore((s) => s.pushItineraryEntry)
   const updateItineraryEntry = useProductBuilderStore((s) => s.updateItineraryEntry)
   const removeItineraryEntry = useProductBuilderStore((s) => s.removeItineraryEntry)
   const setField = useProductBuilderStore((s) => s.setField)
@@ -1094,6 +1094,7 @@ function MultiDayBuilder({ numDays, pickupInfo, taggedLocations }) {
   const [tabDirection, setTabDirection] = useState(1)
   const [editingIndex, setEditingIndex] = useState(null)
   const [showWizard, setShowWizard] = useState(false)
+  const [saving, setSaving] = useState(false)
 
   const tabVariants = {
     initial: (d) => ({ opacity: 0, x: d * 24 }),
@@ -1102,6 +1103,7 @@ function MultiDayBuilder({ numDays, pickupInfo, taggedLocations }) {
   }
 
   function handleTabChange(tab) {
+    if (showWizard && !window.confirm('Discard unsaved changes to the current segment?')) return
     const currentIdx = tabs.indexOf(activeTab)
     const nextIdx = tabs.indexOf(tab)
     setTabDirection(nextIdx >= currentIdx ? 1 : -1)
@@ -1127,7 +1129,7 @@ function MultiDayBuilder({ numDays, pickupInfo, taggedLocations }) {
       duration: totalMin || 0,
       durationUnit: 'minute',
       title: data.activityName || '',
-      description: data.description || data.activityName || ' ',
+      description: data.description || data.activityName || '',
       type: data.activityType === 'transfer' ? 'transfer' : 'activity',
       visitType: 'visit',
       locationName: data.location?.name || '',
@@ -1144,9 +1146,7 @@ function MultiDayBuilder({ numDays, pickupInfo, taggedLocations }) {
     if (editingIndex !== null) {
       updateItineraryEntry(daySegments[editingIndex].globalIdx, entry)
     } else {
-      addItinerarySegment(activeDay)
-      const newIdx = itinerary.length
-      setTimeout(() => updateItineraryEntry(newIdx, entry), 0)
+      pushItineraryEntry(entry)
     }
     setShowWizard(false)
     setEditingIndex(null)
@@ -1345,13 +1345,18 @@ function MultiDayBuilder({ numDays, pickupInfo, taggedLocations }) {
       <div className="flex items-center justify-between mt-8 pt-4 border-t border-slate-100">
         <button
           onClick={async () => {
-            await saveCurrentProduct()
-            useProductBuilderStore.getState().completeStep('itinerary')
-            navigate('/products')
+            setSaving(true)
+            const ok = await saveCurrentProduct()
+            setSaving(false)
+            if (ok) {
+              useProductBuilderStore.getState().completeStep('itinerary')
+              navigate('/products')
+            }
           }}
-          className="px-5 py-2.5 border border-slate-300 text-sm font-medium text-slate-700 rounded-full hover:bg-slate-50 transition-colors"
+          disabled={saving}
+          className="px-5 py-2.5 border border-slate-300 text-sm font-medium text-slate-700 rounded-full hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Save and exit
+          {saving ? 'Saving...' : 'Save and exit'}
         </button>
         <button
           onClick={() => {

@@ -5,7 +5,7 @@ import { validateStep } from './stepValidation'
 import { useProductBuilderStore } from './productBuilderStore'
 import { scrollToField, getFieldLabel } from './fieldLabels'
 
-export default function WizardNavFooter({ currentStep, totalSteps, onBack, onNext, onSave, saving }) {
+export default function WizardNavFooter({ currentStep, totalSteps, onBack, onNext, onSave, saving, isEditing }) {
   const navigate = useNavigate()
   const formData = useProductBuilderStore()
   const setStepErrors = useProductBuilderStore((s) => s.setStepErrors)
@@ -126,7 +126,7 @@ export default function WizardNavFooter({ currentStep, totalSteps, onBack, onNex
             disabled={saving}
             type="button"
           >
-            {saving ? 'Saving...' : 'Submit'}
+            {saving ? 'Saving...' : isEditing ? 'Update' : 'Submit'}
           </button>
         )}
       </div>

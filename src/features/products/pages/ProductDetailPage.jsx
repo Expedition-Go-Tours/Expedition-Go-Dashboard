@@ -914,8 +914,11 @@ export default function ProductDetailPage() {
                            'Service included'}
                         </span>
                       </div>
-                      {content.dropoffLocation && (
-                        <p className="text-sm font-medium text-slate-700 mt-1.5">{content.dropoffLocation}</p>
+                      {content.dropoffLocation?.name && (
+                        <p className="text-sm font-medium text-slate-700 mt-1.5">{content.dropoffLocation.name}</p>
+                      )}
+                      {content.dropoffLocation?.address && (
+                        <p className="text-xs text-slate-500 mt-0.5">{content.dropoffLocation.address}</p>
                       )}
                       {content.dropoffDescription && (
                         <p className="text-sm text-slate-600 mt-1 leading-relaxed">{content.dropoffDescription}</p>

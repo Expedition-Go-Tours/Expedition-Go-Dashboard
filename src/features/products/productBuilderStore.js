@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { safeId } from '@/lib/utils'
 import { GYG_STEPS } from './gygSteps'
-import { validateStep } from './stepValidation'
+import { validateStep, isStepComplete } from './stepValidation'
 
 function getSectionStep(index) {
   const step = GYG_STEPS[index]
@@ -342,17 +342,20 @@ export const useProductBuilderStore = create(
           return { options, isDirty: true }
         }),
 
+      pushItineraryEntry: (entry) =>
+        set((s) => ({
+          itinerary: [...s.itinerary, { ...entry }],
+          isDirty: true,
+        })),
+
       addItineraryEntry: () =>
-        set((s) => {
-          const maxDay = s.itinerary.reduce((max, e) => Math.max(max, e.day), 0)
-          return {
-            itinerary: [
-              ...s.itinerary,
-              { day: maxDay + 1, time: '09:00', duration: 1, durationUnit: 'hour', title: '', description: '', type: 'activity', visitType: 'visit', locationName: '', locationAddress: '', locationLat: null, locationLng: null, isCustomLocation: false },
-            ],
-            isDirty: true,
-          }
-        }),
+        set((s) => ({
+          itinerary: [
+            ...s.itinerary,
+            { day: 1, time: '09:00', duration: 1, durationUnit: 'hour', title: '', description: '', type: 'activity', visitType: 'visit', locationName: '', locationAddress: '', locationLat: null, locationLng: null, isCustomLocation: false },
+          ],
+          isDirty: true,
+        })),
 
       addItinerarySegment: (dayNumber) =>
         set((s) => ({
@@ -685,13 +688,16 @@ export const useProductBuilderStore = create(
         for (const [key, value] of Object.entries(data)) {
           if (value !== null && value !== undefined) clean[key] = value
         }
-        set((s) => ({
-          ...INITIAL_FORM,
-          ...clean,
+        const state = { ...INITIAL_FORM, ...clean }
+        const computedCompleted = GYG_STEPS
+          .filter((s) => isStepComplete(s.id, state))
+          .map((s) => s.stepId)
+        set({
+          ...state,
           currentStep: 0,
           currentSectionId: 'getting-started',
           currentStepId: 'language',
-          completedStepIds: [],
+          completedStepIds: computedCompleted,
           currentScheduleStep: 1,
           editingScheduleIndex: null,
           scheduleName: '',
@@ -703,7 +709,7 @@ export const useProductBuilderStore = create(
           dateExceptions: [],
           stepErrors: {},
           isDirty: false,
-        }))
+        })
       },
 
       setStepErrors: (stepIndex, errors) =>

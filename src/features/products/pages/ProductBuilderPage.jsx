@@ -523,6 +523,7 @@ export default function ProductBuilderPage() {
                 onNext={handleNext}
                 onSave={handleSave}
                 saving={saving}
+                isEditing={id && id !== 'new'}
               />
             </div>
           </div>
