@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { ChevronDown, Flag, FileText, Image, Settings, Map, CheckCircle2 } from 'lucide-react'
 import { GYG_SECTIONS, GYG_STEPS } from './gygSteps'
 import { useProductBuilderStore } from './productBuilderStore'
@@ -22,7 +22,7 @@ export default function WizardSidebar({ currentStep, onSelectStep }) {
   const currentSectionId = GYG_STEPS.find((s) => s.id === currentStep)?.sectionId
 
   const [expandedSections, setExpandedSections] = useState(() => {
-    const initial = new Set(['product-content'])
+    const initial = new Set()
     if (currentSectionId) initial.add(currentSectionId)
     return initial
   })
@@ -55,6 +55,18 @@ export default function WizardSidebar({ currentStep, onSelectStep }) {
     ? GYG_STEPS.filter((s) => isCompleted(s.id)).length
     : completedStepIds.length
   const progress = Math.round((completedCount / totalSteps) * 100)
+
+  const maxAccessibleStep = useMemo(() => {
+    let max = currentStep
+    for (const step of GYG_STEPS) {
+      if (step.id <= currentStep) continue
+      const prev = GYG_STEPS[step.id - 2]
+      if (prev && completedStepIds.includes(prev.stepId)) {
+        max = step.id
+      } else break
+    }
+    return max
+  }, [completedStepIds, currentStep])
 
   function toggleSection(id) {
     setExpandedSections((prev) => {
@@ -115,19 +127,22 @@ export default function WizardSidebar({ currentStep, onSelectStep }) {
 
               {(!section.collapsible || isExpanded) && (
                 <div>
-                  {steps.map((step) => {
+                    {steps.map((step) => {
                     const isActive = currentStep === step.id
                     const complete = isCompleted(step.id)
                     const hasError = stepErrors[step.id] && Object.keys(stepErrors[step.id]).length > 0
+                    const isLocked = step.id > maxAccessibleStep
 
                     return (
                       <div key={step.id}>
                         <button
                           ref={isActive ? activeRef : null}
-                          className={`flex items-center gap-2.5 w-full px-5 py-2 bg-transparent border-0 border-l-2 border-transparent cursor-pointer text-left text-sm text-slate-700 transition-all duration-150 hover:bg-slate-50/80 ${
+                          className={`flex items-center gap-2.5 w-full px-5 py-2 bg-transparent border-0 border-l-2 border-transparent text-left text-sm text-slate-700 transition-all duration-150 ${
+                            isLocked ? 'opacity-40 cursor-default' : 'cursor-pointer hover:bg-slate-50/80'
+                          } ${
                             isActive ? 'border-l-emerald-600 bg-emerald-50 font-semibold text-emerald-700' : ''
                           } ${complete ? 'text-emerald-800' : ''} ${hasError && !isActive ? 'border-l-red-400 bg-red-50/40' : ''}`}
-                          onClick={() => onSelectStep(step.id)}
+                          onClick={() => !isLocked && onSelectStep(step.id)}
                           type="button"
                         >
                           <span className="grid place-items-center w-5 h-5 shrink-0 relative">
