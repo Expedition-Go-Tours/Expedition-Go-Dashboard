@@ -24,7 +24,7 @@ async function saveCurrentProduct() {
     }
     s.markSaved()
     return true
-  } catch (err) {
+  } catch {
     return false
   } finally {
     s.setSaving(false)
@@ -173,7 +173,7 @@ function LocationSearch({ selected, onSelect, taggedLocations = [] }) {
 
   useEffect(() => {
     if (search.length > 1) geoSearch(search)
-  }, [search])
+  }, [search, geoSearch])
 
   useEffect(() => {
     const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
@@ -752,7 +752,7 @@ function WelcomeScreen({ isMultiDay, onStart }) {
             <p className="text-sm text-slate-600 mb-6 leading-relaxed">Pro tip: include details that aren't covered elsewhere — transport type between stops, how long you spend at each location, and any notable things to look out for.</p>
           </>
         )}
-        <button onClick={onStart} className="px-7 py-2.5 bg-emerald-600 text-white rounded-full text-sm font-semibold hover:bg-emerald-700 transition-colors">
+        <button data-field="itinerary" onClick={onStart} className="px-7 py-2.5 bg-emerald-600 text-white rounded-full text-sm font-semibold hover:bg-emerald-700 transition-colors">
           {isMultiDay ? 'Get started' : 'Build schedule'}
         </button>
       </div>
@@ -761,8 +761,7 @@ function WelcomeScreen({ isMultiDay, onStart }) {
 }
 
 // ─── Single-Day Timeline Builder ─────────────────────────────────────────────
-function SingleDayBuilder({ pickupInfo, dropoffInfo, taggedLocations }) {
-  const navigate = useNavigate()
+function SingleDayBuilder({ pickupInfo, dropoffInfo, taggedLocations, onShowDiagram }) {
   const itinerary = useProductBuilderStore((s) => s.itinerary)
   const pushItineraryEntry = useProductBuilderStore((s) => s.pushItineraryEntry)
   const updateItineraryEntry = useProductBuilderStore((s) => s.updateItineraryEntry)
@@ -929,6 +928,7 @@ function SingleDayBuilder({ pickupInfo, dropoffInfo, taggedLocations }) {
       {/* Actions */}
       <div className="flex justify-end mt-5">
         <button
+          data-field="itinerary"
           onClick={() => { setEditingIndex(null); setShowWizard(true) }}
           className="px-6 py-2.5 bg-emerald-600 text-white rounded-full text-sm font-semibold hover:bg-emerald-700 transition-colors"
         >
@@ -941,7 +941,10 @@ function SingleDayBuilder({ pickupInfo, dropoffInfo, taggedLocations }) {
             setSaving(true)
             const ok = await saveCurrentProduct()
             setSaving(false)
-            if (ok) useProductBuilderStore.getState().completeStep('itinerary')
+            if (ok) {
+              useProductBuilderStore.getState().completeStep('itinerary')
+              onShowDiagram?.()
+            }
           }}
           disabled={saving}
           className="px-6 py-2.5 bg-emerald-600 text-white rounded-full text-sm font-semibold hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1177,7 +1180,7 @@ function DaySegmentForm({ initialData, taggedLocations, photos = [], onSave, onC
   }
 
   return (
-    <div className="ml-0 my-3 border border-slate-200 rounded-xl bg-white overflow-hidden">
+      <div className="ml-14 my-3 border border-slate-200 rounded-xl bg-white">
       <div className="px-6 py-5 space-y-4">
         <h3 className="text-lg font-bold text-slate-900">What's next on this day?</h3>
 
@@ -1302,7 +1305,7 @@ function DaySegmentForm({ initialData, taggedLocations, photos = [], onSave, onC
 }
 
 // ─── Multi-Day Builder ─────────────────────────────────────────────────────────
-function MultiDayBuilder({ numDays, pickupInfo, taggedLocations }) {
+function MultiDayBuilder({ numDays, pickupInfo, taggedLocations, onShowDiagram }) {
   const navigate = useNavigate()
   const itinerary = useProductBuilderStore((s) => s.itinerary)
   const itineraryOverview = useProductBuilderStore((s) => s.itineraryOverview)
@@ -1556,6 +1559,7 @@ function MultiDayBuilder({ numDays, pickupInfo, taggedLocations }) {
                 <div className="flex items-center gap-4 py-2 relative z-10">
                   <div className="w-10 shrink-0" />
                   <button
+                    data-field="itinerary"
                     onClick={() => { setEditingIndex(null); setShowWizard(true) }}
                     className="px-5 py-2 border border-emerald-600 text-emerald-600 text-sm font-semibold rounded-full hover:bg-emerald-50 transition-colors"
                   >
@@ -1614,14 +1618,281 @@ function MultiDayBuilder({ numDays, pickupInfo, taggedLocations }) {
         >
           {saving ? 'Saving...' : 'Save and exit'}
         </button>
+        {activeTab === tabs[tabs.length - 1] ? (
+          <button
+            onClick={async () => {
+              setSaving(true)
+              const ok = await saveCurrentProduct()
+              setSaving(false)
+              if (ok) {
+                useProductBuilderStore.getState().completeStep('itinerary')
+                onShowDiagram?.()
+              }
+            }}
+            disabled={saving}
+            className="px-6 py-2.5 bg-emerald-600 text-white rounded-full text-sm font-semibold hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {saving ? 'Saving...' : 'Done'}
+          </button>
+        ) : (
+          <button
+            onClick={() => {
+              const nextIdx = tabs.indexOf(activeTab) + 1
+              handleTabChange(tabs[nextIdx])
+            }}
+            className="px-6 py-2.5 bg-emerald-600 text-white rounded-full text-sm font-semibold hover:bg-emerald-700 transition-colors"
+          >
+            Continue
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─── Itinerary Diagram helpers ─────────────────────────────────────────────────
+function formatTime(t) {
+  if (!t) return ''
+  const [hStr, mStr] = t.split(':')
+  const h = parseInt(hStr); const m = parseInt(mStr)
+  const ampm = h >= 12 ? 'PM' : 'AM'
+  const h12 = h % 12 || 12
+  return `${h12}:${String(m).padStart(2, '0')} ${ampm}`
+}
+
+function TimelineNode({ children, className = '' }) {
+  return (
+    <div className={`relative z-10 w-10 h-10 rounded-full flex items-center justify-center text-white shrink-0 ${className}`}>
+      {children}
+    </div>
+  )
+}
+
+function TimelineRow({ node, children, className = '' }) {
+  return (
+    <div className={`flex items-start gap-4 py-3 ${className}`}>
+      {node}
+      <div className="flex-1 min-w-0 border-b border-slate-100 pb-3">
+        {children}
+      </div>
+    </div>
+  )
+}
+
+function SegmentContent({ seg }) {
+  const isTransfer = seg.type === 'transfer'
+  const label = isTransfer
+    ? (TRANSPORT_MODES.find((m) => m.id === seg.title)?.label || seg.title)
+    : (seg.activityName || seg.title || '')
+  const dur = durationLabel(seg.duration && seg.durationUnit === 'minute' ? seg.duration : null)
+  return (
+    <>
+      <div className="flex items-center gap-2">
+        <span className="text-sm font-bold text-slate-900">
+          {formatTime(seg.time)}{label ? ` \u2013 ${label}` : ''}
+        </span>
+        {dur && <span className="text-xs text-slate-400 font-medium">{dur}</span>}
+      </div>
+      {isTransfer ? (
+        <>
+          {(seg.locationName || seg.locationAddress) && (
+            <p className="text-sm text-slate-500 mt-0.5">
+              {seg.locationName && seg.locationAddress
+                ? `${seg.locationName} \u2192 ${seg.locationAddress}`
+                : seg.locationName || seg.locationAddress}
+            </p>
+          )}
+        </>
+      ) : (
+        <>
+          {seg.description && seg.description !== ' ' && (
+            <p className="text-sm text-slate-600 mt-0.5 leading-relaxed">{seg.description}</p>
+          )}
+          {seg.locationName && (
+            <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
+              <MapPin size={11} /> {seg.locationName}
+            </p>
+          )}
+        </>
+      )}
+      {seg.isOptional && (
+        <span className="inline-block mt-1 text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+          Optional
+        </span>
+      )}
+    </>
+  )
+}
+
+function ActivityIcon({ segment }) {
+  if (segment.type === 'transfer') {
+    return (
+      <TimelineNode className="bg-amber-500">
+        <TransportIcon mode={segment.title || 'car'} size={16} />
+      </TimelineNode>
+    )
+  }
+  if (segment.isOptional) {
+    return (
+      <TimelineNode className="border-2 border-slate-300 bg-white">
+        <div className="w-2 h-2 rounded-full bg-slate-300" />
+      </TimelineNode>
+    )
+  }
+  return (
+    <TimelineNode className="bg-emerald-600">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+      </svg>
+    </TimelineNode>
+  )
+}
+
+function TimelineCard({ children, className = '' }) {
+  return (
+    <div className={`bg-white border border-slate-200 rounded-xl p-5 ${className}`}>
+      {children}
+    </div>
+  )
+}
+
+function DayTimeline({ segments, day, pickupInfo, dropoffInfo, isFirstDay, isLastDay }) {
+  return (
+    <div className="relative">
+      <div className="absolute left-5 top-8 bottom-8 w-0.5 bg-emerald-200 z-0" />
+      {isFirstDay && (
+        <TimelineRow node={<TimelineNode className="bg-emerald-600"><MapPin size={16} /></TimelineNode>}>
+          <p className="text-sm font-bold text-slate-900">{pickupInfo?.label || 'Starting location:'}</p>
+          {typeof pickupInfo?.sub === 'string' && <p className="text-sm text-slate-500 mt-0.5">{pickupInfo.sub}</p>}
+        </TimelineRow>
+      )}
+      {segments.length === 0 ? (
+        <div className="flex items-center gap-4 py-3">
+          <TimelineNode className="bg-slate-100">
+            <div className="w-2 h-2 rounded-full bg-slate-300" />
+          </TimelineNode>
+          <p className="text-sm text-slate-400">No activities for this day</p>
+        </div>
+      ) : (
+        segments.map((seg, i) => (
+          <TimelineRow key={i} node={<ActivityIcon segment={seg} />}>
+            <SegmentContent seg={seg} />
+          </TimelineRow>
+        ))
+      )}
+      {isLastDay && (
+        <TimelineRow node={<TimelineNode className="bg-emerald-50 border-2 border-emerald-200"><div className="w-2.5 h-2.5 rounded-full bg-emerald-400" /></TimelineNode>}>
+          <p className="text-sm font-bold text-slate-700">{dropoffInfo?.label || 'Drop-off location:'}</p>
+          {typeof dropoffInfo?.sub === 'string' && <p className="text-sm text-slate-500 mt-0.5">{dropoffInfo.sub}</p>}
+        </TimelineRow>
+      )}
+      <div className="flex items-center gap-4 py-3">
+        <div className="relative z-10 w-10 h-10 rounded-full bg-emerald-50 border-2 border-emerald-200 flex items-center justify-center text-emerald-500 shrink-0">
+          <Calendar size={16} />
+        </div>
+        <p className="text-sm font-bold text-slate-700">End of day {day}</p>
+      </div>
+    </div>
+  )
+}
+
+// ─── Itinerary Diagram (read-only preview) ────────────────────────────────────
+function ItineraryDiagram({
+  isMultiDay, numDays, pickupInfo, dropoffInfo,
+  onBack,
+}) {
+  const itinerary = useProductBuilderStore((s) => s.itinerary)
+  const itineraryOverview = useProductBuilderStore((s) => s.itineraryOverview)
+  const additionalItineraryInfo = useProductBuilderStore((s) => s.additionalItineraryInfo)
+  const dayTitles = useProductBuilderStore((s) => s.dayTitles)
+  const daySegments = (day) => itinerary.filter((e) => e.day === day)
+
+  return (
+    <div className="max-w-[860px]">
+      <div className="flex items-center gap-2 mb-6">
+        <span className="text-sm font-semibold text-slate-500">Itinerary preview</span>
+        <HelpCircle size={15} className="text-slate-400" />
+      </div>
+
+      {isMultiDay ? (
+        <TimelineCard className="space-y-0">
+          {itineraryOverview && (
+            <div className="pb-5 mb-5 border-b border-slate-100">
+              <h3 className="text-sm font-bold text-slate-900 mb-2">Overview</h3>
+              <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">{itineraryOverview}</p>
+            </div>
+          )}
+
+          {Array.from({ length: numDays }, (_, i) => i + 1).map((day) => {
+            const segments = daySegments(day)
+            return (
+              <div key={day} className={day > 1 ? 'pt-6 mt-6 border-t border-slate-100' : ''}>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                    {day}
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-slate-900">Day {day}</p>
+                    {dayTitles?.[day] && (
+                      <p className="text-xs text-slate-500">{dayTitles[day]}</p>
+                    )}
+                  </div>
+                </div>
+                <DayTimeline
+                  segments={segments}
+                  day={day}
+                  pickupInfo={pickupInfo}
+                  dropoffInfo={dropoffInfo}
+                  isFirstDay={day === 1}
+                  isLastDay={day === numDays}
+                />
+              </div>
+            )
+          })}
+
+          {additionalItineraryInfo && (
+            <div className="pt-6 mt-6 border-t border-slate-100">
+              <h3 className="text-sm font-bold text-slate-900 mb-2">Additional info</h3>
+              <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">{additionalItineraryInfo}</p>
+            </div>
+          )}
+        </TimelineCard>
+      ) : (
+        <TimelineCard>
+          <div className="relative">
+            <div className="absolute left-5 top-8 bottom-8 w-0.5 bg-emerald-200 z-0" />
+
+            <TimelineRow node={<TimelineNode className="bg-emerald-600"><MapPin size={16} /></TimelineNode>}>
+              <p className="text-sm font-bold text-slate-900">{pickupInfo.label}</p>
+              {typeof pickupInfo.sub === 'string' && <p className="text-sm text-slate-500 mt-0.5">{pickupInfo.sub}</p>}
+            </TimelineRow>
+
+            {itinerary.filter((e) => e.day === 1).length === 0 ? (
+              <TimelineRow node={<TimelineNode className="bg-slate-100"><div className="w-2 h-2 rounded-full bg-slate-300" /></TimelineNode>}>
+                <p className="text-sm text-slate-400">No segments added yet</p>
+              </TimelineRow>
+            ) : (
+              itinerary.filter((e) => e.day === 1).map((seg, i) => (
+                <TimelineRow key={i} node={<ActivityIcon segment={seg} />}>
+                  <SegmentContent seg={seg} />
+                </TimelineRow>
+              ))
+            )}
+
+            <TimelineRow node={<TimelineNode className="bg-emerald-50 border-2 border-emerald-200"><div className="w-2.5 h-2.5 rounded-full bg-emerald-400" /></TimelineNode>}>
+              <p className="text-sm font-bold text-slate-700">{dropoffInfo.label}</p>
+              {typeof dropoffInfo.sub === 'string' && <p className="text-sm text-slate-500 mt-0.5">{dropoffInfo.sub}</p>}
+            </TimelineRow>
+          </div>
+        </TimelineCard>
+      )}
+
+      <div className="flex items-center justify-end mt-8 pt-4 border-t border-slate-100">
         <button
-          onClick={() => {
-            const nextIdx = tabs.indexOf(activeTab) + 1
-            if (nextIdx < tabs.length) handleTabChange(tabs[nextIdx])
-          }}
+          onClick={onBack}
           className="px-6 py-2.5 bg-emerald-600 text-white rounded-full text-sm font-semibold hover:bg-emerald-700 transition-colors"
         >
-          Continue
+          Back to editor
         </button>
       </div>
     </div>
@@ -1650,6 +1921,7 @@ export default function Step16Itinerary() {
   const isMultiDay = numDays > 1
 
   const [started, setStarted] = useState(() => itinerary?.length > 0)
+  const [showDiagram, setShowDiagram] = useState(() => itinerary?.length > 0)
 
   // All tagged locations (product locations + pickup locations) for segment location search
   const taggedLocations = useMemo(() => {
@@ -1736,54 +2008,69 @@ export default function Step16Itinerary() {
 
   return (
     <div className="max-w-[860px]">
-      {header}
-      <AnimatePresence mode="wait">
-        {!started ? (
-          <motion.div
-            key="welcome"
-            variants={pageVariants}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-            transition={{ duration: 0.2, ease: 'easeInOut' }}
-          >
-            <WelcomeScreen
-              isMultiDay={isMultiDay}
-              onStart={() => setStarted(true)}
-            />
-          </motion.div>
-        ) : isMultiDay ? (
-          <motion.div
-            key="multi"
-            variants={pageVariants}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-            transition={{ duration: 0.2, ease: 'easeInOut' }}
-          >
-            <MultiDayBuilder
-              numDays={numDays}
-              pickupInfo={pickupInfo}
-              taggedLocations={taggedLocations}
-            />
-          </motion.div>
-        ) : (
-          <motion.div
-            key="single"
-            variants={pageVariants}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-            transition={{ duration: 0.2, ease: 'easeInOut' }}
-          >
-            <SingleDayBuilder
-              pickupInfo={pickupInfo}
-              dropoffInfo={dropoffInfo}
-              taggedLocations={taggedLocations}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {showDiagram ? (
+        <ItineraryDiagram
+          isMultiDay={isMultiDay}
+          numDays={numDays}
+          pickupInfo={pickupInfo}
+          dropoffInfo={dropoffInfo}
+          taggedLocations={taggedLocations}
+          onBack={() => setShowDiagram(false)}
+        />
+      ) : (
+        <>
+          {header}
+          <AnimatePresence mode="wait">
+            {!started ? (
+              <motion.div
+                key="welcome"
+                variants={pageVariants}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                transition={{ duration: 0.2, ease: 'easeInOut' }}
+              >
+                <WelcomeScreen
+                  isMultiDay={isMultiDay}
+                  onStart={() => setStarted(true)}
+                />
+              </motion.div>
+            ) : isMultiDay ? (
+              <motion.div
+                key="multi"
+                variants={pageVariants}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                transition={{ duration: 0.2, ease: 'easeInOut' }}
+              >
+                <MultiDayBuilder
+                  numDays={numDays}
+                  pickupInfo={pickupInfo}
+                  taggedLocations={taggedLocations}
+                  onShowDiagram={() => setShowDiagram(true)}
+                />
+              </motion.div>
+            ) : (
+              <motion.div
+                key="single"
+                variants={pageVariants}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                transition={{ duration: 0.2, ease: 'easeInOut' }}
+              >
+                <SingleDayBuilder
+                  pickupInfo={pickupInfo}
+                  dropoffInfo={dropoffInfo}
+                  taggedLocations={taggedLocations}
+                  onShowDiagram={() => setShowDiagram(true)}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </>
+      )}
     </div>
   )
 }

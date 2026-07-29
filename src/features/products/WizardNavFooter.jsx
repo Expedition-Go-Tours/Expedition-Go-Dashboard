@@ -12,20 +12,17 @@ export default function WizardNavFooter({ currentStep, totalSteps, onBack, onNex
   const setStepErrors = useProductBuilderStore((s) => s.setStepErrors)
   const clearStepErrors = useProductBuilderStore((s) => s.clearStepErrors)
   const completeStep = useProductBuilderStore((s) => s.completeStep)
+  const goToStep = useProductBuilderStore((s) => s.goToStep)
   const stepErrors = useProductBuilderStore((s) => s.stepErrors)
   const isSaving = useProductBuilderStore((s) => s.isSaving)
   const lastSaved = useProductBuilderStore((s) => s.lastSaved)
   const [savedText, setSavedText] = useState('')
 
   useEffect(() => {
-    if (isSaving) setSavedText('Saving...')
-  }, [isSaving])
-
-  useEffect(() => {
     if (lastSaved && !isSaving) {
-      setSavedText('Draft saved')
-      const t = setTimeout(() => setSavedText(''), 2500)
-      return () => clearTimeout(t)
+      const hide = setTimeout(() => setSavedText(''), 2500)
+      const show = setTimeout(() => setSavedText('Draft saved'), 0)
+      return () => { clearTimeout(hide); clearTimeout(show) }
     }
   }, [lastSaved, isSaving])
 
@@ -44,10 +41,8 @@ export default function WizardNavFooter({ currentStep, totalSteps, onBack, onNex
       return
     }
     clearStepErrors(currentStep)
-    try {
-      const gygStep = GYG_STEPS[currentStep - 1]
-      if (gygStep?.stepId) completeStep(gygStep.stepId)
-    } catch {}
+    const gygStep = GYG_STEPS[currentStep - 1]
+    if (gygStep?.stepId) completeStep(gygStep.stepId)
     onNext()
   }
 
@@ -59,6 +54,15 @@ export default function WizardNavFooter({ currentStep, totalSteps, onBack, onNex
       return
     }
     clearStepErrors(currentStep)
+    for (let i = 1; i < totalSteps; i++) {
+      if (i === currentStep) continue
+      const stepErr = validateStep(i, formData)
+      if (Object.keys(stepErr).length > 0) {
+        setStepErrors(i, stepErr)
+        goToStep(i - 1)
+        return
+      }
+    }
     try {
       await onSave?.()
       completeStep('itinerary')

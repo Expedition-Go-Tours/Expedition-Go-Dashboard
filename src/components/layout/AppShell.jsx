@@ -1,4 +1,4 @@
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
 import { useSidebarStore } from "@/stores/sidebarStore";
@@ -6,6 +6,8 @@ import SupportFloating from "@/features/chat/components/SupportFloating";
 
 export default function AppShell() {
   const { isCollapsed, isMobileOpen } = useSidebarStore();
+  const location = useLocation();
+  const isProductBuilder = location.pathname.includes('/products/build');
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -26,7 +28,7 @@ export default function AppShell() {
           <Outlet />
         </div>
       </main>
-      <SupportFloating />
+      {!isProductBuilder && <SupportFloating />}
     </div>
   );
 }

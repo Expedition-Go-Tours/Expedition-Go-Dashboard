@@ -21,7 +21,6 @@ export const FIELD_LABELS = {
   keywords: 'Keywords',
   whatsIncluded: "What's included",
   whatsNotIncluded: "What's not included",
-  activitiesIncluded: 'Activities included',
   pickupTransportTypes: 'Pickup transport types',
   foodProvided: 'Food provided',
   meals: 'Meals',
@@ -88,7 +87,6 @@ const FIELD_STEP_MAP = {
   language: 1,
   category: 2,
   activityType: 2,
-  activitiesIncluded: 2,
   transportModes: 2,
   transportServices: 2,
   cutoffMinutes: 15,
@@ -195,6 +193,10 @@ export function scrollToField(fieldKey) {
     document.getElementById(`field-${CSS.escape(fieldKey)}`)
   if (el) {
     el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    const originalOutline = el.style.outline
+    el.style.outline = '2px solid #ef4444'
+    el.style.outlineOffset = '2px'
+    setTimeout(() => { el.style.outline = originalOutline }, 3000)
     if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement) {
       el.focus({ preventScroll: true })
     }
@@ -205,7 +207,6 @@ const SECTION_LABELS = {
   language: 'Language',
   category: 'Category',
   activityType: 'Activity type',
-  activitiesIncluded: 'Activities',
   transportModes: 'Transport modes',
   transportServices: 'Transport services',
   cutoffMinutes: 'Cut-off',

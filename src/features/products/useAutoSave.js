@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+    import { useEffect, useRef } from 'react'
 import { useProductBuilderStore } from './productBuilderStore'
 import { createProduct, updateProduct } from './api'
 
@@ -11,12 +11,19 @@ function normalizeLocationPoint(loc) {
 
 function buildSchedulesAndPricing(state) {
   const schedules = Array.isArray(state.schedules) ? state.schedules : []
+  const topCats = Array.isArray(state.pricingCategories) ? state.pricingCategories : []
+  const topAgeGroups = topCats.map(c => ({ label: c.name, minAge: c.minAge, maxAge: c.maxAge }))
+  const weekly = state.weeklySchedule || {}
+  const activeDays = Object.entries(weekly)
+    .filter(([, slots]) => Array.isArray(slots) && slots.length > 0)
+    .map(([day]) => day)
   return {
     travelerDetails: {
       pricingModel: state.pricingModel || 'perPerson',
       pricingApproach: state.pricingApproach || 'dependsOnAge',
       uniformPrice: state.uniformPrice ?? null,
-      pricingCategories: Array.isArray(state.pricingCategories) ? state.pricingCategories : [],
+      pricingCategories: topCats,
+      ageGroups: topAgeGroups,
       minParticipants: state.minParticipants ?? null,
       maxParticipants: state.maxParticipants ?? null,
       groupSizes: Array.isArray(state.groupSizes) ? state.groupSizes : [],
@@ -27,23 +34,29 @@ function buildSchedulesAndPricing(state) {
     pricingSchedules: {
       currency: state.currency || 'USD',
       schedules: schedules.length > 0
-        ? schedules.map(s => ({
-            name: s.name || '',
-            type: s.type || state.scheduleType || 'fixedTimeSlot',
-            startDate: s.startDate || '',
-            hasEndDate: !!s.hasEndDate,
-            endDate: s.hasEndDate ? (s.endDate || '') : null,
-            weeklySchedule: s.weeklySchedule || state.weeklySchedule || null,
-            dateExceptions: Array.isArray(s.dateExceptions) ? s.dateExceptions : [],
-            timeSlots: Array.isArray(s.timeSlots) ? s.timeSlots : [],
-            pricingModel: s.pricingModel || state.pricingModel || 'perPerson',
-            currency: s.currency || state.currency || 'USD',
-            pricingApproach: s.pricingApproach || state.pricingApproach || 'dependsOnAge',
-            uniformPrice: s.uniformPrice ?? state.uniformPrice ?? null,
-            pricingCategories: Array.isArray(s.pricingCategories) ? s.pricingCategories : (Array.isArray(state.pricingCategories) ? state.pricingCategories : []),
-            minParticipants: s.minParticipants ?? state.minParticipants ?? null,
-            maxParticipants: s.maxParticipants ?? state.maxParticipants ?? null,
-          }))
+        ? schedules.map(s => {
+            const cat = Array.isArray(s.pricingCategories) && s.pricingCategories.length > 0
+              ? s.pricingCategories
+              : topCats
+            return {
+              name: s.name || '',
+              type: s.type || state.scheduleType || 'fixedTimeSlot',
+              startDate: s.startDate || '',
+              hasEndDate: !!s.hasEndDate,
+              endDate: s.hasEndDate ? (s.endDate || '') : null,
+              weeklySchedule: s.weeklySchedule || state.weeklySchedule || null,
+              dateExceptions: Array.isArray(s.dateExceptions) ? s.dateExceptions : [],
+              timeSlots: Array.isArray(s.timeSlots) ? s.timeSlots : [],
+              pricingModel: s.pricingModel || state.pricingModel || 'perPerson',
+              currency: s.currency || state.currency || 'USD',
+              pricingApproach: s.pricingApproach || state.pricingApproach || 'dependsOnAge',
+              uniformPrice: s.uniformPrice ?? state.uniformPrice ?? null,
+              pricingCategories: cat,
+              prices: cat.filter(c => c.price != null).map(c => ({ ageGroup: c.name, retailPrice: c.price })),
+              minParticipants: s.minParticipants ?? state.minParticipants ?? null,
+              maxParticipants: s.maxParticipants ?? state.maxParticipants ?? null,
+            }
+          })
         : [],
     },
     availability: {
@@ -52,6 +65,9 @@ function buildSchedulesAndPricing(state) {
       operatingHoursEnd: state.operatingHoursEnd || '17:00',
       weeklySchedule: state.weeklySchedule || null,
       timeSlots: Array.isArray(state.timeSlots) ? state.timeSlots.map(t => typeof t === 'string' ? t : t.startTime) : [],
+      daysOfWeek: activeDays,
+      startDate: schedules.length > 0 ? (schedules[0].startDate || '') : '',
+      endDate: schedules.length > 0 && schedules[0].hasEndDate ? (schedules[0].endDate || null) : null,
     },
   }
 }
@@ -88,8 +104,6 @@ export function buildPayload(state) {
   ]
   for (const key of omit) delete payload[key]
   if (!payload.copyrightConfirmed) delete payload.copyrightConfirmed
-
-  delete payload.schedulesAndPricing.availability.daysOfWeek
 
   return payload
 }
@@ -129,7 +143,6 @@ export function useAutoSave() {
           const status = err?.response?.status
           if (status >= 400 && status < 500) {
             useProductBuilderStore.getState().markSaved()
-          } else if (err?.code !== 'ERR_CANCELED' && err?.message !== 'AUTH_REQUIRED') {
           }
         } finally {
           savingRef.current = false

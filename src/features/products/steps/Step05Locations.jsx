@@ -24,11 +24,7 @@ export default function Step05Locations() {
   const addLocation = useProductBuilderStore((s) => s.addLocation)
   const removeLocation = useProductBuilderStore((s) => s.removeLocation)
   const updateLocation = useProductBuilderStore((s) => s.updateLocation)
-  const reorderLocations = useProductBuilderStore((s) => s.reorderLocations)
-
   const [searchQuery, setSearchQuery] = useState('')
-  const [dragIdx, setDragIdx] = useState(null)
-  const [dragOverIdx, setDragOverIdx] = useState(null)
   const [expandedIdx, setExpandedIdx] = useState(null)
 
   const inputRef = useRef(null)
@@ -45,8 +41,8 @@ export default function Step05Locations() {
     addLocation({
       name: item.name || item.city || searchQuery.trim(),
       address: item.formatted || '',
-      lat: item.latitude ?? null,
-      lng: item.longitude ?? null,
+      lat: item.latitude != null ? Number(item.latitude) : undefined,
+      lng: item.longitude != null ? Number(item.longitude) : undefined,
       description: '',
       timeSpent: null,
       timeSpentUnit: 'minutes',
@@ -63,8 +59,6 @@ export default function Step05Locations() {
     addLocation({
       name: val,
       address: '',
-      lat: null,
-      lng: null,
       description: '',
       timeSpent: null,
       timeSpentUnit: 'minutes',
@@ -87,27 +81,6 @@ export default function Step05Locations() {
       clear()
       setSearchQuery('')
     }
-  }
-
-  function handleDragStart(index) {
-    setDragIdx(index)
-  }
-
-  function handleDragOver(e, index) {
-    e.preventDefault()
-    setDragOverIdx(index)
-  }
-
-  function handleDrop(index) {
-    if (dragIdx === null || dragIdx === index) return
-    reorderLocations(dragIdx, index)
-    setDragIdx(null)
-    setDragOverIdx(null)
-  }
-
-  function handleDragEnd() {
-    setDragIdx(null)
-    setDragOverIdx(null)
   }
 
   function toggleExpand(index) {
@@ -239,11 +212,7 @@ export default function Step05Locations() {
                 <li
                   key={i}
                   className={`rounded-xl border text-sm transition-all overflow-hidden ${
-                    dragOverIdx === i && dragIdx !== i
-                      ? 'border-emerald-400 bg-emerald-50'
-                      : dragIdx === i
-                      ? 'border-slate-300 bg-slate-50 opacity-60'
-                      : isExpanded
+                    isExpanded
                       ? 'border-slate-300 shadow-sm'
                       : 'border-slate-100 bg-white hover:border-slate-200 hover:shadow-sm'
                   }`}
