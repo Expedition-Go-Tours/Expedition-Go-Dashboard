@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/select'
 import {
   ArrowLeft, Plus, Check, X, Globe,
-  Headphones, Book, Copy, Trash2, Clock,
+  Headphones, Book, Copy, Trash2,
 } from 'lucide-react'
 import { useProductBuilderStore } from '@/features/products/productBuilderStore'
 import { useStepErrors } from '@/features/products/useStepErrors'
@@ -321,7 +321,7 @@ function OptionSummaryCard({ option, index, onEdit, onDuplicate, onRemove }) {
   if (option.maxGroupSize) featurePills.push({ label: `Max ${option.maxGroupSize} ppl`, type: 'group' })
   const langCount = option.languages?.length || 0
 
-  let durationSummary = ''
+  let durationSummary
   if (option.duration) {
     durationSummary = `${option.duration} ${option.durationUnit}`
   } else if (option.validityEnabled) {
@@ -329,6 +329,7 @@ function OptionSummaryCard({ option, index, onEdit, onDuplicate, onRemove }) {
   } else {
     durationSummary = 'No duration set'
   }
+
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-4 hover:border-slate-300 transition-all">
@@ -650,7 +651,7 @@ export default function Step12Options() {
   const updateOption = useProductBuilderStore((s) => s.updateOption)
   const removeOption = useProductBuilderStore((s) => s.removeOption)
   const duplicateOption = useProductBuilderStore((s) => s.duplicateOption)
-  const errors = useStepErrors(11)
+  const errors = useStepErrors(12)
 
   const [editingIndex, setEditingIndex] = useState(null)
   const [showIntro, setShowIntro] = useState(true)

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { useProductBuilderStore } from '@/features/products/productBuilderStore'
+import { useStepErrors } from '@/features/products/useStepErrors'
 import { useGeocoding } from '@/hooks/useGeocoding'
 import {
   Select,
@@ -24,10 +25,13 @@ export default function Step05Locations() {
   const addLocation = useProductBuilderStore((s) => s.addLocation)
   const removeLocation = useProductBuilderStore((s) => s.removeLocation)
   const updateLocation = useProductBuilderStore((s) => s.updateLocation)
+  const reorderLocations = useProductBuilderStore((s) => s.reorderLocations)
+  const errors = useStepErrors(5)
   const [searchQuery, setSearchQuery] = useState('')
   const [expandedIdx, setExpandedIdx] = useState(null)
 
   const inputRef = useRef(null)
+  const dragIndex = useRef(null)
 
   const { search, results, loading, clear } = useGeocoding()
 
@@ -43,6 +47,9 @@ export default function Step05Locations() {
       address: item.formatted || '',
       lat: item.latitude != null ? Number(item.latitude) : undefined,
       lng: item.longitude != null ? Number(item.longitude) : undefined,
+      city: item.city || '',
+      country: item.country || '',
+      region: item.region || '',
       description: '',
       timeSpent: null,
       timeSpentUnit: 'minutes',
@@ -211,6 +218,15 @@ export default function Step05Locations() {
               return (
                 <li
                   key={i}
+                  draggable
+                  onDragStart={() => { dragIndex.current = i }}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={() => {
+                    if (dragIndex.current !== null && dragIndex.current !== i) {
+                      reorderLocations(dragIndex.current, i)
+                      dragIndex.current = null
+                    }
+                  }}
                   className={`rounded-xl border text-sm transition-all overflow-hidden ${
                     isExpanded
                       ? 'border-slate-300 shadow-sm'
@@ -238,6 +254,11 @@ export default function Step05Locations() {
                       <span className="font-medium text-slate-800">{loc.address || loc.name}</span>
                       {loc.address && loc.name && loc.name !== loc.address && (
                         <span className="block text-[12px] text-slate-400 mt-0.5 truncate">{loc.name}</span>
+                      )}
+                      {loc.city && (
+                        <span className="block text-[12px] text-slate-400 mt-0.5 truncate">
+                          📍 {loc.city}{loc.country ? `, ${loc.country}` : ''}
+                        </span>
                       )}
                       {!isExpanded && hasDetails(loc) && (
                         <span className="block text-[12px] text-slate-400 mt-0.5 truncate">
@@ -378,6 +399,7 @@ export default function Step05Locations() {
               )
             })}
           </ul>
+          {errors.locations && <span className="text-[13px] text-red-600 font-medium mt-1">{errors.locations[0]}</span>}
         </div>
       )}
 

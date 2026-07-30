@@ -9,15 +9,13 @@ import {
 } from '@/components/ui/select'
 import { HelpCircle, Info, Plus, X, ChevronDown, ChevronUp, Check, Copy } from 'lucide-react'
 import { useProductBuilderStore } from '@/features/products/productBuilderStore'
-import { safeId } from '@/lib/utils'
+import { useStepErrors } from '@/features/products/useStepErrors'
 
 const CATEGORY_TEMPLATES = [
   { name: 'Child', minAge: 0, maxAge: 17 },
   { name: 'Adult', minAge: 18, maxAge: 99 },
   { name: 'Senior', minAge: 60, maxAge: 99 },
   { name: 'Student', minAge: 18, maxAge: 25, idRequired: true },
-  { name: 'EU', minAge: 18, maxAge: 99, idRequired: true },
-  { name: 'Military', minAge: 18, maxAge: 99, idRequired: true },
 ]
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
@@ -175,9 +173,9 @@ function ScheduleStep() {
         <div className="space-y-1">
           {DAYS.map((day) => (
             <div key={day}>
-              <div className="flex items-center justify-between py-3">
-                <h4 className="text-sm font-bold text-slate-900">{day}</h4>
-                <div className="flex items-center gap-3">
+              <div className="flex items-start justify-between py-3 gap-4">
+                <h4 className="text-sm font-bold text-slate-900 shrink-0 pt-1">{day}</h4>
+                <div className="flex flex-wrap items-center gap-2 justify-end">
                   {(weeklySchedule[day] || []).map((hours, i) => (
                     <div key={i} className="flex items-center gap-1.5">
                       <TimeSelect
@@ -192,7 +190,7 @@ function ScheduleStep() {
                       <button
                         type="button"
                         onClick={() => removeWeeklyHours(day, i)}
-                        className="w-6 h-6 flex items-center justify-center text-red-400 hover:text-red-600 transition-colors"
+                        className="w-6 h-6 flex items-center justify-center text-red-400 hover:text-red-600 transition-colors shrink-0"
                       >
                         <X className="w-3.5 h-3.5" />
                       </button>
@@ -201,7 +199,7 @@ function ScheduleStep() {
                   <button
                     type="button"
                     onClick={() => addWeeklyHours(day)}
-                    className="flex items-center gap-1.5 text-sm text-emerald-600 hover:text-emerald-700 font-medium"
+                    className="flex items-center gap-1.5 text-sm text-emerald-600 hover:text-emerald-700 font-medium shrink-0"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     Add opening hours
@@ -244,14 +242,26 @@ function ScheduleStep() {
               </div>
               {(exception.overrideTimes || []).map((t, j) => (
                 <div key={j} className="flex items-center gap-2 ml-4">
-                  <TimeSelect value={t.startTime} onChange={() => {}} />
+                  <TimeSelect
+                    value={t.startTime}
+                    onChange={(v) => updateDateException(i, {
+                      overrideTimes: exception.overrideTimes.map((ot, oi) => oi === j ? { ...ot, startTime: v } : ot)
+                    })}
+                  />
                   <span>-</span>
-                  <TimeSelect value={t.endTime} onChange={() => {}} />
+                  <TimeSelect
+                    value={t.endTime}
+                    onChange={(v) => updateDateException(i, {
+                      overrideTimes: exception.overrideTimes.map((ot, oi) => oi === j ? { ...ot, endTime: v } : ot)
+                    })}
+                  />
                 </div>
               ))}
               <button
                 type="button"
-                onClick={() => addWeeklyHours('Monday')}
+                onClick={() => updateDateException(i, {
+                  overrideTimes: [...(exception.overrideTimes || []), { startTime: '08:00', endTime: '18:00' }]
+                })}
                 className="flex items-center gap-1.5 text-sm text-emerald-600 hover:text-emerald-700 font-medium"
               >
                 <Plus className="w-3.5 h-3.5" />
@@ -272,11 +282,109 @@ function ScheduleStep() {
   )
 }
 
+function GroupSizeStep() {
+  const {
+    pricingModel, groupSizes,
+    additionalPersonsEnabled, additionalPersonPrice,
+    setField, addGroupSize, updateGroupSize, removeGroupSize,
+  } = useProductBuilderStore()
+
+  useEffect(() => {
+    if (pricingModel === 'perGroup' && groupSizes.length === 0) {
+      addGroupSize()
+    }
+  }, [])
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-base font-bold text-slate-900 mb-2">Group/Vehicle</h3>
+        <p className="text-sm text-slate-600 mb-4">Number of people per group/vehicle</p>
+
+        <div className="space-y-3">
+          {groupSizes.map((gs, i) => (
+            <div key={gs.id || i} className="flex items-center gap-3">
+              {i === 0 && (
+                <label className="text-sm text-slate-700 shrink-0">Number of people</label>
+              )}
+              {i > 0 && <div className="w-[116px] shrink-0" />}
+              <input
+                type="number"
+                value={gs.from}
+                onChange={(e) => updateGroupSize(i, { from: parseInt(e.target.value) || 1 })}
+                min={1}
+                className="h-11 w-20 rounded-lg border border-slate-200 px-3 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+              />
+              <span className="text-sm text-slate-400">to</span>
+              <input
+                type="number"
+                value={gs.to}
+                onChange={(e) => updateGroupSize(i, { to: parseInt(e.target.value) || 1 })}
+                min={1}
+                className="h-11 w-20 rounded-lg border border-slate-200 px-3 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+              />
+              <button
+                type="button"
+                onClick={() => removeGroupSize(i)}
+                disabled={groupSizes.length <= 1}
+                className={`text-sm font-medium shrink-0 ${
+                  groupSizes.length <= 1
+                    ? 'text-slate-300 cursor-not-allowed'
+                    : 'text-red-500 hover:text-red-600'
+                }`}
+              >
+                Remove
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <button
+        type="button"
+        onClick={addGroupSize}
+        className="flex items-center gap-1.5 text-sm text-emerald-600 hover:text-emerald-700 font-medium"
+      >
+        <Plus className="w-4 h-4" />
+        Additional group size
+      </button>
+
+      <div className="border border-slate-200 rounded-lg p-4">
+        <label className="flex items-center gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={additionalPersonsEnabled}
+            onChange={(e) => setField('additionalPersonsEnabled', e.target.checked)}
+            className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+          />
+          <span className="text-sm font-bold text-slate-900">Additional Persons</span>
+        </label>
+        {additionalPersonsEnabled && (
+          <div className="mt-3 flex items-center gap-3">
+            <label className="text-sm text-slate-700">Price per additional person</label>
+            <input
+              type="number"
+              value={additionalPersonPrice ?? ''}
+              onChange={(e) => setField('additionalPersonPrice', e.target.value ? parseFloat(e.target.value) : null)}
+              placeholder="USD"
+              className="h-10 w-28 rounded-lg border border-slate-200 px-3 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+            />
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function PricingCategoriesStep() {
   const {
-    pricingApproach, pricingCategories, showAdvancedCategorySettings,
+    pricingModel, pricingApproach, pricingCategories, showAdvancedCategorySettings,
     setField, addPricingCategory, updatePricingCategory, removePricingCategory,
   } = useProductBuilderStore()
+
+  if (pricingModel === 'perGroup') {
+    return <GroupSizeStep />
+  }
   const [showPicker, setShowPicker] = useState(false)
   const [customMode, setCustomMode] = useState(false)
   const [customName, setCustomName] = useState('')
@@ -518,7 +626,27 @@ function PricingCategoriesStep() {
 }
 
 function CapacityStep() {
-  const { minParticipants, maxParticipants, setField } = useProductBuilderStore()
+  const { pricingModel, minParticipants, maxParticipants, maxGroupsPerTimeSlot, setField } = useProductBuilderStore()
+
+  if (pricingModel === 'perGroup') {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-base font-bold text-slate-900 mb-2">What's the maximum number of groups you can take per time slot?</h3>
+          <div className="flex items-center gap-4 mt-4">
+            <label className="text-sm text-slate-700 min-w-[130px]">Max # of groups</label>
+            <input
+              type="number"
+              value={maxGroupsPerTimeSlot}
+              onChange={(e) => setField('maxGroupsPerTimeSlot', parseInt(e.target.value) || 1)}
+              min={1}
+              className="h-11 w-32 rounded-lg border border-slate-200 px-3.5 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+            />
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -558,9 +686,91 @@ function CapacityStep() {
   )
 }
 
-function PriceStep() {
+function PerGroupPriceStep() {
   const {
-    pricingModel, pricingApproach, currency, pricingCategories, uniformPrice,
+    groupSizes,
+    updateGroupSize, removeGroupSize, addGroupSize,
+  } = useProductBuilderStore()
+
+  const commission = 0.30
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-base font-bold text-slate-900 mb-1">Set the price for your activity</h3>
+        <p className="text-sm text-slate-500">
+          Include all taxes in what the customer pays for your activity.{' '}
+          <a href="#" className="text-emerald-600 underline">Learn more</a>.
+        </p>
+      </div>
+
+      <h4 className="text-sm font-bold text-slate-900">Price per group</h4>
+
+      {groupSizes.map((band, i) => {
+        const bandPrice = band.price
+        const payout = bandPrice ? (bandPrice * (1 - commission)).toFixed(2) : ''
+        const label = band.from === band.to
+          ? `Group of ${band.from}`
+          : `Group of ${band.from}-${band.to}`
+
+        return (
+          <div key={band.id || i} className="border border-slate-200 rounded-lg p-4">
+            <div className="text-sm font-bold text-slate-900 mb-2">{label}</div>
+            <div className="flex flex-wrap items-end gap-x-4 gap-y-2">
+              <div className="min-w-[140px] flex-1">
+                <label className="block text-xs text-slate-500 mb-1">Group pays</label>
+                <input
+                  type="number"
+                  value={bandPrice ?? ''}
+                  onChange={(e) => updateGroupSize(i, { price: e.target.value ? parseFloat(e.target.value) : null })}
+                  placeholder="USD"
+                  className="h-10 w-full max-w-[120px] rounded-lg border border-slate-200 px-3 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-500 mb-1">Commission</label>
+                <div className="h-10 rounded-lg bg-slate-100 flex items-center px-3 text-sm text-slate-500 min-w-[60px]">
+                  30%
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs text-slate-500 mb-1">Payout per group</label>
+                <div className="h-10 rounded-lg bg-slate-100 flex items-center px-3 text-sm text-slate-700 font-medium min-w-[80px]">
+                  {bandPrice ? `${payout} USD` : ''}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => removeGroupSize(i)}
+                disabled={groupSizes.length <= 1}
+                className={`text-sm font-medium shrink-0 ${
+                  groupSizes.length <= 1
+                    ? 'text-slate-300 cursor-not-allowed'
+                    : 'text-red-500 hover:text-red-600'
+                }`}
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+        )
+      })}
+
+      <button
+        type="button"
+        onClick={addGroupSize}
+        className="flex items-center gap-1.5 text-sm text-emerald-600 hover:text-emerald-700 font-medium"
+      >
+        <Plus className="w-4 h-4" />
+        Additional group size
+      </button>
+    </div>
+  )
+}
+
+function PerPersonPriceStep() {
+  const {
+    pricingApproach, pricingCategories, uniformPrice,
     minParticipants, maxParticipants,
     setField, addCategoryTier, updateCategoryTier, removeCategoryTier,
   } = useProductBuilderStore()
@@ -577,12 +787,11 @@ function PriceStep() {
   }
 
   function handlePriceChange(i, value) {
-    const num = parseFloat(value) || 0
     if (isSameForEveryone) {
-      setField('uniformPrice', num)
+      setField('uniformPrice', value ? parseFloat(value) : null)
     } else {
       const updated = [...pricingCategories]
-      updated[i] = { ...updated[i], price: num }
+      updated[i] = { ...updated[i], price: value ? parseFloat(value) : null }
       setField('pricingCategories', updated)
     }
   }
@@ -607,10 +816,8 @@ function PriceStep() {
             <div className="grid grid-cols-4 gap-3 items-end">
               <div>
                 <label className="block text-xs text-slate-500 mb-1">Number of people</label>
-                <div className="flex items-center gap-1 text-sm text-slate-700">
-                  <span>{minParticipants} to</span>
-                  <span>{maxParticipants}</span>
-                  <HelpCircle className="w-3.5 h-3.5 text-slate-400" />
+                <div className="text-sm text-slate-700 font-medium">
+                  {minParticipants} to {maxParticipants ?? ''}
                 </div>
               </div>
               <div>
@@ -639,53 +846,58 @@ function PriceStep() {
               </div>
             </div>
 
-            {(cat.tiers || []).map((tier, j) => (
-              <div key={tier.id || j} className="flex items-end gap-3 p-3 mt-3 rounded-lg border border-slate-100 bg-slate-50">
-                <div className="flex-1">
-                  <label className="block text-xs text-slate-500 mb-1">From</label>
-                  <input
-                    type="number"
-                    value={tier.from ?? ''}
-                    onChange={(e) => updateCategoryTier(i, j, { from: e.target.value ? parseInt(e.target.value) : null })}
-                    className="h-9 w-full rounded-lg border border-slate-200 px-2.5 text-sm focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
-                <div className="flex-1">
-                  <label className="block text-xs text-slate-500 mb-1">To</label>
-                  <input
-                    type="number"
-                    value={tier.to ?? ''}
-                    onChange={(e) => updateCategoryTier(i, j, { to: e.target.value ? parseInt(e.target.value) : null })}
-                    className="h-9 w-full rounded-lg border border-slate-200 px-2.5 text-sm focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
-                <div className="flex-1">
-                  <label className="block text-xs text-slate-500 mb-1">Price per person</label>
-                  <input
-                    type="number"
-                    value={tier.pricePerPerson ?? ''}
-                    onChange={(e) => updateCategoryTier(i, j, { pricePerPerson: e.target.value ? parseFloat(e.target.value) : null })}
-                    placeholder="USD"
-                    className="h-9 w-full rounded-lg border border-slate-200 px-2.5 text-sm focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
-                <div className="flex-1">
-                  <label className="block text-xs text-slate-500 mb-1">Commission</label>
-                  <div className="h-9 rounded-lg bg-slate-100 flex items-center px-2.5 text-sm text-slate-500">30%</div>
-                </div>
-                <div className="flex-1">
-                  <label className="block text-xs text-slate-500 mb-1">You receive</label>
-                  <div className="h-9 rounded-lg bg-slate-100 flex items-center px-2.5 text-sm text-slate-700">
-                    {tier.pricePerPerson ? `${(tier.pricePerPerson * 0.7).toFixed(2)} USD` : ''}
+              {(cat.tiers || []).map((tier, j) => (
+              <div key={tier.id || j} className="p-3 mt-3 rounded-lg border border-slate-100 bg-slate-50">
+                <div className="text-xs font-medium text-slate-500 mb-2">Pay out per {cat.name}</div>
+                <div className="grid grid-cols-4 gap-3 items-center">
+                  <div>
+                    <div className="flex items-center gap-1 text-sm text-slate-700">
+                      <span>{tier.from}</span>
+                      <span>to</span>
+                      <input
+                        type="number"
+                        value={tier.to ?? ''}
+                        onChange={(e) => {
+                          const raw = e.target.value
+                          if (!raw) { updateCategoryTier(i, j, { to: null }); return }
+                          const newTo = parseInt(raw)
+                          if (isNaN(newTo)) return
+                          updateCategoryTier(i, j, { to: newTo })
+                        }}
+                        className="h-7 w-16 rounded-lg border border-slate-200 px-2 text-sm text-center focus:outline-none focus:border-emerald-500"
+                        min={1}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <input
+                      type="number"
+                      value={tier.pricePerPerson ?? ''}
+                      onChange={(e) => updateCategoryTier(i, j, { pricePerPerson: e.target.value ? parseFloat(e.target.value) : null })}
+                      placeholder="USD"
+                      className="h-11 w-full rounded-lg border border-slate-200 px-3 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                    />
+                  </div>
+                  <div>
+                    <div className="h-11 rounded-lg bg-slate-100 flex items-center px-3 text-sm text-slate-500">30%</div>
+                  </div>
+                  <div>
+                    <div className="h-11 flex items-center">
+                      <button
+                        type="button"
+                        onClick={() => removeCategoryTier(i, j)}
+                        className={`text-sm font-medium ${
+                          cat.tiers.length <= 1
+                            ? 'text-slate-300 cursor-not-allowed'
+                            : 'text-red-500 hover:text-red-600'
+                        }`}
+                        disabled={cat.tiers.length <= 1}
+                      >
+                        Remove
+                      </button>
+                    </div>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => removeCategoryTier(i, j)}
-                  className="flex items-center gap-1 text-sm text-red-500 hover:text-red-600 font-medium mb-2"
-                >
-                  <X className="w-4 h-4" />
-                </button>
               </div>
             ))}
 
@@ -702,6 +914,16 @@ function PriceStep() {
       })}
     </div>
   )
+}
+
+function PriceStep() {
+  const { pricingModel } = useProductBuilderStore()
+
+  if (pricingModel === 'perGroup') {
+    return <PerGroupPriceStep />
+  }
+
+  return <PerPersonPriceStep />
 }
 
 function AddonsStep() {
@@ -751,10 +973,10 @@ function ScheduleWizard({ onBack }) {
   }
 
   return (
-    <div>
+    <div className="flex flex-col">
       <WizardStepper currentStep={currentScheduleStep} />
 
-      <div className="min-h-[400px]">
+      <div className="min-h-[200px]">
         <AnimatePresence mode="wait" custom={direction}>
           <motion.div
             key={currentScheduleStep}
@@ -774,7 +996,7 @@ function ScheduleWizard({ onBack }) {
         </AnimatePresence>
       </div>
 
-      <div className="flex items-center justify-end gap-3 mt-8 pt-6 border-t border-slate-100">
+      <div className="flex items-center justify-end gap-3 pt-6 border-t border-slate-100 mt-6">
         <button
           type="button"
           onClick={handleBack}
@@ -787,7 +1009,7 @@ function ScheduleWizard({ onBack }) {
           onClick={handleNext}
           className="px-6 py-2.5 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition-colors"
         >
-          {currentScheduleStep === 5 ? 'Save and continue' : 'Save and continue'}
+          Save and continue
         </button>
       </div>
     </div>
@@ -806,9 +1028,6 @@ function ScheduleCard({ schedule, index, onEdit }) {
       }`
     : 'No dates set'
 
-  const activeDays = Object.entries(schedule.weeklySchedule || {})
-    .filter(([, hours]) => hours.length > 0)
-    .map(([day]) => day.slice(0, 3))
 
   return (
     <div className="rounded-lg border border-slate-200 bg-white overflow-hidden">
@@ -821,16 +1040,27 @@ function ScheduleCard({ schedule, index, onEdit }) {
                 <span className="text-xs text-slate-500 w-20">Date range:</span>
                 <span className="text-xs text-slate-700">{dateRange}</span>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-500 w-20">Participants:</span>
-                <span className="text-xs text-slate-700">{schedule.minParticipants} - {schedule.maxParticipants}</span>
-              </div>
+              {schedule.pricingModel === 'perGroup' ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-500 w-20">Maximum groups:</span>
+                  <span className="text-xs text-slate-700">{schedule.maxGroupsPerTimeSlot ?? 1}</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-500 w-20">Participants:</span>
+                  <span className="text-xs text-slate-700">{schedule.minParticipants} - {schedule.maxParticipants}</span>
+                </div>
+              )}
               <div className="flex items-center gap-2">
                 <span className="text-xs text-slate-500 w-20">Pricing:</span>
                 <span className="text-xs text-slate-700">
-                  {schedule.pricingApproach === 'sameForEveryone'
-                    ? `$${schedule.uniformPrice || 0} per Person`
-                    : `${schedule.pricingCategories?.length || 0} categories`}
+                  {schedule.pricingModel === 'perGroup'
+                    ? (Array.isArray(schedule.groupSizes) && schedule.groupSizes.length > 0
+                      ? `From $${Math.min(...schedule.groupSizes.map(g => g.price || 0))} per group`
+                      : 'Not set')
+                    : schedule.pricingApproach === 'sameForEveryone'
+                      ? `$${schedule.uniformPrice || 0} per Person`
+                      : `${schedule.pricingCategories?.length || 0} categories`}
                 </span>
               </div>
             </div>
@@ -895,11 +1125,49 @@ function ScheduleCard({ schedule, index, onEdit }) {
 
 export default function Step14PricingAvailability() {
   const {
-    scheduleType, pricingModel, currency, schedules,
+    scheduleType, pricingModel, schedules, groupSizes, pricingCategories, uniformPrice, minParticipants, maxParticipants, maxGroupsPerTimeSlot, additionalPersonsEnabled, additionalPersonPrice,
     setField, resetScheduleForm,
   } = useProductBuilderStore()
+  const errors = useStepErrors(14)
   const [showWizard, setShowWizard] = useState(false)
-  const [editingIndex, setEditingIndex] = useState(null)
+  const [, setEditingIndex] = useState(null)
+  const [pricingModelConfirm, setPricingModelConfirm] = useState(null)
+
+  function hasPricingData() {
+    if (schedules.length > 0) return true
+    if (pricingModel === 'perPerson') {
+      if (uniformPrice != null) return true
+      if (pricingCategories.some(c => c.price != null)) return true
+    }
+    if (pricingModel === 'perGroup') {
+      if (groupSizes.some(g => g.price != null)) return true
+    }
+    return false
+  }
+
+  function handlePricingModelChange(nextModel) {
+    if (nextModel === pricingModel) return
+    if (hasPricingData()) {
+      setPricingModelConfirm(nextModel)
+    } else {
+      setField('pricingModel', nextModel)
+    }
+  }
+
+  function confirmPricingModelChange() {
+    const nextModel = pricingModelConfirm
+    setField('schedules', [])
+    setField('groupSizes', [])
+    setField('uniformPrice', null)
+    setField('pricingCategories', pricingCategories.map(c => ({ ...c, price: null, tiers: [] })))
+    setField('minParticipants', 1)
+    setField('maxParticipants', 10)
+    setField('maxGroupsPerTimeSlot', 1)
+    setField('additionalPersonsEnabled', false)
+    setField('additionalPersonPrice', null)
+    setField('pricingModel', nextModel)
+    setPricingModelConfirm(null)
+  }
 
   const handleAddSchedule = () => {
     resetScheduleForm()
@@ -958,7 +1226,7 @@ export default function Step14PricingAvailability() {
       </div>
 
       {/* Availability type */}
-      <div>
+      <div data-field="scheduleType">
         <label className="block text-sm font-bold text-slate-900 mb-3">How do you set your availability?</label>
         <div className="space-y-3">
           <label className="flex items-start gap-3 cursor-pointer">
@@ -988,6 +1256,7 @@ export default function Step14PricingAvailability() {
             </div>
           </label>
         </div>
+        {errors.scheduleType && <span className="text-[13px] text-red-600 font-medium mt-1">{errors.scheduleType[0]}</span>}
       </div>
 
       {/* Pricing model */}
@@ -999,7 +1268,7 @@ export default function Step14PricingAvailability() {
               type="radio"
               name="pricingModel"
               checked={pricingModel === 'perPerson'}
-              onChange={() => setField('pricingModel', 'perPerson')}
+              onChange={() => handlePricingModelChange('perPerson')}
               data-field="pricingModel"
               className="mt-0.5 w-4 h-4 text-emerald-600 border-slate-300 focus:ring-emerald-500"
             />
@@ -1013,7 +1282,7 @@ export default function Step14PricingAvailability() {
               type="radio"
               name="pricingModel"
               checked={pricingModel === 'perGroup'}
-              onChange={() => setField('pricingModel', 'perGroup')}
+              onChange={() => handlePricingModelChange('perGroup')}
               data-field="pricingModel"
               className="mt-0.5 w-4 h-4 text-emerald-600 border-slate-300 focus:ring-emerald-500"
             />
@@ -1023,11 +1292,43 @@ export default function Step14PricingAvailability() {
             </div>
           </label>
         </div>
+        {errors.pricingModel && <span className="text-[13px] text-red-600 font-medium mt-1">{errors.pricingModel[0]}</span>}
       </div>
 
+      {pricingModelConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 p-6">
+            <h3 className="text-lg font-bold text-slate-900 mb-3">Delete schedule</h3>
+            <p className="text-sm text-slate-600 leading-relaxed mb-6">
+              This change will delete all your live schedule, capacity and price settings. You'll need to set this up again.
+            </p>
+            <p className="text-sm text-slate-700 font-medium mb-6">
+              Are you sure you want to make this change?
+            </p>
+            <div className="flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setPricingModelConfirm(null)}
+                className="px-5 py-2.5 border border-slate-300 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmPricingModelChange}
+                className="px-5 py-2.5 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Saved schedules */}
+      {errors.schedules && <span className="text-[13px] text-red-600 font-medium mb-2 block">{errors.schedules[0]}</span>}
       {schedules.length > 0 && (
-        <div className="space-y-3">
+        <div className="space-y-3" data-field="schedules">
           {schedules.map((schedule, i) => (
             <ScheduleCard
               key={i}

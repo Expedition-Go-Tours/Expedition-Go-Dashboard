@@ -2,7 +2,8 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { safeId } from '@/lib/utils'
 import { GYG_STEPS } from './gygSteps'
-import { validateStep, isStepComplete } from './stepValidation'
+import { isStepComplete } from './stepValidation'
+import { getCountryCallingCode } from 'libphonenumber-js'
 
 function getSectionStep(index) {
   const step = GYG_STEPS[index]
@@ -51,7 +52,6 @@ const INITIAL_FORM = {
   petFriendly: false,
   mandatoryItems: [],
   knowBeforeYouGo: '',
-  emergencyCountryCode: '',
   emergencyPhone: '',
   voucherInfo: '',
   photos: [],
@@ -117,6 +117,9 @@ const INITIAL_FORM = {
   additionalItineraryInfo: '',
   dayTitles: {},
   cutoffHours: 0,
+  cancellationType: 'standard',
+  supplierCanCancelBadWeather: false,
+  supplierCanCancelNotEnoughTravelers: false,
   metaTitle: '',
   metaDescription: '',
   contactPhone: null,
@@ -148,7 +151,18 @@ export const useProductBuilderStore = create(
 
       setHasHydrated: (val) => set({ hasHydrated: val }),
 
-      setField: (key, value) => set({ [key]: value, isDirty: true }),
+      setField: (key, value) =>
+        set((s) => {
+          const updates = { [key]: value, isDirty: true }
+          if (key === 'maxParticipants') {
+            updates.pricingCategories = s.pricingCategories.map((c) => {
+              const t = c.tiers || []
+              if (t.length === 0) return c
+              return { ...c, tiers: t.map((tier, j) => j === t.length - 1 ? { ...tier, to: value } : tier) }
+            })
+          }
+          return updates
+        }),
 
       addHighlight: (item) =>
         set((s) => ({ highlights: [...s.highlights, item], isDirty: true })),
@@ -249,7 +263,8 @@ export const useProductBuilderStore = create(
         })),
       setPhotoUrl: (id, url) =>
         set((s) => {
-          const { [id]: _, ...rest } = s._pendingFiles
+          const rest = { ...s._pendingFiles }
+          delete rest[id]
           return {
             photos: s.photos.map((p) => (p.id === id ? { ...p, url } : p)),
             _pendingFiles: rest,
@@ -260,7 +275,8 @@ export const useProductBuilderStore = create(
         set((s) => {
           const photo = s.photos[index]
           if (!photo) return s
-          const { [photo.id]: _, ...rest } = s._pendingFiles
+          const rest = { ...s._pendingFiles, [photo.id]: undefined }
+          delete rest[photo.id]
           return {
             photos: s.photos.filter((_, i) => i !== index),
             _pendingFiles: rest,
@@ -408,42 +424,140 @@ export const useProductBuilderStore = create(
         })),
 
       addCategoryTier: (catIndex) =>
-        set((s) => ({
-          pricingCategories: s.pricingCategories.map((c, i) =>
-            i === catIndex ? { ...c, tiers: [...(c.tiers || []), { id: safeId(), from: null, to: null, pricePerPerson: null }] } : c
-          ),
-          isDirty: true,
-        })),
+        set((s) => {
+          const cat = s.pricingCategories[catIndex]
+          if (!cat) return s
+          const tiers = cat.tiers || []
+          const lastTier = tiers[tiers.length - 1]
+
+          if (!lastTier) {
+            const firstTo = s.maxParticipants ?? 1
+            if (2 > firstTo) return s
+            return {
+              pricingCategories: s.pricingCategories.map((c, i) =>
+                i === catIndex
+                  ? { ...c, tiers: [{ id: safeId(), from: 2, to: firstTo, pricePerPerson: null }] }
+                  : c
+              ),
+              isDirty: true,
+            }
+          }
+
+          const newFrom = lastTier.from + 1
+          if (newFrom > lastTier.to) return s
+
+          return {
+            pricingCategories: s.pricingCategories.map((c, i) =>
+              i === catIndex
+                ? {
+                    ...c,
+                    tiers: [
+                      ...tiers.slice(0, -1),
+                      { ...lastTier, to: lastTier.from },
+                      { id: safeId(), from: newFrom, to: lastTier.to, pricePerPerson: null },
+                    ],
+                  }
+                : c
+            ),
+            isDirty: true,
+          }
+        }),
       updateCategoryTier: (catIndex, tierIndex, updates) =>
-        set((s) => ({
-          pricingCategories: s.pricingCategories.map((c, i) =>
-            i === catIndex ? { ...c, tiers: (c.tiers || []).map((t, j) => j === tierIndex ? { ...t, ...updates } : t) } : c
-          ),
-          isDirty: true,
-        })),
+        set((s) => {
+          const cat = s.pricingCategories[catIndex]
+          const tiers = cat?.tiers || []
+          const tier = tiers[tierIndex]
+          if (!tier) return s
+          const merged = { ...tier, ...updates }
+          if (merged.to < merged.from) return s
+          return {
+            pricingCategories: s.pricingCategories.map((c, i) =>
+              i === catIndex
+                ? {
+                    ...c,
+                    tiers: tiers.map((t, j) => (j === tierIndex ? merged : t)),
+                  }
+                : c
+            ),
+            isDirty: true,
+          }
+        }),
       removeCategoryTier: (catIndex, tierIndex) =>
-        set((s) => ({
-          pricingCategories: s.pricingCategories.map((c, i) =>
-            i === catIndex ? { ...c, tiers: (c.tiers || []).filter((_, j) => j !== tierIndex) } : c
-          ),
-          isDirty: true,
-        })),
+        set((s) => {
+          const cat = s.pricingCategories[catIndex]
+          if (!cat) return s
+          const tiers = cat.tiers || []
+          if (tiers.length <= 1) return s
+          const removed = tiers[tierIndex]
+          return {
+            pricingCategories: s.pricingCategories.map((c, i) =>
+              i === catIndex
+                ? {
+                    ...c,
+                    tiers: tiers
+                      .map((t, j) => {
+                        if (j === tierIndex - 1 && removed) return { ...t, to: removed.to }
+                        if (j === tierIndex + 1 && tierIndex === 0 && removed) return { ...t, from: removed.from }
+                        return t
+                      })
+                      .filter((_, j) => j !== tierIndex),
+                  }
+                : c
+            ),
+            isDirty: true,
+          }
+        }),
 
       addGroupSize: () =>
-        set((s) => ({
-          groupSizes: [...s.groupSizes, { id: safeId(), size: null, price: null }],
-          isDirty: true,
-        })),
+        set((s) => {
+          const sizes = s.groupSizes
+          if (sizes.length === 0) {
+            return {
+              groupSizes: [{ id: safeId(), from: 1, to: 10, price: null }],
+              isDirty: true,
+            }
+          }
+          const last = sizes[sizes.length - 1]
+          const newFrom = last ? last.to + 1 : 1
+          return {
+            groupSizes: [...sizes, { id: safeId(), from: newFrom, to: newFrom, price: null }],
+            isDirty: true,
+          }
+        }),
       updateGroupSize: (index, updates) =>
-        set((s) => ({
-          groupSizes: s.groupSizes.map((g, i) => (i === index ? { ...g, ...updates } : g)),
-          isDirty: true,
-        })),
+        set((s) => {
+          const gs = s.groupSizes
+          const g = gs[index]
+          if (!g) return s
+          const merged = { ...g, ...updates }
+          if (merged.to < merged.from) return s
+          return {
+            groupSizes: gs.map((g2, i) => (i === index ? merged : g2)),
+            isDirty: true,
+          }
+        }),
       removeGroupSize: (index) =>
-        set((s) => ({
-          groupSizes: s.groupSizes.filter((_, i) => i !== index),
-          isDirty: true,
-        })),
+        set((s) => {
+          if (s.groupSizes.length <= 1) return s
+          const sorted = [...s.groupSizes].sort((a, b) => (a.from ?? 0) - (b.from ?? 0))
+          if (index < 0 || index >= sorted.length) return s
+          const current = sorted[index]
+          if (!current) return s
+          const prev = sorted[index - 1]
+          const next = sorted[index + 1]
+          const newFrom = prev ? prev.to + 1 : 1
+          const newTo = next ? next.from - 1 : (current.to ?? 100)
+          if (newFrom > newTo) return s
+          return {
+            groupSizes: sorted.map((g, i) => {
+              if (i === index) return null
+              if (i === index - 1) return { ...prev, to: newTo }
+              if (i === index + 1) return { ...next, from: newFrom }
+              return g
+            }).filter(g => g != null),
+            isDirty: true,
+          }
+        }),
 
       addDateException: () =>
         set((s) => ({
@@ -532,6 +646,10 @@ export const useProductBuilderStore = create(
             pricingCategories: JSON.parse(JSON.stringify(s.pricingCategories)),
             minParticipants: s.minParticipants,
             maxParticipants: s.maxParticipants,
+            maxGroupsPerTimeSlot: s.maxGroupsPerTimeSlot,
+            groupSizes: JSON.parse(JSON.stringify(s.groupSizes)),
+            additionalPersonsEnabled: s.additionalPersonsEnabled,
+            additionalPersonPrice: s.additionalPersonPrice,
           }
           const newSchedules = [...s.schedules]
           if (s.editingScheduleIndex !== null) {
@@ -567,6 +685,10 @@ export const useProductBuilderStore = create(
             pricingCategories: JSON.parse(JSON.stringify(schedule.pricingCategories || [])).map((c) => ({ ...c, tiers: c.tiers || [] })),
             minParticipants: schedule.minParticipants,
             maxParticipants: schedule.maxParticipants,
+            maxGroupsPerTimeSlot: schedule.maxGroupsPerTimeSlot ?? 1,
+            groupSizes: JSON.parse(JSON.stringify(schedule.groupSizes || [])),
+            additionalPersonsEnabled: schedule.additionalPersonsEnabled ?? false,
+            additionalPersonPrice: schedule.additionalPersonPrice ?? null,
           }
         }),
       removeSchedule: (index) =>
@@ -590,11 +712,15 @@ export const useProductBuilderStore = create(
           pricingCategories: [{ name: 'Child', price: null, minAge: 0, maxAge: 17, notAllowed: false, ticketNotRequired: false, needsAdult: false, idRequired: false, idType: '', tiers: [] }, { name: 'Adult', price: null, minAge: 18, maxAge: 99, notAllowed: false, ticketNotRequired: false, needsAdult: false, idRequired: false, idType: '', tiers: [] }],
           minParticipants: 1,
           maxParticipants: 10,
+          maxGroupsPerTimeSlot: 1,
+          groupSizes: [],
+          additionalPersonsEnabled: false,
+          additionalPersonPrice: null,
         }),
 
-      addPickupArea: (name) =>
+      addPickupArea: (area) =>
         set((s) => ({
-          pickupAreas: [...s.pickupAreas, { name, time: '' }],
+          pickupAreas: [...s.pickupAreas, { name: area.name || '', time: area.time || '', address: area.address || '', lat: area.lat ?? null, lng: area.lng ?? null }],
           isDirty: true,
         })),
       updatePickupArea: (index, updates) =>
@@ -718,8 +844,9 @@ export const useProductBuilderStore = create(
         })),
       clearStepErrors: (stepIndex) =>
         set((s) => {
-          const { [stepIndex]: _, ...rest } = s.stepErrors
-          return { stepErrors: rest }
+          const stepErrors = { ...s.stepErrors }
+          delete stepErrors[stepIndex]
+          return { stepErrors }
         }),
       clearAllStepErrors: () => set({ stepErrors: {} }),
 
@@ -742,11 +869,12 @@ export const useProductBuilderStore = create(
     }),
     {
       name: 'product-builder-draft',
-      version: 1,
+      version: 2,
       migrate: (persistedState, version) => {
+        let state = persistedState
         if (version < 1) {
-          return {
-            ...persistedState,
+          state = {
+            ...state,
             currentStep: 0,
             currentSectionId: 'getting-started',
             currentStepId: 'language',
@@ -754,18 +882,74 @@ export const useProductBuilderStore = create(
             stepErrors: {},
           }
         }
-        return persistedState
+        if (version < 2) {
+          const { emergencyCountryCode, emergencyPhone, ...rest } = state
+          let mergedPhone = ''
+          if (emergencyCountryCode || emergencyPhone) {
+            const cc = (emergencyCountryCode || '').trim().toUpperCase()
+            const pn = (emergencyPhone || '').trim()
+            if (cc && /^[A-Z]{2}$/.test(cc)) {
+              try {
+                const dialCode = getCountryCallingCode(cc)
+                const digits = pn.replace(/\D/g, '')
+                mergedPhone = digits ? `+${dialCode}${digits}` : ''
+              } catch {
+                const digits = (cc + pn).replace(/\D/g, '')
+                mergedPhone = digits ? `+${digits}` : ''
+              }
+            } else {
+              const digits = (cc + pn).replace(/\D/g, '')
+              mergedPhone = digits ? `+${digits}` : ''
+            }
+          }
+          state = {
+            ...rest,
+            emergencyPhone: mergedPhone,
+            currentStep: 0,
+            currentSectionId: 'getting-started',
+            currentStepId: 'language',
+            completedStepIds: [],
+            stepErrors: {},
+          }
+        }
+        return state
       },
       partialize: (state) => {
-        const { isDirty, isSaving, isSubmitting, lastSaved, hasHydrated, _pendingFiles, _uploadedUrls, stepErrors, ...rest } = state
+        const rest = { ...state }
+        delete rest.isDirty
+        delete rest.isSaving
+        delete rest.isSubmitting
+        delete rest.lastSaved
+        delete rest.hasHydrated
+        delete rest._pendingFiles
+        delete rest._uploadedUrls
+        delete rest.stepErrors
         return rest
       },
       onRehydrateStorage: () => (state) => {
         if (state) {
           state.hasHydrated = true
+          if (state.emergencyCountryCode !== undefined) {
+            delete state.emergencyCountryCode
+          }
           for (const key of Object.keys(INITIAL_FORM)) {
             if (state[key] === undefined) {
               state[key] = INITIAL_FORM[key]
+            }
+          }
+          for (const cat of state.pricingCategories || []) {
+            const tiers = cat.tiers || []
+            let prevTo = 1
+            for (let idx = 0; idx < tiers.length; idx++) {
+              const tier = tiers[idx]
+              if (idx === 0) {
+                if (tier.from !== 1 || (tier.to !== null && tier.from > tier.to)) {
+                  tier.from = 1
+                }
+              } else {
+                tier.from = prevTo + 1
+              }
+              if (tier.to !== null) prevTo = tier.to
             }
           }
           const mapping = getSectionStep(state.currentStep || 0)

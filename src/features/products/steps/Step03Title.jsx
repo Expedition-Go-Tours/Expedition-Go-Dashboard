@@ -35,6 +35,7 @@ export default function Step03Title() {
           onChange={(e) => setField('referenceCode', e.target.value)}
           placeholder="Internal code (optional)"
         />
+        {errors.referenceCode && <span className="text-[13px] text-red-600 font-medium mt-1 flex items-center gap-1">{errors.referenceCode[0]}</span>}
         <p className="text-[13px] text-slate-500 mt-1.5 leading-relaxed">
           An internal code to help you identify this product. Not shown to customers.
         </p>

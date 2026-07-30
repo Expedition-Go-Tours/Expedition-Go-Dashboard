@@ -100,6 +100,7 @@ export default function Step15Cutoff() {
             </p>
           </div>
         </label>
+        {errors.lastMinuteBookings && <span className="text-[13px] text-red-600 font-medium mt-1">{errors.lastMinuteBookings[0]}</span>}
       </div>
 
       <hr className="border-slate-100" />
@@ -134,6 +135,7 @@ export default function Step15Cutoff() {
             <span className="text-sm text-slate-700 group-hover:text-slate-900">Yes</span>
           </label>
         </div>
+        {errors.perSlotCutoff && <span className="text-[13px] text-red-600 font-medium mt-1">{errors.perSlotCutoff[0]}</span>}
       </div>
     </div>
   )

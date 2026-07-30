@@ -2,6 +2,7 @@ import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useProductBuilderStore } from '@/features/products/productBuilderStore'
+import { useStepErrors } from '@/features/products/useStepErrors'
 import { createProduct, updateProduct } from '@/features/products/api'
 import { buildPayload } from '@/features/products/useAutoSave'
 import { useGeocoding } from '@/hooks/useGeocoding'
@@ -643,7 +644,7 @@ function SegmentCard({ segment, onEdit, onRemove, onAddAfter }) {
 }
 
 // ─── Welcome Screen ───────────────────────────────────────────────────────────
-function WelcomeScreen({ isMultiDay, onStart }) {
+function WelcomeScreen({ isMultiDay, onStart, errors }) {
   const STOPS = [
     { type: 'bus', title: 'Bus ride', sub: '(1h30min)' },
     { type: 'activity', title: 'Glencoe', sub: 'Photo stop' },
@@ -755,6 +756,7 @@ function WelcomeScreen({ isMultiDay, onStart }) {
         <button data-field="itinerary" onClick={onStart} className="px-7 py-2.5 bg-emerald-600 text-white rounded-full text-sm font-semibold hover:bg-emerald-700 transition-colors">
           {isMultiDay ? 'Get started' : 'Build schedule'}
         </button>
+        {errors?.itinerary && <span className="text-[13px] text-red-600 font-medium mt-3 block">{errors.itinerary[0]}</span>}
       </div>
     </div>
   )
@@ -1906,6 +1908,7 @@ export default function Step16Itinerary() {
   const duration       = useProductBuilderStore((s) => s.duration)
   const durationUnit   = useProductBuilderStore((s) => s.durationUnit)
   const locations      = useProductBuilderStore((s) => s.locations)
+  const errors = useStepErrors(16)
   // Meeting/pickup fields (from Step 13)
   const meetingMode         = useProductBuilderStore((s) => s.meetingMode)
   const meetingPoint        = useProductBuilderStore((s) => s.meetingPoint)
@@ -1925,8 +1928,8 @@ export default function Step16Itinerary() {
 
   // All tagged locations (product locations + pickup locations) for segment location search
   const taggedLocations = useMemo(() => {
-    const locs = (locations || []).map((l) => ({ name: l.name, address: l.address, lat: l.lat, lng: l.lng }))
-    const picks = (pickupLocations || []).map((l) => ({ name: l.name, address: l.address, lat: l.lat, lng: l.lng }))
+    const locs = (locations || []).map((l) => ({ name: l.name, address: l.address, lat: l.lat, lng: l.lng, city: l.city, country: l.country }))
+    const picks = (pickupLocations || []).map((l) => ({ name: l.name, address: l.address, lat: l.lat, lng: l.lng, city: l.city, country: l.country }))
     return [...locs, ...picks]
   }, [locations, pickupLocations])
 
@@ -2033,6 +2036,7 @@ export default function Step16Itinerary() {
                 <WelcomeScreen
                   isMultiDay={isMultiDay}
                   onStart={() => setStarted(true)}
+                  errors={errors}
                 />
               </motion.div>
             ) : isMultiDay ? (

@@ -1,6 +1,8 @@
 import { useRef, useState } from 'react'
 import { useProductBuilderStore } from '@/features/products/productBuilderStore'
+import { useStepErrors } from '@/features/products/useStepErrors'
 import { GYG_MANDATORY_ITEMS, GYG_NOT_ALLOWED, GYG_NOT_SUITABLE_FOR } from '@/constants/gygLists'
+import PhoneInput from '@/components/forms/PhoneInput'
 
 function TagList({ items, onAdd, onRemove, placeholder, suggestions = [] }) {
   const inputRef = useRef(null)
@@ -100,10 +102,10 @@ export default function Step09ExtraInfo() {
   const petFriendly = useProductBuilderStore((s) => s.petFriendly)
   const mandatoryItems = useProductBuilderStore((s) => s.mandatoryItems)
   const knowBeforeYouGo = useProductBuilderStore((s) => s.knowBeforeYouGo)
-  const emergencyCountryCode = useProductBuilderStore((s) => s.emergencyCountryCode)
   const emergencyPhone = useProductBuilderStore((s) => s.emergencyPhone)
   const voucherInfo = useProductBuilderStore((s) => s.voucherInfo)
   const setField = useProductBuilderStore((s) => s.setField)
+  const errors = useStepErrors(10)
   const addNotSuitable = useProductBuilderStore((s) => s.addNotSuitable)
   const removeNotSuitable = useProductBuilderStore((s) => s.removeNotSuitable)
   const addNotAllowed = useProductBuilderStore((s) => s.addNotAllowed)
@@ -128,6 +130,7 @@ export default function Step09ExtraInfo() {
           placeholder="e.g. Pregnant women, People with back problems"
           suggestions={GYG_NOT_SUITABLE_FOR}
         />
+        {errors.notSuitableFor && <span className="text-[13px] text-red-600 font-medium mt-1">{errors.notSuitableFor[0]}</span>}
       </div>
 
       <div className="mb-5" data-field="notAllowed">
@@ -141,6 +144,7 @@ export default function Step09ExtraInfo() {
           placeholder="e.g. Pets, Smoking, Large bags"
           suggestions={GYG_NOT_ALLOWED}
         />
+        {errors.notAllowed && <span className="text-[13px] text-red-600 font-medium mt-1">{errors.notAllowed[0]}</span>}
       </div>
 
       <div className="mb-5">
@@ -155,6 +159,7 @@ export default function Step09ExtraInfo() {
           />
           <span>Pets are allowed</span>
         </label>
+        {errors.petFriendly && <span className="text-[13px] text-red-600 font-medium mt-1">{errors.petFriendly[0]}</span>}
       </div>
 
       <div className="mb-5" data-field="mandatoryItems">
@@ -168,6 +173,7 @@ export default function Step09ExtraInfo() {
           placeholder="e.g. Passport, Comfortable shoes, Swimsuit"
           suggestions={GYG_MANDATORY_ITEMS}
         />
+        {errors.mandatoryItems && <span className="text-[13px] text-red-600 font-medium mt-1">{errors.mandatoryItems[0]}</span>}
       </div>
 
       <div className="mb-5">
@@ -180,31 +186,21 @@ export default function Step09ExtraInfo() {
           placeholder="Insurance requirements, appropriate clothing, necessary documents..."
           data-field="knowBeforeYouGo"
         />
+        {errors.knowBeforeYouGo && <span className="text-[13px] text-red-600 font-medium mt-1">{errors.knowBeforeYouGo[0]}</span>}
       </div>
 
-      <div className="mb-5">
+      <div className="mb-5" data-field="emergencyPhone">
         <label className="block text-sm font-semibold mb-2 text-slate-800">Emergency contact number</label>
-        <div className="flex gap-2.5 items-end">
-          <input
-            className="min-h-[46px] rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm transition-all focus-ring w-[140px]"
-            type="text"
-            value={emergencyCountryCode}
-            onChange={(e) => setField('emergencyCountryCode', e.target.value)}
-            placeholder="Country code"
-            data-field="emergencyCountryCode"
-          />
-          <input
-            className="min-h-[46px] rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm transition-all focus-ring flex-1"
-            type="text"
-            value={emergencyPhone}
-            onChange={(e) => setField('emergencyPhone', e.target.value)}
-            placeholder="Phone number"
-            data-field="emergencyPhone"
-          />
-        </div>
+        <PhoneInput
+          value={emergencyPhone}
+          onChange={(val) => setField('emergencyPhone', val)}
+          defaultCountry="US"
+          placeholder="Phone number"
+        />
         <p className="text-[13px] text-slate-500 mt-1.5 leading-relaxed">
           This number will appear on the customer voucher.
         </p>
+        {errors.emergencyPhone && <span className="text-[13px] text-red-600 font-medium mt-1">{errors.emergencyPhone[0]}</span>}
       </div>
 
       <div className="mb-5">
@@ -217,6 +213,7 @@ export default function Step09ExtraInfo() {
           placeholder="Any additional information customers need after booking..."
           data-field="voucherInfo"
         />
+        {errors.voucherInfo && <span className="text-[13px] text-red-600 font-medium mt-1">{errors.voucherInfo[0]}</span>}
       </div>
     </div>
   )

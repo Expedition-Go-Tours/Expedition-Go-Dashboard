@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useRef } from 'react'
 import { motion } from 'framer-motion'
 import {
   Select,
@@ -7,9 +7,10 @@ import {
   SelectContent,
   SelectItem,
 } from '@/components/ui/select'
-import { Info, HelpCircle, Plus, X, Check, ChevronDown } from 'lucide-react'
+import { Info, HelpCircle, Plus, X } from 'lucide-react'
 import { useProductBuilderStore } from '@/features/products/productBuilderStore'
-import { GYG_ACTIVITIES, DIETARY_OPTIONS } from '@/constants/gygLists'
+import { useStepErrors } from '@/features/products/useStepErrors'
+import { DIETARY_OPTIONS } from '@/constants/gygLists'
 
 const MEAL_TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Brunch', 'Lunch or dinner, depending on starting time']
 const MEAL_FORMATS_BY_TYPE = {
@@ -18,99 +19,6 @@ const MEAL_FORMATS_BY_TYPE = {
   'Dinner': ['BBQ', 'Buffet', 'Fine dining', 'Food tasting', 'Full meal', 'Light dinner'],
   'Brunch': ['Buffet', 'Food tasting', 'Full meal', 'Light meal'],
   'Lunch or dinner, depending on starting time': ['Buffet', 'Full meal', 'Food tasting', 'Light meal'],
-}
-
-function TagList({ items, onAdd, onRemove, placeholder, suggestions = [] }) {
-  const inputRef = useRef(null)
-  const [showSuggestions, setShowSuggestions] = useState(false)
-  const [inputValue, setInputValue] = useState('')
-
-  function handleAdd(val) {
-    const value = (val ?? inputValue).trim()
-    if (value) {
-      onAdd(value)
-      setInputValue('')
-      if (inputRef.current) inputRef.current.focus()
-    }
-  }
-
-  const filteredSuggestions = suggestions.filter(
-    (s) =>
-      s.toLowerCase().includes(inputValue.toLowerCase()) &&
-      !items.some((item) => item.toLowerCase() === s.toLowerCase())
-  )
-
-  return (
-    <div className="relative">
-      <div className="flex flex-wrap gap-1.5 mb-2">
-        {items.map((item, i) => (
-          <span
-            key={i}
-            className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 rounded-full text-[13px] font-semibold"
-          >
-            {item}
-            <button
-              onClick={() => onRemove(i)}
-              type="button"
-              className="bg-transparent border-0 cursor-pointer text-xs text-slate-500 p-0"
-            >
-              ✕
-            </button>
-          </span>
-        ))}
-      </div>
-      <div className="flex gap-2">
-        <input
-          ref={inputRef}
-          className="flex-1 min-h-[46px] rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm transition-all focus-ring"
-          type="text"
-          value={inputValue}
-          onChange={(e) => {
-            setInputValue(e.target.value)
-            setShowSuggestions(true)
-          }}
-          onFocus={() => setShowSuggestions(true)}
-          onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-          placeholder={placeholder}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault()
-              handleAdd()
-            }
-          }}
-        />
-        <button
-          onClick={() => handleAdd()}
-          className="shrink-0 h-[46px] px-4 rounded-xl bg-emerald-600 text-white text-sm font-semibold border-0 cursor-pointer hover:bg-emerald-700 transition-colors"
-          type="button"
-          disabled={!inputValue.trim()}
-        >
-          Add
-        </button>
-      </div>
-      {showSuggestions && filteredSuggestions.length > 0 && (
-        <div className="mt-1.5 absolute z-10 w-full max-h-48 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-lg">
-          {filteredSuggestions.slice(0, 20).map((suggestion) => (
-            <button
-              key={suggestion}
-              type="button"
-              onClick={() => {
-                const value = suggestion.trim()
-                if (value) {
-                  onAdd(value)
-                  setInputValue('')
-                  setShowSuggestions(false)
-                }
-              }}
-              className="w-full text-left px-3.5 py-2.5 text-sm hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-0"
-            >
-              {suggestion}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  )
 }
 
 function DietarySelect({ selected, onAdd, onRemove }) {
@@ -227,114 +135,7 @@ function InclusionList({ items, field, placeholder, accent }) {
   )
 }
 
-function ActivityList() {
-  const items = useProductBuilderStore((s) => s.activitiesIncluded)
-  const onAdd = useProductBuilderStore((s) => s.addActivityIncluded)
-  const onRemove = useProductBuilderStore((s) => s.removeActivityIncluded)
-  const inputRef = useRef(null)
-  const [showDropdown, setShowDropdown] = useState(false)
-  const [inputValue, setInputValue] = useState('')
 
-  const filtered = inputValue.trim()
-    ? GYG_ACTIVITIES.filter(
-        (s) =>
-          s.toLowerCase().includes(inputValue.toLowerCase()) &&
-          !items.some((item) => item.toLowerCase() === s.toLowerCase()),
-      )
-    : GYG_ACTIVITIES.filter(
-        (s) => !items.some((item) => item.toLowerCase() === s.toLowerCase()),
-      )
-
-  function handleAdd() {
-    const val = inputValue.trim()
-    if (!val) return
-    onAdd(val)
-    setInputValue('')
-    setShowDropdown(false)
-    inputRef.current?.focus()
-  }
-
-  function handleKeyDown(e) {
-    if (e.key === 'Enter') {
-      e.preventDefault()
-      handleAdd()
-    }
-    if (e.key === 'Escape') {
-      setShowDropdown(false)
-      inputRef.current?.blur()
-    }
-  }
-
-  function handleBlur() {
-    setShowDropdown(false)
-  }
-
-  return (
-    <div className="relative">
-      {items.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mb-2">
-          {items.map((item, i) => (
-            <span
-              key={i}
-              className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 rounded-full text-[13px] font-semibold"
-            >
-              {item}
-              <button
-                onClick={() => onRemove(i)}
-                type="button"
-                className="bg-transparent border-0 cursor-pointer text-xs text-slate-500 p-0"
-              >
-                ✕
-              </button>
-            </span>
-          ))}
-        </div>
-      )}
-      <div className="flex gap-2">
-        <input
-          ref={inputRef}
-          className="flex-1 min-h-[46px] rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm transition-all focus-ring"
-          type="text"
-          value={inputValue}
-          onChange={(e) => {
-            setInputValue(e.target.value)
-            setShowDropdown(true)
-          }}
-          onFocus={() => setShowDropdown(true)}
-          onBlur={handleBlur}
-          placeholder="Type an activity and press Enter..."
-          onKeyDown={handleKeyDown}
-        />
-        <button
-          onClick={() => handleAdd()}
-          className="shrink-0 h-[46px] px-4 rounded-xl bg-emerald-600 text-white text-sm font-semibold border-0 cursor-pointer hover:bg-emerald-700 transition-colors"
-          type="button"
-          disabled={!inputValue.trim()}
-        >
-          Add
-        </button>
-      </div>
-      {showDropdown && filtered.length > 0 && (
-        <div className="mt-1.5 absolute z-10 w-full max-h-72 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-lg">
-          {filtered.map((suggestion) => (
-            <button
-              key={suggestion}
-              type="button"
-              onMouseDown={(e) => {
-                e.preventDefault()
-                setInputValue(suggestion)
-                setShowDropdown(false)
-              }}
-              className="w-full text-left px-3.5 py-2.5 text-sm hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-0"
-            >
-              {suggestion}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
 
 export default function Step07Inclusions() {
   const store = useProductBuilderStore()
@@ -348,9 +149,9 @@ export default function Step07Inclusions() {
     dietaryOptions,
   } = store
   const setField = useProductBuilderStore((s) => s.setField)
+  const errors = useStepErrors(7)
   const addMeal = useProductBuilderStore((s) => s.addMeal)
   const updateMeal = useProductBuilderStore((s) => s.updateMeal)
-  const removeMeal = useProductBuilderStore((s) => s.removeMeal)
   const addDietaryOption = useProductBuilderStore((s) => s.addDietaryOption)
   const removeDietaryOption = useProductBuilderStore((s) => s.removeDietaryOption)
 
@@ -365,6 +166,7 @@ export default function Step07Inclusions() {
           placeholder="e.g. Entrance fees, Guide, Equipment"
           accent="emerald"
         />
+        {errors.whatsIncluded && <span className="text-[13px] text-red-600 font-medium mt-1">{errors.whatsIncluded[0]}</span>}
       </div>
 
       {/* What's Not Included */}
@@ -376,15 +178,7 @@ export default function Step07Inclusions() {
           placeholder="e.g. Food, Drinks, Hotel pickup"
           accent="rose"
         />
-      </div>
-
-      {/* Activities & Experiences */}
-      <div>
-        <label className="block text-sm font-semibold mb-1.5 text-slate-800">Activities & experiences</label>
-        <p className="text-[13px] text-slate-500 mb-2 leading-relaxed">
-          Select the main activities included in this experience. You can also type to add custom activities.
-        </p>
-        <ActivityList />
+        {errors.whatsNotIncluded && <span className="text-[13px] text-red-600 font-medium mt-1">{errors.whatsNotIncluded[0]}</span>}
       </div>
 
       <hr className="border-slate-100" />
@@ -431,6 +225,7 @@ export default function Step07Inclusions() {
               <span className="text-sm text-slate-700">Yes</span>
             </label>
           </div>
+          {errors.foodProvided && <span className="text-[13px] text-red-600 font-medium mt-1">{errors.foodProvided[0]}</span>}
         </div>
 
         {foodProvided && (
@@ -495,7 +290,7 @@ export default function Step07Inclusions() {
             </label>
 
             {/* Dietary restrictions toggle */}
-            <div className="flex items-center justify-between pt-2">
+            <div className="flex items-center justify-between pt-2" data-field="showDietaryRestrictions">
               <span className="text-sm font-medium text-slate-700">
                 Show dietary restrictions ({dietaryOptions.length})
               </span>
@@ -515,11 +310,14 @@ export default function Step07Inclusions() {
             </div>
 
             {showDietaryRestrictions && (
-              <DietarySelect
-                selected={dietaryOptions}
-                onAdd={addDietaryOption}
-                onRemove={removeDietaryOption}
-              />
+              <div data-field="dietaryOptions">
+                <DietarySelect
+                  selected={dietaryOptions}
+                  onAdd={addDietaryOption}
+                  onRemove={removeDietaryOption}
+                />
+                {errors.dietaryOptions && <span className="text-[13px] text-red-600 font-medium mt-1">{errors.dietaryOptions[0]}</span>}
+              </div>
             )}
           </div>
         )}

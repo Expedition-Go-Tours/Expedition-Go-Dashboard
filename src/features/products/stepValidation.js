@@ -6,11 +6,10 @@ const STEP_FIELDS = {
   3: ['category', 'activitiesIncluded', 'transportModes', 'transportServices', 'difficulty', 'duration', 'durationUnit'],
   4: ['shortDescription', 'fullDescription', 'highlights'],
     5: ['locations'],
-  6: ['keywords'],
+   6: ['keywords', 'activitiesIncluded'],
     7: [
       'whatsIncluded',
       'whatsNotIncluded',
-      'activitiesIncluded',
       'foodProvided',
       'meals',
       'drinksIncluded',
@@ -19,13 +18,12 @@ const STEP_FIELDS = {
     ],
    8: ['transportationProvided', 'pickupTransportTypes', 'crossCityTravel'],
    9: ['guideType', 'guideMaterials'],
-    10: [
+     10: [
       'notSuitableFor',
       'notAllowed',
       'petFriendly',
       'mandatoryItems',
       'knowBeforeYouGo',
-      'emergencyCountryCode',
       'emergencyPhone',
       'voucherInfo',
     ],
@@ -55,9 +53,20 @@ const STEP_FIELDS = {
       'currency',
       'scheduleType',
       'schedules',
+      'pricingApproach',
+      'pricingCategories',
+      'uniformPrice',
+      'groupSizes',
+      'timeSlots',
+      'minParticipants',
+      'maxParticipants',
+      'maxGroupsPerTimeSlot',
+      'additionalPersonsEnabled',
+      'additionalPersonPrice',
     ],
    15: ['cutoffMinutes', 'lastMinuteBookings', 'perSlotCutoff'],
    16: ['itinerary'],
+  17: ['cancellationType', 'supplierCanCancelBadWeather', 'supplierCanCancelNotEnoughTravelers'],
 }
 
 function pick(obj, keys) {

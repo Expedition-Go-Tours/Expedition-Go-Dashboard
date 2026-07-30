@@ -33,6 +33,7 @@ export const GYG_STEPS = [
   { id: 14, label: 'Pricing & Availability', sectionId: 'option-setup', stepId: 'pricing' },
   { id: 15, label: 'Cut-off', sectionId: 'option-setup', stepId: 'cutoff' },
   { id: 16, label: 'Itinerary', sectionId: 'itinerary-section', stepId: 'itinerary' },
+  { id: 17, label: 'Cancellation Policy', sectionId: 'itinerary-section', stepId: 'cancellation-policy' },
 ]
 
 

@@ -25,6 +25,7 @@ import Step13MeetingPoint from '@/features/products/steps/Step13MeetingPoint'
 import Step14PricingAvailability from '@/features/products/steps/Step14PricingAvailability'
 import Step15Cutoff from '@/features/products/steps/Step15Cutoff'
 import Step16Itinerary from '@/features/products/steps/Step16Itinerary'
+import Step17CancellationPolicy from '@/features/products/steps/Step17CancellationPolicy'
 import { safeId } from '@/lib/utils'
 
 const STEP_COMPONENTS = {
@@ -44,6 +45,7 @@ const STEP_COMPONENTS = {
   14: Step14PricingAvailability,
   15: Step15Cutoff,
   16: Step16Itinerary,
+  17: Step17CancellationPolicy,
 }
 
 const STEP_LABELS = {
@@ -63,6 +65,7 @@ const STEP_LABELS = {
   14: 'Pricing & Availability',
   15: 'Cut-off',
   16: 'Itinerary',
+  17: 'Cancellation Policy',
 }
 
 function getGygStepIndex(sectionId, stepId) {
@@ -125,8 +128,18 @@ function tourToProduct(tour) {
     petFriendly: !!content.petFriendly,
     mandatoryItems: content.whatToBring || [],
     knowBeforeYouGo: content.additionalInfo || '',
-    emergencyCountryCode: content.emergencyCountryCode || '',
-    emergencyPhone: content.emergencyPhone || '',
+    emergencyPhone: (() => {
+      if (content.emergencyPhone && content.emergencyPhone.startsWith('+')) {
+        return content.emergencyPhone
+      }
+      if (content.emergencyCountryCode || content.emergencyPhone) {
+        const cc = (content.emergencyCountryCode || '').replace(/\D/g, '')
+        const pn = (content.emergencyPhone || '').replace(/\D/g, '')
+        const digits = cc + pn
+        return digits ? `+${digits}` : ''
+      }
+      return content.emergencyPhone || ''
+    })(),
     voucherInfo: content.voucherInfo || '',
     photos: (tour.photos || []).map((p) => {
       const url = typeof p === 'string' ? p : p.url || '';
@@ -154,7 +167,7 @@ function tourToProduct(tour) {
     pickupFinalLocationTiming: content.pickupFinalLocationTiming || 'day_before',
     referenceStartTime: content.referenceStartTime || '',
     pickupAreas: (content.pickupAreas || []).map((a) =>
-      typeof a === 'string' ? { name: a, time: '' } : a,
+      typeof a === 'string' ? { name: a, time: '', address: '', lat: null, lng: null } : { ...{ address: '', lat: null, lng: null }, ...a },
     ),
     pickupLocations: content.pickupLocations || [],
     pickupGeoshape: content.pickupGeoshape || null,
@@ -164,6 +177,9 @@ function tourToProduct(tour) {
     dropoffLocation: content.dropoffLocation || null,
     dropoffDescription: content.dropoffDescription || '',
     cutoffHours: booking.cancellationPolicy?.cutoffHours ?? 0,
+    cancellationType: booking.cancellationPolicy?.type || 'standard',
+    supplierCanCancelBadWeather: !!booking.cancellationPolicy?.supplierCanCancelBadWeather,
+    supplierCanCancelNotEnoughTravelers: !!booking.cancellationPolicy?.supplierCanCancelNotEnoughTravelers,
     itinerary: Array.isArray(content.itinerary) ? content.itinerary : [],
     itineraryOverview: content.itineraryOverview || tour.itineraryOverview || '',
     additionalItineraryInfo: content.additionalItineraryInfo || tour.additionalItineraryInfo || '',

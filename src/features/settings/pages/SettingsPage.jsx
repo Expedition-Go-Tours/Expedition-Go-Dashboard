@@ -8,6 +8,7 @@ import {
   Landmark, Banknote, AlertTriangle, RefreshCw
 } from "lucide-react";
 import { toast } from "sonner";
+import PhoneInput from "@/components/forms/PhoneInput";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem
@@ -302,8 +303,12 @@ function ProfileTab() {
               <label className="block text-sm font-medium text-slate-700 mb-1.5">
                 <Phone size={13} className="inline mr-1 text-slate-400" />Phone
               </label>
-              <input type="tel" value={form.phone} onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))}
-                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-300 transition-all" />
+              <PhoneInput
+                value={form.phone || ''}
+                onChange={(val) => setForm((p) => ({ ...p, phone: val }))}
+                defaultCountry="US"
+                placeholder="Phone number"
+              />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>

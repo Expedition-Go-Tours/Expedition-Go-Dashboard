@@ -1,9 +1,11 @@
 import { useState, useMemo, useRef } from 'react'
 import { toast } from 'sonner'
 import { useProductBuilderStore } from '@/features/products/productBuilderStore'
+import { useStepErrors } from '@/features/products/useStepErrors'
 import { requestKeyword as requestKeywordApi } from '@/features/products/api'
 import { SUGGESTED_KEYWORDS } from '@/constants/keywords'
 import { KEYWORD_CATEGORIES, CATEGORY_NAMES } from '@/constants/keywordCategories'
+import { GYG_ACTIVITIES } from '@/constants/gygLists'
 
 function KeywordChip({ kw, selected, onClick }) {
   return (
@@ -30,6 +32,7 @@ export default function Step06Keywords() {
   const keywords = useProductBuilderStore((s) => s.keywords)
   const addKeyword = useProductBuilderStore((s) => s.addKeyword)
   const removeKeyword = useProductBuilderStore((s) => s.removeKeyword)
+  const errors = useStepErrors(6)
   const [query, setQuery] = useState('')
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [requesting, setRequesting] = useState(false)
@@ -154,6 +157,7 @@ export default function Step06Keywords() {
         </div>
       )}
 
+      {errors.keywords && <span className="text-[13px] text-red-600 font-medium mb-2 flex items-center gap-1">{errors.keywords[0]}</span>}
       {/* Search input with suggestions dropdown */}
       <div className="relative mb-4" data-field="keywords">
         <div className="relative">
@@ -378,6 +382,132 @@ export default function Step06Keywords() {
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {keywords.length > 0 && (
+        <>
+          <hr className="border-slate-100 my-6" />
+          <div>
+            <label className="block text-sm font-semibold mb-1.5 text-slate-800">Activities & experiences</label>
+            <p className="text-[13px] text-slate-500 mb-2 leading-relaxed">
+              Select the main activities included in this experience. You can also type to add custom activities.
+            </p>
+            <div data-field="activitiesIncluded">
+              <ActivityInput />
+              {errors.activitiesIncluded && <span className="text-[13px] text-red-600 font-medium mt-1">{errors.activitiesIncluded[0]}</span>}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+function ActivityInput() {
+  const items = useProductBuilderStore((s) => s.activitiesIncluded)
+  const onAdd = useProductBuilderStore((s) => s.addActivityIncluded)
+  const onRemove = useProductBuilderStore((s) => s.removeActivityIncluded)
+  const inputRef = useRef(null)
+  const [showDropdown, setShowDropdown] = useState(false)
+  const [inputValue, setInputValue] = useState('')
+
+  const filtered = inputValue.trim()
+    ? GYG_ACTIVITIES.filter(
+        (s) =>
+          s.toLowerCase().includes(inputValue.toLowerCase()) &&
+          !items.some((item) => item.toLowerCase() === s.toLowerCase()),
+      )
+    : GYG_ACTIVITIES.filter(
+        (s) => !items.some((item) => item.toLowerCase() === s.toLowerCase()),
+      )
+
+  function handleAdd() {
+    const val = inputValue.trim()
+    if (!val) return
+    onAdd(val)
+    setInputValue('')
+    setShowDropdown(false)
+    inputRef.current?.focus()
+  }
+
+  function handleKeyDown(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      handleAdd()
+    }
+    if (e.key === 'Escape') {
+      setShowDropdown(false)
+      inputRef.current?.blur()
+    }
+  }
+
+  function handleBlur() {
+    setTimeout(() => setShowDropdown(false), 200)
+  }
+
+  return (
+    <div className="relative">
+      {items.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mb-2">
+          {items.map((item, i) => (
+            <span
+              key={i}
+              className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 rounded-full text-[13px] font-semibold"
+            >
+              {item}
+              <button
+                onClick={() => onRemove(i)}
+                type="button"
+                className="bg-transparent border-0 cursor-pointer text-xs text-slate-500 p-0"
+              >
+                ✕
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+      <div className="flex gap-2">
+        <input
+          ref={inputRef}
+          className="flex-1 min-h-[46px] rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm transition-all focus-ring"
+          type="text"
+          value={inputValue}
+          onChange={(e) => {
+            setInputValue(e.target.value)
+            setShowDropdown(true)
+          }}
+          onFocus={() => setShowDropdown(true)}
+          onBlur={handleBlur}
+          placeholder="Type an activity and press Enter..."
+          onKeyDown={handleKeyDown}
+        />
+        <button
+          onClick={() => handleAdd()}
+          className="shrink-0 h-[46px] px-4 rounded-xl bg-emerald-600 text-white text-sm font-semibold border-0 cursor-pointer hover:bg-emerald-700 transition-colors"
+          type="button"
+          disabled={!inputValue.trim()}
+        >
+          Add
+        </button>
+      </div>
+      {showDropdown && filtered.length > 0 && (
+        <div className="mt-1.5 absolute z-10 w-full max-h-72 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-lg">
+          {filtered.map((suggestion) => (
+            <button
+              key={suggestion}
+              type="button"
+              onMouseDown={(e) => {
+                e.preventDefault()
+                onAdd(suggestion)
+                setInputValue('')
+                setShowDropdown(false)
+              }}
+              className="w-full text-left px-3.5 py-2.5 text-sm hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-0"
+            >
+              {suggestion}
+            </button>
+          ))}
         </div>
       )}
     </div>

@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from 'react'
+import { useRef, useState } from 'react'
 import {
   Select,
   SelectTrigger,
@@ -6,8 +6,9 @@ import {
   SelectContent,
   SelectItem,
 } from '@/components/ui/select'
-import { HelpCircle, Info, Upload, X, ChevronDown, Image, Loader2, MapPin } from 'lucide-react'
+import { HelpCircle, Info, Upload, X, ChevronDown, Image, MapPin } from 'lucide-react'
 import { useProductBuilderStore } from '@/features/products/productBuilderStore'
+import { useStepErrors } from '@/features/products/useStepErrors'
 import { GYG_PICKUP_TRANSPORT } from '@/constants/gygLists'
 import LocationMapPicker from '@/components/shared/LocationMapPicker'
 
@@ -97,7 +98,7 @@ function AddressModal({ title, description, onSave, onCancel, initialValues }) {
   )
 }
 
-function MeetingPointSection() {
+function MeetingPointSection({ errors }) {
   const {
     meetingPoint,
     meetingPointPicture,
@@ -132,6 +133,7 @@ function MeetingPointSection() {
         {meetingPoint?.address && (
           <p className="text-sm text-slate-600 mt-2">{meetingPoint.address}</p>
         )}
+        {errors.meetingPoint && <span className="text-[13px] text-red-600 font-medium mt-1 block">{errors.meetingPoint[0]}</span>}
       </div>
 
       {showAddressModal && (
@@ -168,6 +170,7 @@ function MeetingPointSection() {
         <div className="flex justify-end mt-1">
           <span className="text-xs text-slate-400">{meetingPointDescription.length} / 1000</span>
         </div>
+        {errors.meetingPointDescription && <span className="text-[13px] text-red-600 font-medium mt-1">{errors.meetingPointDescription[0]}</span>}
       </div>
 
       {/* Meeting point picture */}
@@ -213,6 +216,7 @@ function MeetingPointSection() {
           </div>
         )}
         <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
+        {errors.meetingPointPicture && <span className="text-[13px] text-red-600 font-medium mt-1">{errors.meetingPointPicture[0]}</span>}
       </div>
 
       {/* Arrival time */}
@@ -229,12 +233,13 @@ function MeetingPointSection() {
             ))}
           </SelectContent>
         </Select>
+        {errors.arrivalTimeType && <span className="text-[13px] text-red-600 font-medium mt-1">{errors.arrivalTimeType[0]}</span>}
       </div>
     </div>
   )
 }
 
-function PickupSection() {
+function PickupSection({ errors }) {
   const {
     pickupType,
     pickupDescription,
@@ -254,15 +259,30 @@ function PickupSection() {
     removePickupLocation,
   } = useProductBuilderStore()
 
-  const [newAreaName, setNewAreaName] = useState('')
   const [showAddModal, setShowAddModal] = useState(false)
   const [editingIdx, setEditingIdx] = useState(null)
+  const [showAreaMapModal, setShowAreaMapModal] = useState(false)
+  const [editingAreaIdx, setEditingAreaIdx] = useState(null)
 
-  const handleAddArea = () => {
-    if (newAreaName.trim()) {
-      addPickupArea(newAreaName.trim())
-      setNewAreaName('')
+  const handleAreaSaveLocation = (loc) => {
+    if (editingAreaIdx !== null) {
+      updatePickupArea(editingAreaIdx, {
+        name: pickupAreas[editingAreaIdx]?.name || loc.name || loc.address?.split(',').slice(0, 2).join(',') || '',
+        address: loc.address || '',
+        lat: loc.lat,
+        lng: loc.lng,
+      })
+    } else {
+      addPickupArea({
+        name: loc.name || loc.address?.split(',').slice(0, 2).join(',') || '',
+        address: loc.address || '',
+        lat: loc.lat,
+        lng: loc.lng,
+        time: '',
+      })
     }
+    setShowAreaMapModal(false)
+    setEditingAreaIdx(null)
   }
 
   const handleSaveLocation = (loc) => {
@@ -305,10 +325,11 @@ function PickupSection() {
             <span className="text-sm text-slate-700">From a defined list of pickup locations (hotels, airports, etc.)</span>
           </label>
         </div>
+        {errors.pickupType && <span className="text-[13px] text-red-600 font-medium mt-1">{errors.pickupType[0]}</span>}
       </div>
 
       {/* When to pick up */}
-      <div>
+      <div data-field="pickupTiming">
         <label className="block text-sm font-bold text-slate-900 mb-3">When do you pick up your customers?</label>
         <div className="space-y-3">
           <label className="flex items-start gap-3 cursor-pointer">
@@ -338,10 +359,11 @@ function PickupSection() {
             </div>
           </label>
         </div>
+        {errors.pickupTiming && <span className="text-[13px] text-red-600 font-medium mt-1">{errors.pickupTiming[0]}</span>}
       </div>
 
       {/* Final pickup confirmation */}
-      <div>
+      <div data-field="pickupFinalLocationTiming">
         <label className="block text-sm font-bold text-slate-900 mb-1">When can the customer expect your final pickup confirmation?</label>
         <p className="text-sm text-slate-500 mb-3">We'll inform the customer about your suggested pickup details but you're responsible to confirm the exact pickup details to each customer individually.</p>
         <div className="space-y-3">
@@ -366,6 +388,7 @@ function PickupSection() {
             <span className="text-sm text-slate-700">Directly after customer selects pickup location</span>
           </label>
         </div>
+        {errors.pickupFinalLocationTiming && <span className="text-[13px] text-red-600 font-medium mt-1">{errors.pickupFinalLocationTiming[0]}</span>}
       </div>
 
       {/* Pickup locations with geocoding */}
@@ -407,31 +430,50 @@ function PickupSection() {
 
         {/* Area mode — simple list */}
         {pickupType === 'area' && (
-          <div className="space-y-2 mb-3">
+          <div className="space-y-2 mb-3" data-field="pickupAreas">
             {pickupAreas.map((area, i) => (
-              <div key={i} className="flex items-center gap-2 p-3 rounded-lg border border-slate-200 bg-white">
-                <div className="flex-1">
+              <div key={i} className="p-3 rounded-lg border border-slate-200 bg-white" data-field={`pickupAreas.${i}`}>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1">
+                    <input
+                      className="w-full h-9 rounded-lg border border-slate-200 px-2.5 text-sm focus:outline-none focus:border-emerald-500"
+                      type="text"
+                      value={area.name}
+                      onChange={(e) => updatePickupArea(i, { name: e.target.value })}
+                      placeholder="Area name"
+                      data-field={`pickupAreas.${i}.name`}
+                    />
+                    {errors[`pickupAreas.${i}.name`] && <span className="text-[13px] text-red-600 font-medium mt-1">{errors[`pickupAreas.${i}.name`][0]}</span>}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { setEditingAreaIdx(i); setShowAreaMapModal(true) }}
+                    className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-colors border ${
+                      area.lat ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'
+                    }`}
+                    title={area.lat ? 'Edit location on map' : 'Set location on map'}
+                  >
+                    <MapPin className="w-4 h-4" />
+                  </button>
                   <input
-                    className="w-full h-9 rounded-lg border border-slate-200 px-2.5 text-sm focus:outline-none focus:border-emerald-500"
-                    type="text"
-                    value={area.name}
-                    onChange={(e) => updatePickupArea(i, { name: e.target.value })}
-                    placeholder="Area name"
+                    className="h-9 rounded-lg border border-slate-200 px-2.5 text-sm focus:outline-none focus:border-emerald-500 w-[130px]"
+                    type="time"
+                    value={area.time}
+                    onChange={(e) => updatePickupArea(i, { time: e.target.value })}
+                    data-field={`pickupAreas.${i}.time`}
                   />
+                  <button
+                    onClick={() => removePickupArea(i)}
+                    className="w-7 h-7 rounded-full flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                    type="button"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
                 </div>
-                <input
-                  className="h-9 rounded-lg border border-slate-200 px-2.5 text-sm focus:outline-none focus:border-emerald-500 w-[130px]"
-                  type="time"
-                  value={area.time}
-                  onChange={(e) => updatePickupArea(i, { time: e.target.value })}
-                />
-                <button
-                  onClick={() => removePickupArea(i)}
-                  className="w-7 h-7 rounded-full flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
-                  type="button"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
+                {area.address && (
+                  <p className="text-[12px] text-slate-400 mt-1.5 ml-0.5 truncate">{area.address}</p>
+                )}
+                {errors[`pickupAreas.${i}.time`] && <span className="text-[13px] text-red-600 font-medium mt-1">{errors[`pickupAreas.${i}.time`][0]}</span>}
               </div>
             ))}
           </div>
@@ -562,25 +604,26 @@ function PickupSection() {
           </button>
         )}
 
-        {/* Add area input (for area mode) */}
+        {/* Add pickup area button (for area mode) */}
         {pickupType === 'area' && (
-          <div className="flex gap-2">
-            <input
-              className="flex-1 h-11 rounded-lg border border-slate-200 px-3.5 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
-              type="text"
-              value={newAreaName}
-              onChange={(e) => setNewAreaName(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddArea() } }}
-              placeholder="Type an area name"
-            />
-            <button
-              onClick={handleAddArea}
-              className="px-4 h-11 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition-colors"
-              type="button"
-            >
-              Add
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => { setEditingAreaIdx(null); setShowAreaMapModal(true) }}
+            className="px-4 py-2.5 border-2 border-emerald-600 text-emerald-600 rounded-lg text-sm font-medium hover:bg-emerald-50 transition-colors"
+          >
+            + Add pickup area
+          </button>
+        )}
+
+        {/* AddressModal for area mode — set location on map */}
+        {showAreaMapModal && (
+          <AddressModal
+            title={editingAreaIdx !== null ? 'Edit pickup area location' : 'Add pickup area'}
+            description="Search for the area or drop a pin on the map. This helps us show customers where you pick up."
+            onSave={handleAreaSaveLocation}
+            onCancel={() => { setShowAreaMapModal(false); setEditingAreaIdx(null) }}
+            initialValues={editingAreaIdx !== null ? pickupAreas[editingAreaIdx] : null}
+          />
         )}
 
         {/* AddressModal for adding/editing pickup locations */}
@@ -593,6 +636,7 @@ function PickupSection() {
             initialValues={editingIdx !== null ? pickupLocations[editingIdx] : null}
           />
         )}
+        {errors.pickupLocations && <span className="text-[13px] text-red-600 font-medium mt-1">{errors.pickupLocations[0]}</span>}
       </div>
 
       {/* When do you usually pick up */}
@@ -609,6 +653,7 @@ function PickupSection() {
             ))}
           </SelectContent>
         </Select>
+        {errors.referenceStartTime && <span className="text-[13px] text-red-600 font-medium mt-1">{errors.referenceStartTime[0]}</span>}
       </div>
 
       {/* Describe pickup */}
@@ -628,12 +673,13 @@ function PickupSection() {
         <div className="flex justify-end mt-1">
           <span className="text-xs text-slate-400">{pickupDescription.length} / 1000</span>
         </div>
+        {errors.pickupDescription && <span className="text-[13px] text-red-600 font-medium mt-1">{errors.pickupDescription[0]}</span>}
       </div>
     </div>
   )
 }
 
-function DropoffSection() {
+function DropoffSection({ errors }) {
   const {
     meetingMode,
     dropoffOption,
@@ -682,10 +728,11 @@ function DropoffSection() {
           />
           <span className="text-sm text-slate-700">No drop-off service, the customer stays at the site or destination</span>
         </label>
+        {errors.dropoffOption && <span className="text-[13px] text-red-600 font-medium mt-1">{errors.dropoffOption[0]}</span>}
       </div>
 
       {dropoffOption === 'different_location' && (
-        <div className="mt-4">
+        <div className="mt-4" data-field="dropoffLocation">
           <label className="block text-sm font-semibold text-slate-800 mb-2">Add drop-off address</label>
           <button
             type="button"
@@ -697,6 +744,7 @@ function DropoffSection() {
           {dropoffLocation?.address && (
             <p className="text-sm text-slate-600 mt-2">{dropoffLocation.address}</p>
           )}
+          {errors.dropoffLocation && <span className="text-[13px] text-red-600 font-medium mt-1">{errors.dropoffLocation[0]}</span>}
         </div>
       )}
 
@@ -803,6 +851,7 @@ function TransportationSection() {
 
 export default function Step13MeetingPoint() {
   const { meetingMode, setField } = useProductBuilderStore()
+  const errors = useStepErrors(13)
 
   return (
     <div className="max-w-[720px] space-y-8">
@@ -848,14 +897,14 @@ export default function Step13MeetingPoint() {
       <hr className="border-slate-100" />
 
       {/* Mode-specific content */}
-      {meetingMode === 'meeting_point' && <MeetingPointSection />}
-      {meetingMode === 'pickup' && <PickupSection />}
+      {meetingMode === 'meeting_point' && <MeetingPointSection errors={errors} />}
+      {meetingMode === 'pickup' && <PickupSection errors={errors} />}
 
       {/* Drop-off */}
       {meetingMode && meetingMode !== 'none' && (
         <>
           <hr className="border-slate-100" />
-          <DropoffSection />
+          <DropoffSection errors={errors} />
         </>
       )}
 

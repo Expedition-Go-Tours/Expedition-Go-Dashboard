@@ -38,8 +38,7 @@ export const FIELD_LABELS = {
   petFriendly: 'Pet friendly',
   mandatoryItems: 'Mandatory items',
   knowBeforeYouGo: 'Know before you go',
-  emergencyCountryCode: 'Emergency country code',
-  emergencyPhone: 'Emergency phone',
+  emergencyPhone: 'Emergency phone number',
   voucherInfo: 'Voucher info',
   options: 'Options',
   meetingMode: 'Meeting mode',
@@ -81,6 +80,9 @@ export const FIELD_LABELS = {
   additionalPersonPrice: 'Additional person price',
   maxGroupsPerTimeSlot: 'Max groups per time slot',
   itinerary: 'Itinerary',
+  cancellationType: 'Cancellation policy',
+  supplierCanCancelBadWeather: 'Cancel for bad weather',
+  supplierCanCancelNotEnoughTravelers: 'Cancel for not enough travelers',
 }
 
 const FIELD_STEP_MAP = {
@@ -105,7 +107,7 @@ const FIELD_STEP_MAP = {
   keywords: 6,
   whatsIncluded: 7,
   whatsNotIncluded: 7,
-  activitiesIncluded: 7,
+  activitiesIncluded: 6,
   pickupTransportTypes: 7,
   foodProvided: 7,
   meals: 7,
@@ -123,7 +125,6 @@ const FIELD_STEP_MAP = {
   petFriendly: 10,
   mandatoryItems: 10,
   knowBeforeYouGo: 10,
-  emergencyCountryCode: 10,
   emergencyPhone: 10,
   voucherInfo: 10,
   options: 11,
@@ -162,6 +163,9 @@ const FIELD_STEP_MAP = {
   additionalPersonPrice: 13,
   maxGroupsPerTimeSlot: 13,
   itinerary: 14,
+  cancellationType: 17,
+  supplierCanCancelBadWeather: 17,
+  supplierCanCancelNotEnoughTravelers: 17,
 }
 
 export function getStepForField(fieldKey) {
@@ -223,7 +227,7 @@ const SECTION_LABELS = {
   keywords: 'Keywords',
   whatsIncluded: 'Inclusions',
   whatsNotIncluded: 'Inclusions',
-  activitiesIncluded: 'Inclusions',
+  activitiesIncluded: 'Keywords',
   pickupTransportTypes: 'Inclusions',
   foodProvided: 'Inclusions',
   meals: 'Inclusions',
@@ -240,7 +244,6 @@ const SECTION_LABELS = {
   petFriendly: 'Extra information',
   mandatoryItems: 'Extra information',
   knowBeforeYouGo: 'Extra information',
-  emergencyCountryCode: 'Extra information',
   emergencyPhone: 'Extra information',
   voucherInfo: 'Extra information',
   options: 'Options',

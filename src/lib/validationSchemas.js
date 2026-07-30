@@ -2,7 +2,7 @@ import { z } from "zod";
 
 // Common validation patterns
 const emailSchema = z.string().email("Invalid email address");
-const phoneSchema = z.string().regex(/^\+?[1-9]\d{1,14}$/, "Invalid phone number");
+const phoneSchema = z.string().regex(/^\+[1-9]\d{6,14}$/, "Invalid phone number. Must include country code (e.g., +1)");
 const urlSchema = z.string().url("Invalid URL");
 const passwordSchema = z.string()
   .min(8, "Password must be at least 8 characters")

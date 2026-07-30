@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { Search, X, HelpCircle } from 'lucide-react'
 import { useProductBuilderStore } from '@/features/products/productBuilderStore'
+import { useStepErrors } from '@/features/products/useStepErrors'
 import { GYG_TRANSPORT_TYPES } from '@/constants/gygLists'
 
 export default function Step08Transportation() {
@@ -9,6 +10,7 @@ export default function Step08Transportation() {
   const setField = useProductBuilderStore((s) => s.setField)
   const addPickupTransportType = useProductBuilderStore((s) => s.addPickupTransportType)
   const removePickupTransportType = useProductBuilderStore((s) => s.removePickupTransportType)
+  const errors = useStepErrors(8)
 
   const [search, setSearch] = useState('')
   const [open, setOpen] = useState(false)
@@ -39,6 +41,7 @@ export default function Step08Transportation() {
   return (
     <div className="max-w-[720px] space-y-6">
       <div data-field="transportationProvided">
+        {errors.transportationProvided && <span className="text-[13px] text-red-600 font-medium mb-2 block">{errors.transportationProvided[0]}</span>}
         <div className="flex items-center gap-2 mb-1">
           <label className="text-sm font-semibold text-slate-800">
             Is transportation used during this activity?
@@ -76,7 +79,7 @@ export default function Step08Transportation() {
       </div>
 
       {transportationProvided && (
-        <div ref={ref} className="relative">
+        <div ref={ref} className="relative" data-field="pickupTransportTypes">
           <div className="relative">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
@@ -123,7 +126,8 @@ export default function Step08Transportation() {
                 <p className="px-3.5 py-3 text-sm text-slate-400">No results found</p>
               )}
             </div>
-          )}
+            )}
+          {errors.pickupTransportTypes && <span className="text-[13px] text-red-600 font-medium mt-1">{errors.pickupTransportTypes[0]}</span>}
         </div>
       )}
     </div>

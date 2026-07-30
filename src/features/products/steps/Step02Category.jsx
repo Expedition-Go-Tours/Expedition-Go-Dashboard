@@ -220,7 +220,7 @@ export default function Step02Category() {
       </div>
 
       {/* Product type cards */}
-      <div className="space-y-3">
+      <div className="space-y-3" data-field="category">
         {PRODUCT_TYPES.map((type) => {
           const isSelected = category === type.value
           return (
@@ -256,7 +256,7 @@ export default function Step02Category() {
 
                 {/* Sub-question for Activity */}
                 {isSelected && type.value === 'activity' && (
-                  <div className="mt-3">
+                  <div className="mt-3" data-field="activitiesIncluded">
                     <label className="block text-sm font-semibold text-slate-800 mb-1.5">
                       What activities are included?
                     </label>
@@ -268,12 +268,13 @@ export default function Step02Category() {
                       placeholder="Select one (or more)"
                       searchPlaceholder="Search activities"
                     />
+                    {errors.activitiesIncluded && <span className="text-[13px] text-red-600 font-medium mt-1">{errors.activitiesIncluded[0]}</span>}
                   </div>
                 )}
 
                 {/* Sub-question for Tour */}
                 {isSelected && type.value === 'tour' && (
-                  <div className="mt-3">
+                  <div className="mt-3" data-field="transportModes">
                     <label className="block text-sm font-semibold text-slate-800 mb-1.5">
                       What modes of transportation are used during the tour?
                     </label>
@@ -285,12 +286,13 @@ export default function Step02Category() {
                       placeholder="Select one (or more)"
                       searchPlaceholder="Search modes of transport"
                     />
+                    {errors.transportModes && <span className="text-[13px] text-red-600 font-medium mt-1">{errors.transportModes[0]}</span>}
                   </div>
                 )}
 
                 {/* Sub-question for Transport */}
                 {isSelected && type.value === 'transport' && (
-                  <div className="mt-3">
+                  <div className="mt-3" data-field="transportServices">
                     <label className="block text-sm font-semibold text-slate-800 mb-1.5">
                       What type of transportation service are you providing?
                     </label>
@@ -302,6 +304,7 @@ export default function Step02Category() {
                       placeholder="Select one (or more)"
                       searchPlaceholder="Search transportation types"
                     />
+                    {errors.transportServices && <span className="text-[13px] text-red-600 font-medium mt-1">{errors.transportServices[0]}</span>}
                   </div>
                 )}
               </div>
@@ -356,15 +359,19 @@ export default function Step02Category() {
             />
             {errors.duration && <span className="text-[13px] text-red-600 font-medium mt-1 flex items-center gap-1">{errors.duration[0]}</span>}
           </div>
-          <select
-            value={durationUnit}
-            onChange={(e) => setField('durationUnit', e.target.value)}
-            className="min-h-[42px] rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
-          >
-            {DURATION_UNITS.map((u) => (
-              <option key={u} value={u}>{u}</option>
-            ))}
-          </select>
+          <div>
+            <select
+              value={durationUnit}
+              onChange={(e) => setField('durationUnit', e.target.value)}
+              className="min-h-[42px] rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+              data-field="durationUnit"
+            >
+              {DURATION_UNITS.map((u) => (
+                <option key={u} value={u}>{u}</option>
+              ))}
+            </select>
+            {errors.durationUnit && <span className="text-[13px] text-red-600 font-medium mt-1">{errors.durationUnit[0]}</span>}
+          </div>
         </div>
       </div>
     </div>

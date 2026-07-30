@@ -16,6 +16,7 @@ import StatusBadge from "@/components/shared/StatusBadge";
 import { PRODUCT_STATUSES } from "@/lib/constants";
 import { formatCurrency, formatDate, formatTime, cn } from "@/lib/utils";
 import { normalizeItinerary } from "@/features/products/utils/normalizeItinerary";
+import { getUniqueCities, getLocationSummary } from "@/features/products/utils/getUniqueCities";
 import { transformImage, getSrcSet } from "@/lib/image";
 import DeleteModal from "@/components/ui/DeleteModal";
 
@@ -60,7 +61,7 @@ const SECTION_EDIT_MAP = {
   "Pricing": { section: "schedules-and-pricing", step: "pricing-schedules" },
   "Details": { section: "basics", step: "categorization" },
   "Traveler Info Required": { section: "booking-and-tickets", step: "traveler-required-info" },
-  "Location": { section: "basics", step: "categorization" },
+  "Location": { section: "product-content", step: "locations" },
   "Schedule": { section: "schedules-and-pricing", step: "pricing-schedules" },
   "Booking Rules": { section: "booking-and-tickets", step: "booking-process" },
   "Meeting & Pickup": { section: "booking-and-tickets", step: "meeting-point-pickup" },
@@ -419,6 +420,8 @@ export default function ProductDetailPage() {
     return {};
   })();
   const location = content.location?.city ? content.location : (categorization.location || {});
+  const uniqueCities = getUniqueCities(content.locations);
+  const locationsCitySummary = getLocationSummary(content.locations);
   const duration = categorization.duration;
   const durationStr = typeof duration === 'string' ? duration : formatDuration(duration || {});
   const currency = pricingSchedules.currency || schedules.currency || 'GHS';
@@ -843,10 +846,14 @@ export default function ProductDetailPage() {
                           {content.pickupAreas.map((area, i) => {
                             const name = typeof area === 'string' ? area : area.name || '';
                             const time = typeof area === 'string' ? '' : area.time || '';
+                            const address = typeof area === 'string' ? '' : area.address || '';
                             return (
-                              <div key={i} className="flex items-center justify-between text-sm bg-slate-50 rounded-lg px-3 py-2">
-                                <span className="text-slate-700 font-medium">{name}</span>
-                                {time && <span className="text-xs text-slate-400">{time}</span>}
+                              <div key={i} className="text-sm bg-slate-50 rounded-lg px-3 py-2">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-slate-700 font-medium">{name}</span>
+                                  {time && <span className="text-xs text-slate-400">{time}</span>}
+                                </div>
+                                {address && <p className="text-[12px] text-slate-400 mt-0.5 truncate">{address}</p>}
                               </div>
                             );
                           })}
@@ -1409,6 +1416,18 @@ export default function ProductDetailPage() {
                     <p className="text-xs text-slate-400 flex items-center gap-1 mt-1.5">
                       <Navigation size={10} /> {tour.latitude}, {tour.longitude}
                     </p>
+                  )}
+                  {uniqueCities.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-slate-100">
+                      <p className="text-xs font-medium text-slate-500 mb-1.5">Tour stops in</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {uniqueCities.map((city) => (
+                          <span key={city} className="text-xs px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-medium border border-emerald-200">
+                            {city}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
                   )}
                 </div>
               </motion.div>

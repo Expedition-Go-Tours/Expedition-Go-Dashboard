@@ -1,5 +1,6 @@
 import { HelpCircle, Info } from 'lucide-react'
 import { useProductBuilderStore } from '@/features/products/productBuilderStore'
+import { useStepErrors } from '@/features/products/useStepErrors'
 
 const GUIDE_TYPE_OPTIONS = [
   {
@@ -34,6 +35,7 @@ export default function Step09GuideInfo() {
   const guideType = useProductBuilderStore((s) => s.guideType)
   const guideMaterials = useProductBuilderStore((s) => s.guideMaterials)
   const setField = useProductBuilderStore((s) => s.setField)
+  const errors = useStepErrors(9)
 
   return (
     <div className="max-w-[720px] space-y-6">
@@ -77,6 +79,7 @@ export default function Step09GuideInfo() {
             )
           })}
         </div>
+        {errors.guideType && <span className="text-[13px] text-red-600 font-medium mt-1">{errors.guideType[0]}</span>}
       </div>
 
       <hr className="border-slate-100" />
@@ -134,6 +137,7 @@ export default function Step09GuideInfo() {
             <span className="text-slate-700">Information booklets</span>
           </label>
         </div>
+        {errors.guideMaterials && <span className="text-[13px] text-red-600 font-medium mt-1">{errors.guideMaterials[0]}</span>}
       </div>
     </div>
   )

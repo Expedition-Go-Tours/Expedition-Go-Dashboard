@@ -114,13 +114,13 @@ export const stepSchemas = {
       .array(locationSchema)
       .min(1, 'Add at least one location'),
   }),
-  6: z.object({
+   6: z.object({
     keywords: z.array(z.string()).max(15, 'Maximum 15 keywords'),
+    activitiesIncluded: z.array(z.string()).optional(),
   }),
-  7: z.object({
+   7: z.object({
     whatsIncluded: z.array(z.string()).optional(),
     whatsNotIncluded: z.array(z.string()).optional(),
-    activitiesIncluded: z.array(z.string()).optional(),
     foodProvided: z.boolean(),
     meals: z.array(z.object({
       type: z.string().optional(),
@@ -148,8 +148,9 @@ export const stepSchemas = {
     petFriendly: z.boolean().optional(),
     mandatoryItems: z.array(z.string()).optional(),
     knowBeforeYouGo: z.string().max(2000).optional(),
-    emergencyCountryCode: z.string().max(5).optional(),
-    emergencyPhone: z.string().max(20).optional(),
+    emergencyPhone: z.string()
+      .refine((val) => !val || /^\+[1-9]\d{2,14}$/.test(val), 'Enter a complete phone number with country code')
+      .optional(),
     voucherInfo: z.string().max(500).optional(),
   }),
   11: z.object({
@@ -177,7 +178,7 @@ export const stepSchemas = {
     pickupTiming: z.enum(['at_start', 'before_start']).optional(),
     pickupFinalLocationTiming: z.enum(['day_before', 'after_selection']).optional(),
     referenceStartTime: z.string().optional(),
-    pickupAreas: z.array(z.object({ name: z.string().min(1, 'Pickup area name is required'), time: z.string().min(1, 'Pickup time is required') })).optional(),
+    pickupAreas: z.array(z.object({ name: z.string().min(1, 'Pickup area name is required'), time: z.string().min(1, 'Pickup time is required'), address: z.string().optional(), lat: z.number().nullable().optional(), lng: z.number().nullable().optional() })).optional(),
     pickupLocations: z.array(locationPointSchema).optional(),
     pickupGeoshape: z.any().nullable().optional(),
     planPickupTimes: z.boolean().optional(),
@@ -193,6 +194,13 @@ export const stepSchemas = {
     currency: z.string().min(1, 'Select a currency'),
     scheduleType: z.enum(['fixedTimeSlot', 'operatingHours']),
     schedules: z.array(z.any()).min(1, 'Add at least one schedule'),
+    pricingApproach: z.any().optional(),
+    pricingCategories: z.any().optional(),
+    uniformPrice: z.any().nullable().optional(),
+    groupSizes: z.any().optional(),
+    timeSlots: z.any().optional(),
+    minParticipants: z.any().optional(),
+    maxParticipants: z.any().optional(),
   }).superRefine((data, ctx) => {
     if (data.pricingModel === 'perPerson') {
       if (data.pricingApproach === 'sameForEveryone') {
@@ -206,10 +214,18 @@ export const stepSchemas = {
           ctx.addIssue({ code: 'custom', path: ['pricingCategories'], message: 'Add at least one pricing category' })
         }
         if (Array.isArray(cats)) {
+          const seen = []
           cats.forEach((g, i) => {
             if (g.maxAge <= g.minAge) {
               ctx.addIssue({ code: 'custom', path: [`pricingCategories.${i}.maxAge`], message: 'Max age must be greater than min age' })
             }
+            for (const existing of seen) {
+              if (g.minAge <= existing.maxAge && existing.minAge <= g.maxAge) {
+                ctx.addIssue({ code: 'custom', path: [`pricingCategories.${i}.name`], message: `Age range overlaps with "${existing.name}" (${existing.minAge}-${existing.maxAge})` })
+                break
+              }
+            }
+            seen.push({ name: g.name, minAge: g.minAge, maxAge: g.maxAge })
             if (Array.isArray(g.tiers) && g.tiers.length > 0) {
               g.tiers.forEach((tier, ti) => {
                 if (tier.from === null || tier.to === null || tier.pricePerPerson === null) return
@@ -223,14 +239,33 @@ export const stepSchemas = {
       }
     }
     if (data.pricingModel === 'perGroup') {
-      if (!Array.isArray(data.groupSizes) || data.groupSizes.length === 0) {
+      const sizes = data.groupSizes
+      if (!sizes || sizes.length < 1) {
         ctx.addIssue({ code: 'custom', path: ['groupSizes'], message: 'Add at least one group size' })
+      } else {
+        sizes.forEach((gs, i) => {
+          if (gs.price == null || gs.price <= 0) {
+            ctx.addIssue({ code: 'custom', path: [`groupSizes.${i}.price`], message: 'Enter a price for this group size' })
+          }
+          if (gs.from > gs.to) {
+            ctx.addIssue({ code: 'custom', path: [`groupSizes.${i}.to`], message: 'Max must be greater than or equal to min' })
+          }
+        })
+        const sorted = [...sizes].sort((a, b) => a.from - b.from)
+        for (let i = 1; i < sorted.length; i++) {
+          if (sorted[i].from <= sorted[i - 1].to) {
+            ctx.addIssue({ code: 'custom', path: [`groupSizes.${i}.from`], message: `Group sizes must not overlap ("${sorted[i-1].from}-${sorted[i-1].to}" → "${sorted[i].from}")` })
+          }
+        }
       }
     }
     if (data.scheduleType === 'fixedTimeSlot') {
       if (!Array.isArray(data.timeSlots) || data.timeSlots.length === 0) {
         ctx.addIssue({ code: 'custom', path: ['timeSlots'], message: 'Add at least one time slot' })
       }
+    }
+    if (data.minParticipants != null && data.maxParticipants != null && data.minParticipants > data.maxParticipants) {
+      ctx.addIssue({ code: 'custom', path: ['minParticipants'], message: 'Min must be less than or equal to max' })
     }
   }),
   15: z.object({
@@ -242,5 +277,12 @@ export const stepSchemas = {
     itinerary: z
       .array(itineraryEntrySchema)
       .min(1, 'Add at least one itinerary entry'),
+  }),
+  17: z.object({
+    cancellationType: z.enum(['standard', 'all_sales_final'], {
+      errorMap: () => ({ message: 'Select a cancellation policy' }),
+    }),
+    supplierCanCancelBadWeather: z.boolean().optional(),
+    supplierCanCancelNotEnoughTravelers: z.boolean().optional(),
   }),
 }
