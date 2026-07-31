@@ -7,6 +7,7 @@ import { createProduct, updateProduct } from '@/features/products/api'
 import { buildPayload } from '@/features/products/useAutoSave'
 import { useGeocoding } from '@/hooks/useGeocoding'
 import { ITINERARY_ACTIVITY_CATEGORIES } from '@/constants/gygLists'
+import { ITINERARY_SECTION_GUIDES } from '@/features/products/utils/itinerarySectionGuides'
 import {
   HelpCircle, Info, Search, X, Plus, ArrowLeft, MoreHorizontal, Calendar, MapPin,
 } from 'lucide-react'
@@ -33,6 +34,17 @@ async function saveCurrentProduct() {
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
+
+// ─── Section Guide (heading + helper description) ─────────────────────────────
+function SectionGuide({ title, description }) {
+  if (!title && !description) return null
+  return (
+    <>
+      {title && <h3 className="text-sm font-bold text-slate-900 mb-1">{title}</h3>}
+      {description && <p className="text-sm text-slate-500 mb-4">{description}</p>}
+    </>
+  )
+}
 
 /** Derive number of days from store duration/durationUnit */
 function getNumDays(duration, durationUnit) {
@@ -304,7 +316,7 @@ function SegmentWizard({ onComplete, onCancel, initialData, taggedLocations }) {
   const dropdownRef = useRef(null)
 
   const isTransfer = data.activityType === 'transfer'
-  const maxStep = isTransfer ? 5 : 7
+  const maxStep = isTransfer ? 5 : 8
 
   const allActivities = useMemo(() =>
     Object.values(ITINERARY_ACTIVITY_CATEGORIES)
@@ -432,11 +444,8 @@ function SegmentWizard({ onComplete, onCancel, initialData, taggedLocations }) {
         {step === 3 && !isTransfer && (
           <>
             <h3 className="text-xl font-bold text-slate-900 mb-1">Where does this part of your experience take place?</h3>
-            <p className="text-sm text-slate-500 mb-4">Select one of the locations tagged to your experience from the list below or use a non-specific location.</p>
+            <p className="text-sm text-slate-500 mb-4">Select one of the locations tagged to your experience from the list below.</p>
             <LocationSearch selected={data.location} onSelect={(l) => update({ location: l })} taggedLocations={taggedLocations} />
-            <p className="mt-3 text-sm text-slate-400">
-              or <button className="text-emerald-600 hover:underline font-medium">use non-specific location</button>
-            </p>
           </>
         )}
 
@@ -479,6 +488,21 @@ function SegmentWizard({ onComplete, onCancel, initialData, taggedLocations }) {
 
         {step === 5 && !isTransfer && (
           <>
+            <h3 className="text-xl font-bold text-slate-900 mb-1">What can travellers expect to do?</h3>
+            <p className="text-sm text-slate-500 mb-4">Describe what happens during this part of your experience (optional, but recommended).</p>
+            <textarea
+              value={data.description}
+              onChange={(e) => update({ description: e.target.value.slice(0, 500) })}
+              placeholder="e.g. Explore the historic old town, guided by a local expert"
+              rows={4}
+              className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
+            />
+            <div className="text-right text-xs text-slate-400 mt-1">{data.description.length} / 500</div>
+          </>
+        )}
+
+        {step === 6 && !isTransfer && (
+          <>
             <h3 className="text-xl font-bold text-slate-900 mb-5">How important is this activity to the overall experience?</h3>
             <div className="space-y-3">
               {[
@@ -510,7 +534,7 @@ function SegmentWizard({ onComplete, onCancel, initialData, taggedLocations }) {
           </>
         )}
 
-        {(step === 6 && !isTransfer) && (
+        {(step === 7 && !isTransfer) && (
           <>
             <h3 className="text-xl font-bold text-slate-900 mb-5">Is this part of your experience optional?</h3>
             <div className="space-y-3">
@@ -525,7 +549,7 @@ function SegmentWizard({ onComplete, onCancel, initialData, taggedLocations }) {
           </>
         )}
 
-        {(step === 7 && !isTransfer) && (
+        {(step === 8 && !isTransfer) && (
           <>
             <h3 className="text-xl font-bold text-slate-900 mb-5">Does this part of your experience require an additional fee?</h3>
             <div className="space-y-3">
@@ -604,6 +628,9 @@ function SegmentCard({ segment, onEdit, onRemove, onAddAfter }) {
           <>
             <p className="text-sm font-bold text-slate-900">{segment.locationName || segment.location?.name || 'Location'}</p>
             <p className="text-sm text-slate-600">{[segment.activityName || segment.title, durLabel].filter(Boolean).join(' ')}</p>
+            {segment.description && segment.description !== ' ' && segment.description !== segment.activityName && (
+              <p className="text-xs text-slate-400 mt-0.5">{segment.description}</p>
+            )}
             {segment.isOptional && <p className="text-xs text-emerald-600 mt-0.5">Optional</p>}
           </>
         )}
@@ -763,7 +790,7 @@ function WelcomeScreen({ isMultiDay, onStart, errors }) {
 }
 
 // ─── Single-Day Timeline Builder ─────────────────────────────────────────────
-function SingleDayBuilder({ pickupInfo, dropoffInfo, taggedLocations, onShowDiagram }) {
+function SingleDayBuilder({ pickupInfo, dropoffInfo, taggedLocations, onShowDiagram, guides }) {
   const itinerary = useProductBuilderStore((s) => s.itinerary)
   const pushItineraryEntry = useProductBuilderStore((s) => s.pushItineraryEntry)
   const updateItineraryEntry = useProductBuilderStore((s) => s.updateItineraryEntry)
@@ -803,7 +830,7 @@ function SingleDayBuilder({ pickupInfo, dropoffInfo, taggedLocations, onShowDiag
       day: 1, time: '09:00',
       duration: totalMin || 1, durationUnit: 'minute',
       title: data.activityName || '',
-      description: data.activityName,
+      description: data.description || data.activityName,
       type: 'activity',
       visitType: 'visit',
       locationName: data.location?.name || '',
@@ -834,6 +861,8 @@ function SingleDayBuilder({ pickupInfo, dropoffInfo, taggedLocations, onShowDiag
           - Orange line: left-5 (20px), top-5 (20px = half first node), bottom-5 (20px = half last node)
           - Row content right of the node has a bottom border to create the separator lines
       */}
+      <SectionGuide title={guides.timeline?.title} description={guides.timeline?.description} />
+
       <div className="relative">
         {/* Green spine — left-5 = 20px = center of 40px node
              top-8 = 32px = py-3(12px top) + half-node(20px)
@@ -847,6 +876,9 @@ function SingleDayBuilder({ pickupInfo, dropoffInfo, taggedLocations, onShowDiag
             <div>
               <p className="text-sm font-bold text-slate-900">{pickupInfo.label}</p>
               {typeof pickupInfo.sub === 'string' && <p className="text-sm text-slate-500">{pickupInfo.sub}</p>}
+              {guides.pickup?.description && (
+                <p className="text-xs text-slate-400 mt-0.5">{guides.pickup.description}</p>
+              )}
             </div>
             <button className="text-slate-400 hover:text-slate-600 shrink-0 ml-4" type="button">
               <Info size={16} />
@@ -891,6 +923,7 @@ function SingleDayBuilder({ pickupInfo, dropoffInfo, taggedLocations, onShowDiag
                       importance: s.importance || 'major',
                       isOptional: !!s.isOptional,
                       additionalFee: !!s.additionalFee,
+                      description: s.description && s.description !== ' ' ? s.description : '',
                     }
                   })()}
                   taggedLocations={taggedLocations}
@@ -919,6 +952,9 @@ function SingleDayBuilder({ pickupInfo, dropoffInfo, taggedLocations, onShowDiag
             <div>
               <p className="text-sm font-bold text-slate-900">{dropoffInfo.label}</p>
               {typeof dropoffInfo.sub === 'string' && <p className="text-sm text-slate-500">{dropoffInfo.sub}</p>}
+              {guides.dropoff?.description && (
+                <p className="text-xs text-slate-400 mt-0.5">{guides.dropoff.description}</p>
+              )}
             </div>
             <button className="text-slate-400 hover:text-slate-600 shrink-0 ml-4" type="button">
               <Info size={16} />
@@ -1307,7 +1343,7 @@ function DaySegmentForm({ initialData, taggedLocations, photos = [], onSave, onC
 }
 
 // ─── Multi-Day Builder ─────────────────────────────────────────────────────────
-function MultiDayBuilder({ numDays, pickupInfo, taggedLocations, onShowDiagram }) {
+function MultiDayBuilder({ numDays, pickupInfo, taggedLocations, onShowDiagram, guides }) {
   const navigate = useNavigate()
   const itinerary = useProductBuilderStore((s) => s.itinerary)
   const itineraryOverview = useProductBuilderStore((s) => s.itineraryOverview)
@@ -1426,6 +1462,7 @@ function MultiDayBuilder({ numDays, pickupInfo, taggedLocations, onShowDiagram }
       importance: seg.importance || 'major',
       isOptional: !!seg.isOptional,
       additionalFee: !!seg.additionalFee,
+      description: seg.description && seg.description !== ' ' ? seg.description : '',
     }
   }
 
@@ -1465,7 +1502,7 @@ function MultiDayBuilder({ numDays, pickupInfo, taggedLocations, onShowDiagram }
             transition={{ duration: 0.2, ease: 'easeInOut' }}
           >
             <h3 className="text-sm font-bold text-slate-900 mb-1">Overview <span className="font-normal text-slate-400">(optional)</span></h3>
-            <p className="text-sm text-slate-500 mb-3">Write an introductory overview to summarize your itinerary. Highlight the must-see sights, memorable activities, and the general atmosphere travelers can expect.</p>
+            <p className="text-sm text-slate-500 mb-3">{guides.overview?.description}</p>
             <textarea
               value={itineraryOverview}
               onChange={(e) => setField('itineraryOverview', e.target.value.slice(0, 400))}
@@ -1490,6 +1527,7 @@ function MultiDayBuilder({ numDays, pickupInfo, taggedLocations, onShowDiagram }
             {/* Day title */}
             <div className="mb-5">
               <h4 className="text-sm font-bold text-slate-900 mb-1">Day title</h4>
+              <p className="text-sm text-slate-500 mb-3">{guides.dayTitle?.description}</p>
               <div className="relative">
                 <input
                   type="text"
@@ -1504,7 +1542,7 @@ function MultiDayBuilder({ numDays, pickupInfo, taggedLocations, onShowDiagram }
 
             {/* Itinerary section */}
             <h4 className="text-sm font-bold text-slate-900 mb-1">Itinerary</h4>
-            <p className="text-sm text-slate-500 mb-4">Create a timeline of what customers can expect on this day. Add each key activity as a separate segment.</p>
+            <p className="text-sm text-slate-500 mb-4">{guides.itinerary?.description}</p>
 
             {/* Timeline */}
             <div className="relative">
@@ -1517,6 +1555,9 @@ function MultiDayBuilder({ numDays, pickupInfo, taggedLocations, onShowDiagram }
                   <div className="flex flex-col justify-center">
                     <p className="text-sm font-bold text-slate-900">Starting location:</p>
                     {typeof pickupInfo.sub === 'string' && <p className="text-sm text-slate-500">{pickupInfo.sub}</p>}
+                    {guides.pickup?.description && (
+                      <p className="text-xs text-slate-400 mt-0.5">{guides.pickup.description}</p>
+                    )}
                   </div>
                   <button className="text-slate-400 hover:text-slate-600 shrink-0 ml-4" type="button">
                     <Info size={16} />
@@ -1590,7 +1631,7 @@ function MultiDayBuilder({ numDays, pickupInfo, taggedLocations, onShowDiagram }
             transition={{ duration: 0.2, ease: 'easeInOut' }}
           >
             <h3 className="text-sm font-bold text-slate-900 mb-1">Additional itinerary info <span className="font-normal text-slate-400">(optional)</span></h3>
-            <p className="text-sm text-slate-500 mb-3">Share information about anything that may change in the itinerary (e.g. seasonal changes) or additional information that wasn't covered in the itinerary.</p>
+            <p className="text-sm text-slate-500 mb-3">{guides.additionalInfo?.description}</p>
             <textarea
               value={additionalItineraryInfo}
               onChange={(e) => setField('additionalItineraryInfo', e.target.value.slice(0, 400))}
@@ -1922,6 +1963,7 @@ export default function Step16Itinerary() {
   // ── Derived state ──
   const numDays = getNumDays(duration, durationUnit)
   const isMultiDay = numDays > 1
+  const guides = ITINERARY_SECTION_GUIDES[isMultiDay ? 'multiDay' : 'singleDay']
 
   const [started, setStarted] = useState(() => itinerary?.length > 0)
   const [showDiagram, setShowDiagram] = useState(() => itinerary?.length > 0)
@@ -2053,6 +2095,7 @@ export default function Step16Itinerary() {
                   pickupInfo={pickupInfo}
                   taggedLocations={taggedLocations}
                   onShowDiagram={() => setShowDiagram(true)}
+                  guides={guides}
                 />
               </motion.div>
             ) : (
@@ -2069,6 +2112,7 @@ export default function Step16Itinerary() {
                   dropoffInfo={dropoffInfo}
                   taggedLocations={taggedLocations}
                   onShowDiagram={() => setShowDiagram(true)}
+                  guides={guides}
                 />
               </motion.div>
             )}
