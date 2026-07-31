@@ -24,6 +24,94 @@ const MINUTES = ['00', '15', '30', '45']
 
 const WIZARD_STEPS = ['Schedule', 'Pricing Categories', 'Capacity', 'Price', 'Add-ons (optional)']
 
+function hasAnyWeeklyHours(weeklySchedule) {
+  return Object.values(weeklySchedule || {}).some((hours) => Array.isArray(hours) && hours.length > 0)
+}
+
+function validateScheduleStep(step, state) {
+  const errors = {}
+  if (step === 1) {
+    if (!state.scheduleName || !state.scheduleName.trim()) {
+      errors.scheduleName = 'Name your schedule'
+    }
+    if (!state.scheduleStartDate) {
+      errors.scheduleStartDate = 'Select a starting date'
+    }
+    if (state.scheduleHasEndDate && !state.scheduleEndDate) {
+      errors.scheduleEndDate = 'Select an end date'
+    }
+    if (state.scheduleHasEndDate && state.scheduleStartDate && state.scheduleEndDate &&
+        new Date(state.scheduleEndDate) < new Date(state.scheduleStartDate)) {
+      errors.scheduleEndDate = 'End date must be on or after the starting date'
+    }
+    if (state.scheduleType === 'fixedTimeSlot') {
+      if (!Array.isArray(state.timeSlots) || state.timeSlots.length === 0) {
+        errors.timeSlots = 'Add at least one time slot'
+      }
+    } else if (!hasAnyWeeklyHours(state.weeklySchedule)) {
+      errors.weeklySchedule = 'Add at least one opening hours entry'
+    }
+  }
+  if (step === 2) {
+    if (state.pricingModel !== 'perGroup') {
+      if (!state.pricingApproach) {
+        errors.pricingApproach = 'Select a pricing approach'
+      }
+      if (state.pricingApproach === 'dependsOnAge') {
+        const cats = Array.isArray(state.pricingCategories) ? state.pricingCategories : []
+        if (cats.length === 0) {
+          errors.pricingCategories = 'Add at least one pricing category'
+        } else {
+          cats.forEach((cat, i) => {
+            if (!cat.name || !cat.name.trim()) {
+              errors[`pricingCategories.${i}.name`] = 'Enter a category name'
+            }
+          })
+        }
+      }
+    }
+  }
+  if (step === 3) {
+    if (!state.minParticipants || state.minParticipants < 1) {
+      errors.minParticipants = 'Enter a minimum number'
+    }
+    if (!state.maxParticipants || state.maxParticipants < 1) {
+      errors.maxParticipants = 'Enter a maximum number'
+    }
+    if (state.minParticipants && state.maxParticipants && state.minParticipants > state.maxParticipants) {
+      errors.minParticipants = 'Min must be less than or equal to max'
+    }
+    if (state.pricingModel === 'perGroup' && (!state.maxGroupsPerTimeSlot || state.maxGroupsPerTimeSlot < 1)) {
+      errors.maxGroupsPerTimeSlot = 'Enter a maximum number of groups'
+    }
+  }
+  if (step === 4) {
+    if (state.pricingModel === 'perGroup') {
+      const sizes = Array.isArray(state.groupSizes) ? state.groupSizes : []
+      sizes.forEach((gs, i) => {
+        if (gs.price == null || gs.price < 0) {
+          errors[`groupSizes.${i}.price`] = 'Enter a price for this group size'
+        }
+      })
+    } else if (state.pricingApproach === 'sameForEveryone') {
+      if (state.uniformPrice == null || state.uniformPrice < 0) {
+        errors.uniformPrice = 'Enter a price per person'
+      }
+    } else if (state.pricingApproach === 'dependsOnAge') {
+      const cats = Array.isArray(state.pricingCategories) ? state.pricingCategories : []
+      cats.forEach((cat, i) => {
+        const isFree = cat.ticketNotRequired === true
+        if (cat.price == null && !isFree) {
+          errors[`pricingCategories.${i}.price`] = 'Enter a price for this category'
+        } else if (typeof cat.price === 'number' && cat.price < 0) {
+          errors[`pricingCategories.${i}.price`] = 'Price must be 0 or greater'
+        }
+      })
+    }
+  }
+  return errors
+}
+
 function TimeSelect({ value, onChange }) {
   const [hour, minute] = (value || '08:00').split(':')
   return (
@@ -80,13 +168,14 @@ function WizardStepper({ currentStep }) {
   )
 }
 
-function ScheduleStep() {
+function ScheduleStep({ errors = {} }) {
   const {
-    scheduleName, scheduleStartDate, scheduleHasEndDate, scheduleEndDate,
-    weeklySchedule, dateExceptions,
+    scheduleType, scheduleName, scheduleStartDate, scheduleHasEndDate, scheduleEndDate,
+    weeklySchedule, dateExceptions, timeSlots,
     setField, addWeeklyHours, updateWeeklyHours, removeWeeklyHours,
     copyDayToRemaining, removeAllWeeklyHours,
     addDateException, updateDateException, removeDateException,
+    addTimeSlot, updateTimeSlot, removeTimeSlot,
   } = useProductBuilderStore()
 
   const hasAnyHours = Object.values(weeklySchedule).some((hours) => hours.length > 0)
@@ -104,6 +193,7 @@ function ScheduleStep() {
           placeholder="E.g. Summer, Weekends price..."
           className="w-full h-11 rounded-lg border border-slate-200 px-3.5 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
         />
+        {errors.scheduleName && <span className="text-[13px] text-red-600 font-medium mt-1 block">{errors.scheduleName}</span>}
       </div>
 
       <div>
@@ -129,6 +219,8 @@ function ScheduleStep() {
             </>
           )}
         </div>
+        {errors.scheduleStartDate && <span className="text-[13px] text-red-600 font-medium mt-1 block">{errors.scheduleStartDate}</span>}
+        {errors.scheduleEndDate && <span className="text-[13px] text-red-600 font-medium mt-1 block">{errors.scheduleEndDate}</span>}
         <label className="flex items-center gap-2 mt-3 cursor-pointer">
           <input
             type="checkbox"
@@ -143,7 +235,43 @@ function ScheduleStep() {
         )}
       </div>
 
-      {/* Standard weekly schedule */}
+      {scheduleType === 'fixedTimeSlot' ? (
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-bold text-slate-900">Time slots</h3>
+            <button
+              type="button"
+              onClick={addTimeSlot}
+              className="flex items-center gap-1.5 text-sm text-emerald-600 hover:text-emerald-700 font-medium"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Add time slot
+            </button>
+          </div>
+          <div className="space-y-3">
+            {timeSlots.map((slot, i) => (
+              <div key={slot.id || i} className="flex items-center gap-2">
+                <span className="text-sm text-slate-500 w-20">Start time</span>
+                <TimeSelect
+                  value={slot.startTime}
+                  onChange={(v) => updateTimeSlot(i, { startTime: v })}
+                />
+                <button
+                  type="button"
+                  onClick={() => removeTimeSlot(i)}
+                  className="w-6 h-6 flex items-center justify-center text-red-400 hover:text-red-600 transition-colors shrink-0"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))}
+            {timeSlots.length === 0 && (
+              <p className="text-sm text-slate-400">No time slots yet. Add the start times your activity runs at.</p>
+            )}
+          </div>
+          {errors.timeSlots && <span className="text-[13px] text-red-600 font-medium mt-1 block">{errors.timeSlots}</span>}
+        </div>
+      ) : (
       <div>
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-bold text-slate-900">Standard weekly schedule</h3>
@@ -210,7 +338,9 @@ function ScheduleStep() {
             </div>
           ))}
         </div>
+        {errors.weeklySchedule && <span className="text-[13px] text-red-600 font-medium mt-1 block">{errors.weeklySchedule}</span>}
       </div>
+      )}
 
       {/* Exceptions */}
       <div>
@@ -282,7 +412,7 @@ function ScheduleStep() {
   )
 }
 
-function GroupSizeStep() {
+function GroupSizeStep({ errors = {} }) {
   const {
     pricingModel, groupSizes,
     additionalPersonsEnabled, additionalPersonPrice,
@@ -303,38 +433,43 @@ function GroupSizeStep() {
 
         <div className="space-y-3">
           {groupSizes.map((gs, i) => (
-            <div key={gs.id || i} className="flex items-center gap-3">
-              {i === 0 && (
-                <label className="text-sm text-slate-700 shrink-0">Number of people</label>
+            <div key={gs.id || i} className="flex flex-col gap-1.5">
+              <div className="flex items-center gap-3">
+                {i === 0 && (
+                  <label className="text-sm text-slate-700 shrink-0">Number of people</label>
+                )}
+                {i > 0 && <div className="w-[116px] shrink-0" />}
+                <input
+                  type="number"
+                  value={gs.from}
+                  onChange={(e) => updateGroupSize(i, { from: parseInt(e.target.value) || 1 })}
+                  min={1}
+                  className="h-11 w-20 rounded-lg border border-slate-200 px-3 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                />
+                <span className="text-sm text-slate-400">to</span>
+                <input
+                  type="number"
+                  value={gs.to}
+                  onChange={(e) => updateGroupSize(i, { to: parseInt(e.target.value) || 1 })}
+                  min={1}
+                  className="h-11 w-20 rounded-lg border border-slate-200 px-3 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                />
+                <button
+                  type="button"
+                  onClick={() => removeGroupSize(i)}
+                  disabled={groupSizes.length <= 1}
+                  className={`text-sm font-medium shrink-0 ${
+                    groupSizes.length <= 1
+                      ? 'text-slate-300 cursor-not-allowed'
+                      : 'text-red-500 hover:text-red-600'
+                  }`}
+                >
+                  Remove
+                </button>
+              </div>
+              {errors[`groupSizes.${i}.price`] && (
+                <span className="text-[13px] text-red-600 font-medium">{errors[`groupSizes.${i}.price`]}</span>
               )}
-              {i > 0 && <div className="w-[116px] shrink-0" />}
-              <input
-                type="number"
-                value={gs.from}
-                onChange={(e) => updateGroupSize(i, { from: parseInt(e.target.value) || 1 })}
-                min={1}
-                className="h-11 w-20 rounded-lg border border-slate-200 px-3 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
-              />
-              <span className="text-sm text-slate-400">to</span>
-              <input
-                type="number"
-                value={gs.to}
-                onChange={(e) => updateGroupSize(i, { to: parseInt(e.target.value) || 1 })}
-                min={1}
-                className="h-11 w-20 rounded-lg border border-slate-200 px-3 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
-              />
-              <button
-                type="button"
-                onClick={() => removeGroupSize(i)}
-                disabled={groupSizes.length <= 1}
-                className={`text-sm font-medium shrink-0 ${
-                  groupSizes.length <= 1
-                    ? 'text-slate-300 cursor-not-allowed'
-                    : 'text-red-500 hover:text-red-600'
-                }`}
-              >
-                Remove
-              </button>
             </div>
           ))}
         </div>
@@ -376,15 +511,12 @@ function GroupSizeStep() {
   )
 }
 
-function PricingCategoriesStep() {
+function PricingCategoriesStep({ errors = {} }) {
   const {
     pricingModel, pricingApproach, pricingCategories, showAdvancedCategorySettings,
     setField, addPricingCategory, updatePricingCategory, removePricingCategory,
   } = useProductBuilderStore()
 
-  if (pricingModel === 'perGroup') {
-    return <GroupSizeStep />
-  }
   const [showPicker, setShowPicker] = useState(false)
   const [customMode, setCustomMode] = useState(false)
   const [customName, setCustomName] = useState('')
@@ -426,6 +558,10 @@ function PricingCategoriesStep() {
     }
   }
 
+  if (pricingModel === 'perGroup') {
+    return <GroupSizeStep errors={errors} />
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -454,6 +590,7 @@ function PricingCategoriesStep() {
             <span className="text-sm text-slate-700">Price depends on category, e.g. child, senior, military etc</span>
           </label>
         </div>
+        {errors.pricingApproach && <span className="text-[13px] text-red-600 font-medium mt-1 block">{errors.pricingApproach}</span>}
 
         {pricingApproach === 'sameForEveryone' && (
           <div className="mt-4 p-3 rounded-lg bg-emerald-50 border border-emerald-100">
@@ -469,6 +606,10 @@ function PricingCategoriesStep() {
 
       {pricingApproach === 'dependsOnAge' && (
         <div data-field="pricingCategories">
+          {errors.pricingCategories && <span className="text-[13px] text-red-600 font-medium mb-2 block">{errors.pricingCategories}</span>}
+          {Object.keys(errors).filter((k) => k.startsWith('pricingCategories.') && k.endsWith('.name')).map((k) => (
+            <span key={k} className="text-[13px] text-red-600 font-medium mb-2 block">{errors[k]}</span>
+          ))}
           <div className="flex items-center justify-between mb-3">
             <label className="text-sm font-bold text-slate-900">Pricing categories:</label>
             <button
@@ -634,7 +775,7 @@ function PricingCategoriesStep() {
   )
 }
 
-function CapacityStep() {
+function CapacityStep({ errors = {} }) {
   const { pricingModel, minParticipants, maxParticipants, maxGroupsPerTimeSlot, setField } = useProductBuilderStore()
 
   if (pricingModel === 'perGroup') {
@@ -652,6 +793,7 @@ function CapacityStep() {
               className="h-11 w-32 rounded-lg border border-slate-200 px-3.5 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
             />
           </div>
+          {errors.maxGroupsPerTimeSlot && <span className="text-[13px] text-red-600 font-medium mt-1 block">{errors.maxGroupsPerTimeSlot}</span>}
         </div>
       </div>
     )
@@ -678,6 +820,7 @@ function CapacityStep() {
               className="h-11 w-32 rounded-lg border border-slate-200 px-3.5 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
             />
           </div>
+          {errors.minParticipants && <span className="text-[13px] text-red-600 font-medium mt-1 block ml-[140px]">{errors.minParticipants}</span>}
           <div className="flex items-center gap-4">
             <label className="text-sm text-slate-700 min-w-[140px]">Maximum number</label>
             <input
@@ -689,13 +832,14 @@ function CapacityStep() {
               className="h-11 w-32 rounded-lg border border-slate-200 px-3.5 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
             />
           </div>
+          {errors.maxParticipants && <span className="text-[13px] text-red-600 font-medium mt-1 block ml-[140px]">{errors.maxParticipants}</span>}
         </div>
       </div>
     </div>
   )
 }
 
-function PerGroupPriceStep() {
+function PerGroupPriceStep({ errors = {} }) {
   const {
     groupSizes,
     updateGroupSize, removeGroupSize, addGroupSize,
@@ -725,8 +869,7 @@ function PerGroupPriceStep() {
         return (
           <div key={band.id || i} className="border border-slate-200 rounded-lg p-4">
             <div className="text-sm font-bold text-slate-900 mb-2">{label}</div>
-            <div className="flex flex-wrap items-end gap-x-4 gap-y-2">
-              <div className="min-w-[140px] flex-1">
+            <div className="flex flex-wrap items-end gap-x-4 gap-y-2">              <div className="min-w-[140px] flex-1">
                 <label className="block text-xs text-slate-500 mb-1">Group pays</label>
                 <input
                   type="number"
@@ -735,6 +878,9 @@ function PerGroupPriceStep() {
                   placeholder="USD"
                   className="h-10 w-full max-w-[120px] rounded-lg border border-slate-200 px-3 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
                 />
+                {errors[`groupSizes.${i}.price`] && (
+                  <span className="block text-[13px] text-red-600 font-medium mt-1">{errors[`groupSizes.${i}.price`]}</span>
+                )}
               </div>
               <div>
                 <label className="block text-xs text-slate-500 mb-1">Commission</label>
@@ -777,7 +923,7 @@ function PerGroupPriceStep() {
   )
 }
 
-function PerPersonPriceStep() {
+function PerPersonPriceStep({ errors = {} }) {
   const {
     pricingApproach, pricingCategories, uniformPrice,
     minParticipants, maxParticipants,
@@ -840,6 +986,9 @@ function PerPersonPriceStep() {
                     className="h-11 w-full rounded-lg border border-slate-200 px-3 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
                   />
                 </div>
+                {errors[isSameForEveryone ? 'uniformPrice' : `pricingCategories.${i}.price`] && (
+                  <span className="block text-[13px] text-red-600 font-medium mt-1">{errors[isSameForEveryone ? 'uniformPrice' : `pricingCategories.${i}.price`]}</span>
+                )}
               </div>
               <div>
                 <label className="block text-xs text-slate-500 mb-1">Commission</label>
@@ -886,6 +1035,9 @@ function PerPersonPriceStep() {
                       placeholder="USD"
                       className="h-11 w-full rounded-lg border border-slate-200 px-3 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
                     />
+                    {errors[`pricingCategories.${i}.tiers`] && (
+                      <span className="block text-[13px] text-red-600 font-medium mt-1">{errors[`pricingCategories.${i}.tiers`]}</span>
+                    )}
                   </div>
                   <div>
                     <div className="h-11 rounded-lg bg-slate-100 flex items-center px-3 text-sm text-slate-500">30%</div>
@@ -925,14 +1077,14 @@ function PerPersonPriceStep() {
   )
 }
 
-function PriceStep() {
+function PriceStep({ errors = {} }) {
   const { pricingModel } = useProductBuilderStore()
 
   if (pricingModel === 'perGroup') {
-    return <PerGroupPriceStep />
+    return <PerGroupPriceStep errors={errors} />
   }
 
-  return <PerPersonPriceStep />
+  return <PerPersonPriceStep errors={errors} />
 }
 
 function AddonsStep() {
@@ -954,15 +1106,39 @@ function AddonsStep() {
 function ScheduleWizard({ onBack }) {
   const { currentScheduleStep, setField, saveSchedule, resetScheduleForm } = useProductBuilderStore()
   const [direction, setDirection] = useState(1)
+  const [wizardErrors, setWizardErrors] = useState({})
 
   const handleNext = () => {
     setDirection(1)
+    const state = useProductBuilderStore.getState()
+
     if (currentScheduleStep < 5) {
+      const errors = validateScheduleStep(currentScheduleStep, state)
+      if (Object.keys(errors).length > 0) {
+        setWizardErrors(errors)
+        return
+      }
+      setWizardErrors({})
       setField('currentScheduleStep', currentScheduleStep + 1)
-    } else {
-      saveSchedule()
-      onBack()
+      return
     }
+
+    let allErrors = {}
+    let firstStep = null
+    for (let step = 1; step <= 4; step++) {
+      const stepErrors = validateScheduleStep(step, state)
+      allErrors = { ...allErrors, ...stepErrors }
+      if (firstStep === null && Object.keys(stepErrors).length > 0) firstStep = step
+    }
+    if (Object.keys(allErrors).length > 0) {
+      setWizardErrors(allErrors)
+      if (firstStep !== null) setField('currentScheduleStep', firstStep)
+      return
+    }
+
+    setWizardErrors({})
+    saveSchedule()
+    onBack()
   }
 
   const handleBack = () => {
@@ -986,6 +1162,20 @@ function ScheduleWizard({ onBack }) {
       <WizardStepper currentStep={currentScheduleStep} />
 
       <div className="min-h-[200px]">
+        {Object.keys(wizardErrors).length > 0 && (
+          <div className="flex items-start gap-2 px-4 py-3 bg-red-50 border border-red-200 rounded-lg mb-6">
+            <span className="w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center shrink-0">
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </span>
+            <p className="text-sm text-slate-700">
+              {Object.entries(wizardErrors).length === 1
+                ? Object.values(wizardErrors)[0]
+                : `Please fix the following before continuing: ${Object.values(wizardErrors).join(', ')}`}
+            </p>
+          </div>
+        )}
         <AnimatePresence mode="wait" custom={direction}>
           <motion.div
             key={currentScheduleStep}
@@ -996,10 +1186,10 @@ function ScheduleWizard({ onBack }) {
             exit="exit"
             transition={{ duration: 0.2, ease: 'easeInOut' }}
           >
-            {currentScheduleStep === 1 && <ScheduleStep />}
-            {currentScheduleStep === 2 && <PricingCategoriesStep />}
-            {currentScheduleStep === 3 && <CapacityStep />}
-            {currentScheduleStep === 4 && <PriceStep />}
+            {currentScheduleStep === 1 && <ScheduleStep errors={wizardErrors} />}
+            {currentScheduleStep === 2 && <PricingCategoriesStep errors={wizardErrors} />}
+            {currentScheduleStep === 3 && <CapacityStep errors={wizardErrors} />}
+            {currentScheduleStep === 4 && <PriceStep errors={wizardErrors} />}
             {currentScheduleStep === 5 && <AddonsStep />}
           </motion.div>
         </AnimatePresence>
@@ -1134,7 +1324,7 @@ function ScheduleCard({ schedule, index, onEdit }) {
 
 export default function Step14PricingAvailability() {
   const {
-    scheduleType, pricingModel, schedules, groupSizes, pricingCategories, uniformPrice, minParticipants, maxParticipants, maxGroupsPerTimeSlot, additionalPersonsEnabled, additionalPersonPrice,
+    scheduleType, pricingModel, schedules, groupSizes, pricingCategories, uniformPrice,
     setField, resetScheduleForm,
   } = useProductBuilderStore()
   const errors = useStepErrors(14)

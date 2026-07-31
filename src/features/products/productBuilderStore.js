@@ -616,6 +616,22 @@ export const useProductBuilderStore = create(
           Object.keys(s.weeklySchedule).forEach((day) => { newSchedule[day] = [] })
           return { weeklySchedule: newSchedule, isDirty: true }
         }),
+
+      addTimeSlot: () =>
+        set((s) => ({
+          timeSlots: [...s.timeSlots, { id: safeId(), startTime: '09:00' }],
+          isDirty: true,
+        })),
+      updateTimeSlot: (index, updates) =>
+        set((s) => ({
+          timeSlots: s.timeSlots.map((t, i) => (i === index ? { ...t, ...updates } : t)),
+          isDirty: true,
+        })),
+      removeTimeSlot: (index) =>
+        set((s) => ({
+          timeSlots: s.timeSlots.filter((_, i) => i !== index),
+          isDirty: true,
+        })),
       copyWeeklyHoursFromException: (exceptionIndex, day) =>
         set((s) => {
           const exception = s.dateExceptions[exceptionIndex]
@@ -639,6 +655,7 @@ export const useProductBuilderStore = create(
             endDate: s.scheduleEndDate,
             weeklySchedule: JSON.parse(JSON.stringify(s.weeklySchedule)),
             dateExceptions: [...s.dateExceptions],
+            timeSlots: JSON.parse(JSON.stringify(s.timeSlots)),
             pricingModel: s.pricingModel,
             currency: 'USD',
             pricingApproach: s.pricingApproach,
@@ -678,6 +695,7 @@ export const useProductBuilderStore = create(
             scheduleEndDate: schedule.endDate,
             weeklySchedule: JSON.parse(JSON.stringify(schedule.weeklySchedule)),
             dateExceptions: [...schedule.dateExceptions],
+            timeSlots: JSON.parse(JSON.stringify(Array.isArray(schedule.timeSlots) ? schedule.timeSlots : [])),
             pricingModel: schedule.pricingModel,
             currency: schedule.currency || 'USD',
             pricingApproach: schedule.pricingApproach,
@@ -697,16 +715,17 @@ export const useProductBuilderStore = create(
           isDirty: true,
         })),
       resetScheduleForm: () =>
-        set({
+        set((s) => ({
           currentScheduleStep: 1,
           editingScheduleIndex: null,
           scheduleName: '',
-          scheduleType: 'operatingHours',
+          scheduleType: s.scheduleType,
           scheduleStartDate: '',
           scheduleHasEndDate: false,
           scheduleEndDate: '',
           weeklySchedule: { Monday: [], Tuesday: [], Wednesday: [], Thursday: [], Friday: [], Saturday: [], Sunday: [] },
           dateExceptions: [],
+          timeSlots: [],
           pricingApproach: 'dependsOnAge',
           uniformPrice: null,
           pricingCategories: [{ name: 'Child', price: null, minAge: 0, maxAge: 17, notAllowed: false, ticketNotRequired: false, needsAdult: false, idRequired: false, idType: '', tiers: [] }, { name: 'Adult', price: null, minAge: 18, maxAge: 99, notAllowed: false, ticketNotRequired: false, needsAdult: false, idRequired: false, idType: '', tiers: [] }],
@@ -716,7 +735,7 @@ export const useProductBuilderStore = create(
           groupSizes: [],
           additionalPersonsEnabled: false,
           additionalPersonPrice: null,
-        }),
+        })),
 
       addPickupArea: (area) =>
         set((s) => ({

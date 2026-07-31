@@ -226,6 +226,12 @@ export const stepSchemas = {
               }
             }
             seen.push({ name: g.name, minAge: g.minAge, maxAge: g.maxAge })
+            const isFree = g.ticketNotRequired === true
+            if (g.price == null && !isFree) {
+              ctx.addIssue({ code: 'custom', path: [`pricingCategories.${i}.price`], message: 'Enter a price for this category' })
+            } else if (typeof g.price === 'number' && g.price < 0) {
+              ctx.addIssue({ code: 'custom', path: [`pricingCategories.${i}.price`], message: 'Price must be 0 or greater' })
+            }
             if (Array.isArray(g.tiers) && g.tiers.length > 0) {
               g.tiers.forEach((tier, ti) => {
                 if (tier.from === null || tier.to === null || tier.pricePerPerson === null) return
@@ -233,6 +239,10 @@ export const stepSchemas = {
                   ctx.addIssue({ code: 'custom', path: [`pricingCategories.${i}.tiers.${ti}.to`], message: 'Max must be greater than or equal to min' })
                 }
               })
+              const anyMissingTierPrice = g.tiers.some((tier) => tier.from !== null && tier.pricePerPerson == null)
+              if (anyMissingTierPrice) {
+                ctx.addIssue({ code: 'custom', path: [`pricingCategories.${i}.tiers`], message: 'Enter a price for each tier' })
+              }
             }
           })
         }
