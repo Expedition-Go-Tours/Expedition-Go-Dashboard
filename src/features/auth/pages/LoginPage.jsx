@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -14,10 +14,26 @@ import {
   Compass,
 } from "lucide-react";
 import { useSupplierLogin } from "@/features/auth/hooks/useSupplierLogin";
-import { useGoogleOneTap } from "@/features/auth/hooks/useGoogleOneTap";
+import { GoogleOAuthProvider, useGoogleOneTapLogin } from "@react-oauth/google";
 import { getLoginErrorMessage, loginWithGoogleOneTap } from "@/features/auth/api";
 import config from "@/config";
 import supplierLoginImage from "@/assets/supplier_login.jpg";
+
+const googleClientId = config.google.clientId;
+
+function OneTapHandler({ onSuccess }) {
+  useGoogleOneTapLogin({
+    onSuccess: async (credentialResponse) => {
+      const credential = credentialResponse.credential;
+      if (!credential) return;
+      await onSuccess(credential);
+    },
+    onError: () => {},
+    cancel_on_tap_outside: false,
+  });
+
+  return null;
+}
 
 const FEATURES = [
   { icon: Package, label: "Create and publish tours" },
@@ -37,7 +53,6 @@ const stagger = {
 
 export default function LoginPage() {
   const { completeLoginWithEmail, completeLoginFromToken, loading, error, setError } = useSupplierLogin();
-  const { setCallback } = useGoogleOneTap();
   const [searchParams] = useSearchParams();
 
   const redirect = searchParams.get("redirect");
@@ -58,8 +73,8 @@ export default function LoginPage() {
     return () => window.removeEventListener("pageshow", onPageShow);
   }, []);
 
-  useEffect(() => {
-    setCallback(async (credential) => {
+  const handleOneTapSuccess = useCallback(
+    async (credential) => {
       setGoogleLoading(true);
       setError("");
 
@@ -76,8 +91,9 @@ export default function LoginPage() {
         setError(getLoginErrorMessage(err));
         setGoogleLoading(false);
       }
-    });
-  }, [setCallback, completeLoginFromToken, setError]);
+    },
+    [completeLoginFromToken, setError]
+  );
 
   const handleEmailSignIn = async (event) => {
     event.preventDefault();
@@ -109,7 +125,9 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50/80 p-4 sm:p-6">
+    <GoogleOAuthProvider clientId={googleClientId}>
+      <OneTapHandler onSuccess={handleOneTapSuccess} />
+      <div className="min-h-screen flex items-center justify-center bg-slate-50/80 p-4 sm:p-6">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -316,6 +334,7 @@ export default function LoginPage() {
           </div>
         </div>
       </motion.div>
-    </div>
+      </div>
+    </GoogleOAuthProvider>
   );
 }
