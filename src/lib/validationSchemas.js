@@ -86,7 +86,7 @@ export const productTypeSchema = z.object({
 export const productBasicsSchema = z.object({
   title: z.string()
     .min(10, "Title must be at least 10 characters")
-    .max(200, "Title must not exceed 200 characters"),
+    .max(60, "Title must not exceed 60 characters"),
   description: z.string()
     .min(50, "Description must be at least 50 characters")
     .max(5000, "Description must not exceed 5000 characters"),

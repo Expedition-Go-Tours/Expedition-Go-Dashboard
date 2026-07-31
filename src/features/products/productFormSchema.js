@@ -83,8 +83,8 @@ export const stepSchemas = {
      language: z.string().min(1, 'Select a language'),
    }),
   2: z.object({
-      title: z.string().min(1, 'Title is required'),
-      referenceCode: z.string().optional(),
+      title: z.string().min(1, 'Title is required').max(60, 'Title must be 60 characters or fewer'),
+      referenceCode: z.string().max(20, 'Reference code must be 20 characters or fewer').optional(),
     }),
     3: z.object({
       category: z.enum(['tour', 'activity', 'transport'], { errorMap: () => ({ message: 'Select a product type' }) }),

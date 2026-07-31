@@ -390,6 +390,7 @@ function PricingCategoriesStep() {
   const [customName, setCustomName] = useState('')
   const pickerRef = useRef(null)
   const inputRef = useRef(null)
+  const addedNames = new Set(pricingCategories.map((c) => c.name.trim().toLowerCase()))
 
   useEffect(() => {
     if (customMode) inputRef.current?.focus()
@@ -405,13 +406,21 @@ function PricingCategoriesStep() {
   }, [showPicker])
 
   const handleSelectTemplate = (t) => {
+    if (addedNames.has(t.name.toLowerCase())) return
     addPricingCategory({ name: t.name, price: null, minAge: t.minAge, maxAge: t.maxAge, notAllowed: false, ticketNotRequired: false, needsAdult: false, idRequired: t.idRequired || false, idType: '' })
     setShowPicker(false)
   }
 
   const handleAddCustom = () => {
-    if (customName.trim()) {
-      addPricingCategory({ name: customName.trim(), price: null, minAge: 1, maxAge: 99, notAllowed: false, ticketNotRequired: false, needsAdult: false, idRequired: false, idType: '' })
+    const trimmed = customName.trim()
+    if (trimmed) {
+      if (addedNames.has(trimmed.toLowerCase())) {
+        setCustomName('')
+        setCustomMode(false)
+        setShowPicker(false)
+        return
+      }
+      addPricingCategory({ name: trimmed, price: null, minAge: 1, maxAge: 99, notAllowed: false, ticketNotRequired: false, needsAdult: false, idRequired: false, idType: '' })
       setCustomName('')
       setCustomMode(false)
     }
@@ -569,7 +578,7 @@ function PricingCategoriesStep() {
                 <div className="px-3 py-2 bg-slate-50 border-b border-slate-100">
                   <span className="text-xs font-bold text-slate-600">Choose a category</span>
                 </div>
-                {CATEGORY_TEMPLATES.map((t) => (
+                {CATEGORY_TEMPLATES.filter((t) => !addedNames.has(t.name.toLowerCase())).map((t) => (
                   <button
                     key={t.name}
                     type="button"
