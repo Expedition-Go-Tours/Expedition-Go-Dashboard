@@ -17,7 +17,9 @@ export default function Step03Title() {
         <label className="block text-sm font-semibold mb-2 text-slate-800">Product title *</label>
         <input
           data-field="title"
-          className="w-full min-h-[46px] rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm transition-all focus-ring"
+          className={`w-full min-h-[46px] rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all focus-ring ${
+            titleAtLimit ? 'border-red-300 text-red-600' : 'border-slate-200'
+          }`}
           type="text"
           value={title}
           onChange={(e) => setField('title', e.target.value)}
@@ -44,7 +46,9 @@ export default function Step03Title() {
         <label className="block text-sm font-semibold mb-2 text-slate-800">Product reference code</label>
         <input
           data-field="referenceCode"
-          className="w-full min-h-[46px] rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm transition-all focus-ring"
+          className={`w-full min-h-[46px] rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all focus-ring ${
+            refCodeAtLimit ? 'border-red-300 text-red-600' : 'border-slate-200'
+          }`}
           type="text"
           value={referenceCode}
           onChange={(e) => setField('referenceCode', e.target.value)}

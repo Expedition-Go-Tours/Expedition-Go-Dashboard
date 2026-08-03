@@ -247,12 +247,30 @@ export const stepSchemas = {
               ctx.addIssue({ code: 'custom', path: [`pricingCategories.${i}.price`], message: 'Price must be 0 or greater' })
             }
             if (Array.isArray(g.tiers) && g.tiers.length > 0) {
+              // Validate each tier
               g.tiers.forEach((tier, ti) => {
                 if (tier.from === null || tier.to === null || tier.pricePerPerson === null) return
+                
+                // Tier range validation
                 if (tier.to < tier.from) {
                   ctx.addIssue({ code: 'custom', path: [`pricingCategories.${i}.tiers.${ti}.to`], message: 'Max must be greater than or equal to min' })
                 }
+                
+                // First tier must start at 1 (GetYourGuide standard)
+                if (ti === 0 && tier.from !== 1) {
+                  ctx.addIssue({ code: 'custom', path: [`pricingCategories.${i}.tiers.${ti}.from`], message: 'First tier must start at 1' })
+                }
+                
+                // Subsequent tiers must be sequential (no gaps)
+                if (ti > 0) {
+                  const prevTier = g.tiers[ti - 1]
+                  if (prevTier && prevTier.to !== null && tier.from !== prevTier.to + 1) {
+                    ctx.addIssue({ code: 'custom', path: [`pricingCategories.${i}.tiers.${ti}.from`], message: 'Tiers must be sequential without gaps' })
+                  }
+                }
               })
+              
+              // Check for missing tier prices
               const anyMissingTierPrice = g.tiers.some((tier) => tier.from !== null && tier.pricePerPerson == null)
               if (anyMissingTierPrice) {
                 ctx.addIssue({ code: 'custom', path: [`pricingCategories.${i}.tiers`], message: 'Enter a price for each tier' })

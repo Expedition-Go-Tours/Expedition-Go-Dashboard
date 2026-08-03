@@ -321,13 +321,15 @@ export default function Step05Locations() {
                           Description
                         </label>
                         <textarea
-                          className="w-full h-20 border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-emerald-500 transition-colors resize-vertical"
+                          className={`w-full h-20 border bg-white px-3 py-2 text-sm outline-none focus:border-emerald-500 transition-colors resize-vertical ${
+                            (loc.description || '').length >= 500 ? 'border-red-300 text-red-600' : 'border-slate-300'
+                          }`}
                           value={loc.description || ''}
                           onChange={(e) => updateLocation(i, { description: e.target.value })}
                           placeholder="Describe what travelers will experience at this location, including any notable features or activities."
                           maxLength={500}
                         />
-                        <p className="text-[12px] text-slate-400 mt-1 text-right">{(loc.description || '').length}/500</p>
+                        <p className={`text-[12px] mt-1 text-right font-medium ${(loc.description || '').length >= 500 ? 'text-red-600' : 'text-slate-400'}`}>{(loc.description || '').length}/500</p>
                       </div>
 
                       <div>

@@ -50,6 +50,7 @@ const INITIAL_FORM = {
   notSuitableFor: [],
   notAllowed: [],
   petFriendly: false,
+  wifiIncluded: false,
   mandatoryItems: [],
   knowBeforeYouGo: '',
   emergencyPhone: '',
@@ -430,35 +431,58 @@ export const useProductBuilderStore = create(
           const tiers = cat.tiers || []
           const lastTier = tiers[tiers.length - 1]
 
+          // First tier: starts from 1 (GetYourGuide standard)
           if (!lastTier) {
-            const firstTo = s.maxParticipants ?? 1
-            if (2 > firstTo) return s
+            const firstTo = s.maxParticipants ?? 10
+            if (1 >= firstTo) return s
+            
+            // GetYourGuide behavior: Add same tier structure to ALL categories
             return {
-              pricingCategories: s.pricingCategories.map((c, i) =>
-                i === catIndex
-                  ? { ...c, tiers: [{ id: safeId(), from: 2, to: firstTo, pricePerPerson: null }] }
-                  : c
-              ),
+              pricingCategories: s.pricingCategories.map((c) => ({
+                ...c,
+                tiers: [{ id: safeId(), from: 1, to: firstTo, pricePerPerson: null }]
+              })),
               isDirty: true,
             }
           }
 
-          const newFrom = lastTier.from + 1
-          if (newFrom > lastTier.to) return s
-
+          // Additional tiers: split the last tier into two
+          const lastTo = lastTier.to ?? s.maxParticipants ?? 10
+          const lastFrom = lastTier.from
+          
+          // Can't split if the range is too small (need at least 2 units)
+          if (lastTo - lastFrom < 1) return s
+          
+          // Calculate the midpoint for splitting
+          const midPoint = Math.floor((lastFrom + lastTo) / 2)
+          
+          // GetYourGuide behavior: Apply tier structure change to ALL categories
           return {
-            pricingCategories: s.pricingCategories.map((c, i) =>
-              i === catIndex
-                ? {
-                    ...c,
-                    tiers: [
-                      ...tiers.slice(0, -1),
-                      { ...lastTier, to: lastTier.from },
-                      { id: safeId(), from: newFrom, to: lastTier.to, pricePerPerson: null },
-                    ],
-                  }
-                : c
-            ),
+            pricingCategories: s.pricingCategories.map((c) => {
+              const catTiers = c.tiers || []
+              const catLastTier = catTiers[catTiers.length - 1]
+              
+              if (!catLastTier) {
+                // Category has no tiers yet, add the new tier structure
+                return {
+                  ...c,
+                  tiers: [
+                    { id: safeId(), from: 1, to: midPoint, pricePerPerson: null },
+                    { id: safeId(), from: midPoint + 1, to: lastTo, pricePerPerson: null },
+                  ]
+                }
+              }
+              
+              // Split the last tier
+              return {
+                ...c,
+                tiers: [
+                  ...catTiers.slice(0, -1),
+                  { ...catLastTier, to: midPoint },  // First half keeps existing price
+                  { id: safeId(), from: midPoint + 1, to: lastTo, pricePerPerson: null },  // Second half needs new price
+                ]
+              }
+            }),
             isDirty: true,
           }
         }),
@@ -468,8 +492,37 @@ export const useProductBuilderStore = create(
           const tiers = cat?.tiers || []
           const tier = tiers[tierIndex]
           if (!tier) return s
+          
           const merged = { ...tier, ...updates }
           if (merged.to < merged.from) return s
+          
+          // If updating from/to range, sync across all categories (GetYourGuide behavior)
+          const isRangeUpdate = 'from' in updates || 'to' in updates
+          
+          if (isRangeUpdate) {
+            return {
+              pricingCategories: s.pricingCategories.map((c) => {
+                const catTiers = c.tiers || []
+                return {
+                  ...c,
+                  tiers: catTiers.map((t, j) => {
+                    if (j === tierIndex) {
+                      // Update range but keep the category's own price
+                      return {
+                        ...t,
+                        from: merged.from,
+                        to: merged.to,
+                      }
+                    }
+                    return t
+                  })
+                }
+              }),
+              isDirty: true,
+            }
+          }
+          
+          // Only updating price - apply to specific category only
           return {
             pricingCategories: s.pricingCategories.map((c, i) =>
               i === catIndex
@@ -488,22 +541,27 @@ export const useProductBuilderStore = create(
           if (!cat) return s
           const tiers = cat.tiers || []
           if (tiers.length <= 1) return s
+          
           const removed = tiers[tierIndex]
+          
+          // GetYourGuide behavior: Remove tier from ALL categories
           return {
-            pricingCategories: s.pricingCategories.map((c, i) =>
-              i === catIndex
-                ? {
-                    ...c,
-                    tiers: tiers
-                      .map((t, j) => {
-                        if (j === tierIndex - 1 && removed) return { ...t, to: removed.to }
-                        if (j === tierIndex + 1 && tierIndex === 0 && removed) return { ...t, from: removed.from }
-                        return t
-                      })
-                      .filter((_, j) => j !== tierIndex),
-                  }
-                : c
-            ),
+            pricingCategories: s.pricingCategories.map((c) => {
+              const catTiers = c.tiers || []
+              if (catTiers.length <= 1) return { ...c, tiers: [] } // Remove all tiers if only 1 left
+              
+              return {
+                ...c,
+                tiers: catTiers
+                  .map((t, j) => {
+                    // Merge adjacent tiers when removing
+                    if (j === tierIndex - 1 && removed) return { ...t, to: removed.to }
+                    if (j === tierIndex + 1 && tierIndex === 0 && removed) return { ...t, from: removed.from }
+                    return t
+                  })
+                  .filter((_, j) => j !== tierIndex),
+              }
+            }),
             isDirty: true,
           }
         }),

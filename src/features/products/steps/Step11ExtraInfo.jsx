@@ -54,7 +54,9 @@ function TagList({ items, onAdd, onRemove, placeholder, suggestions = [] }) {
       <div className="flex gap-2">
         <input
           ref={inputRef}
-          className="flex-1 min-h-[46px] rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm transition-all focus-ring"
+          className={`flex-1 min-h-[46px] rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all focus-ring ${
+            atLimit ? 'border-red-300 text-red-600' : 'border-slate-200'
+          }`}
           type="text"
           value={inputValue}
           onChange={(e) => {
@@ -118,6 +120,7 @@ export default function Step09ExtraInfo() {
   const notSuitableFor = useProductBuilderStore((s) => s.notSuitableFor)
   const notAllowed = useProductBuilderStore((s) => s.notAllowed)
   const petFriendly = useProductBuilderStore((s) => s.petFriendly)
+  const wifiIncluded = useProductBuilderStore((s) => s.wifiIncluded)
   const mandatoryItems = useProductBuilderStore((s) => s.mandatoryItems)
   const knowBeforeYouGo = useProductBuilderStore((s) => s.knowBeforeYouGo)
   const emergencyPhone = useProductBuilderStore((s) => s.emergencyPhone)
@@ -183,6 +186,37 @@ export default function Step09ExtraInfo() {
         {errors.petFriendly && <span className="text-[13px] text-red-600 font-medium mt-1">{errors.petFriendly[0]}</span>}
       </div>
 
+      <div className="mb-5" data-field="wifiIncluded">
+        <label className="block text-sm font-semibold mb-2 text-slate-800">
+          Is WiFi or internet included? <span className="text-red-500">*</span>
+        </label>
+        <div className="flex bg-slate-100 rounded-lg p-0.5 w-fit">
+          <button
+            type="button"
+            onClick={() => setField('wifiIncluded', false)}
+            className={`px-5 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer border-0 ${
+              !wifiIncluded
+                ? 'bg-white text-slate-800 shadow-sm'
+                : 'bg-transparent text-slate-400 hover:text-slate-600'
+            }`}
+          >
+            No
+          </button>
+          <button
+            type="button"
+            onClick={() => setField('wifiIncluded', true)}
+            className={`px-5 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer border-0 ${
+              wifiIncluded
+                ? 'bg-white text-slate-800 shadow-sm'
+                : 'bg-transparent text-slate-400 hover:text-slate-600'
+            }`}
+          >
+            Yes
+          </button>
+        </div>
+        {errors.wifiIncluded && <span className="text-[13px] text-red-600 font-medium mt-1">{errors.wifiIncluded[0]}</span>}
+      </div>
+
       <div className="mb-5" data-field="mandatoryItems">
         <label className="block text-sm font-semibold mb-2 text-slate-800">
           What mandatory items must the customer bring?
@@ -200,7 +234,9 @@ export default function Step09ExtraInfo() {
       <div className="mb-5">
         <label className="block text-sm font-semibold mb-2 text-slate-800">Know before you go</label>
         <textarea
-          className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm transition-all focus-ring resize-vertical"
+          className={`w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all focus-ring resize-vertical ${
+            knowBeforeAtLimit ? 'border-red-300 text-red-600' : 'border-slate-200'
+          }`}
           rows={4}
           value={knowBeforeYouGo}
           onChange={(e) => setField('knowBeforeYouGo', e.target.value)}
@@ -240,7 +276,9 @@ export default function Step09ExtraInfo() {
       <div className="mb-5">
         <label className="block text-sm font-semibold mb-2 text-slate-800">Information on the voucher</label>
         <textarea
-          className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm transition-all focus-ring resize-vertical"
+          className={`w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all focus-ring resize-vertical ${
+            voucherAtLimit ? 'border-red-300 text-red-600' : 'border-slate-200'
+          }`}
           rows={4}
           value={voucherInfo}
           onChange={(e) => setField('voucherInfo', e.target.value)}

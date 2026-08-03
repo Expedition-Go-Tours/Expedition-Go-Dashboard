@@ -39,7 +39,9 @@ export default function Step04Descriptions() {
         </label>
         <textarea
           data-field="shortDescription"
-          className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm transition-all focus-ring resize-vertical"
+          className={`w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all focus-ring resize-vertical ${
+            shortAtLimit ? 'border-red-300 text-red-600' : 'border-slate-200'
+          }`}
           rows={3}
           value={shortDescription}
           onChange={(e) => setField('shortDescription', e.target.value)}
@@ -68,7 +70,9 @@ export default function Step04Descriptions() {
         </label>
         <textarea
           data-field="fullDescription"
-          className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm transition-all focus-ring resize-vertical"
+          className={`w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all focus-ring resize-vertical ${
+            fullAtLimit ? 'border-red-300 text-red-600' : 'border-slate-200'
+          }`}
           rows={8}
           value={fullDescription}
           onChange={(e) => setField('fullDescription', e.target.value)}
@@ -104,7 +108,9 @@ export default function Step04Descriptions() {
               <div key={i}>
                 <input
                   data-field="highlights"
-                  className="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-sm transition-all focus-ring"
+                  className={`w-full rounded-lg border bg-white px-3.5 py-2.5 text-sm transition-all focus-ring ${
+                    atLimit ? 'border-red-300 text-red-600' : 'border-slate-200'
+                  }`}
                   type="text"
                   value={item}
                   maxLength={HIGHLIGHT_MAX_CHARS}

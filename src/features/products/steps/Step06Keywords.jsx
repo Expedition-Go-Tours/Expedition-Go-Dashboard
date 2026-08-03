@@ -131,7 +131,7 @@ export default function Step06Keywords() {
   return (
     <div className="max-w-[720px]">
       <p className="text-[13px] text-slate-500 mb-4 leading-relaxed">
-        <span className="font-normal text-slate-400">({keywords.length}/15)</span>{' '}
+        <span className={`font-medium ${keywords.length >= 15 ? 'text-red-600' : 'text-slate-400'}`}>({keywords.length}/15)</span>{' '}
         Search suggested keywords or request a new one to help customers find your product.
         Think about theme, timing, who it&apos;s for, and what makes it unique.
       </p>

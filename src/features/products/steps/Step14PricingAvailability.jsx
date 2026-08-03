@@ -968,66 +968,89 @@ function PerPersonPriceStep({ errors = {} }) {
         return (
           <div key={i} className="p-4 rounded-lg border border-slate-200 bg-white">
             <h4 className="text-sm font-bold text-slate-900 mb-3">{cat.name}</h4>
-            <div className="grid grid-cols-4 gap-3 items-end">
-              <div>
-                <label className="block text-xs text-slate-500 mb-1">Number of people</label>
-                <div className="text-sm text-slate-700 font-medium">
-                  {minParticipants} to {maxParticipants ?? ''}
+            
+            {/* Show base price section only when NO tiers exist */}
+            {(!cat.tiers || cat.tiers.length === 0) && (
+              <div className="grid grid-cols-4 gap-3 items-end mb-3">
+                <div>
+                  <label className="block text-xs text-slate-500 mb-1">Number of people</label>
+                  <div className="text-sm text-slate-700 font-medium">
+                    {minParticipants} to {maxParticipants ?? ''}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-500 mb-1">Customer pays</label>
+                  <div className="flex items-center">
+                    <input
+                      type="number"
+                      value={catPrice}
+                      onChange={(e) => handlePriceChange(i, e.target.value)}
+                      placeholder="USD"
+                      className="h-11 w-full rounded-lg border border-slate-200 px-3 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                    />
+                  </div>
+                  {errors[isSameForEveryone ? 'uniformPrice' : `pricingCategories.${i}.price`] && (
+                    <span className="block text-[13px] text-red-600 font-medium mt-1">{errors[isSameForEveryone ? 'uniformPrice' : `pricingCategories.${i}.price`]}</span>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-500 mb-1">Commission</label>
+                  <div className="h-11 rounded-lg bg-slate-100 flex items-center px-3 text-sm text-slate-500">
+                    30%
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-500 mb-1">Price per participant</label>
+                  <div className="h-11 rounded-lg bg-slate-100 flex items-center px-3 text-sm text-slate-700 font-medium">
+                    {computed ? `${computed} USD` : ''}
+                  </div>
                 </div>
               </div>
-              <div>
-                <label className="block text-xs text-slate-500 mb-1">Customer pays</label>
-                <div className="flex items-center">
-                  <input
-                    type="number"
-                    value={catPrice}
-                    onChange={(e) => handlePriceChange(i, e.target.value)}
-                    placeholder="USD"
-                    className="h-11 w-full rounded-lg border border-slate-200 px-3 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
-                  />
-                </div>
-                {errors[isSameForEveryone ? 'uniformPrice' : `pricingCategories.${i}.price`] && (
-                  <span className="block text-[13px] text-red-600 font-medium mt-1">{errors[isSameForEveryone ? 'uniformPrice' : `pricingCategories.${i}.price`]}</span>
-                )}
+            )}
+            
+            {/* Show helpful note when tiers exist */}
+            {cat.tiers && cat.tiers.length > 0 && (
+              <div className="mb-3 p-2 bg-blue-50 border border-blue-100 rounded-lg">
+                <p className="text-xs text-blue-700">
+                  <strong>Base price ({catPrice || '0'} USD)</strong> is only used if no tier matches. Define tier prices below.
+                </p>
               </div>
-              <div>
-                <label className="block text-xs text-slate-500 mb-1">Commission</label>
-                <div className="h-11 rounded-lg bg-slate-100 flex items-center px-3 text-sm text-slate-500">
-                  30%
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs text-slate-500 mb-1">Price per participant</label>
-                <div className="h-11 rounded-lg bg-slate-100 flex items-center px-3 text-sm text-slate-700 font-medium">
-                  {computed ? `${computed} USD` : ''}
-                </div>
-              </div>
-            </div>
+            )}
 
               {(cat.tiers || []).map((tier, j) => (
               <div key={tier.id || j} className="p-3 mt-3 rounded-lg border border-slate-100 bg-slate-50">
-                <div className="text-xs font-medium text-slate-500 mb-2">Pay out per {cat.name}</div>
-                <div className="grid grid-cols-4 gap-3 items-center">
-                  <div>
-                    <div className="flex items-center gap-1 text-sm text-slate-700">
-                      <span>{tier.from}</span>
-                      <span>to</span>
-                      <input
-                        type="number"
-                        value={tier.to ?? ''}
-                        onChange={(e) => {
-                          const raw = e.target.value
-                          if (!raw) { updateCategoryTier(i, j, { to: null }); return }
-                          const newTo = parseInt(raw)
-                          if (isNaN(newTo)) return
-                          updateCategoryTier(i, j, { to: newTo })
-                        }}
-                        className="h-7 w-16 rounded-lg border border-slate-200 px-2 text-sm text-center focus:outline-none focus:border-emerald-500"
-                        min={1}
-                      />
-                    </div>
+                <div className="text-xs font-medium text-slate-500 mb-2">
+                  Tier {j + 1}: For groups of {tier.from} to {tier.to ?? '?'} total participants
+                </div>
+                <div className="grid grid-cols-[auto_1fr_1fr_auto] gap-3 items-center">
+                  {/* From/To Column */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-slate-500">From</span>
+                    <input
+                      type="number"
+                      value={tier.from ?? ''}
+                      disabled
+                      className="h-9 w-14 rounded-lg border border-slate-200 bg-slate-100 px-2 text-sm text-center text-slate-500 cursor-not-allowed"
+                    />
+                    <span className="text-xs text-slate-500">to</span>
+                    <input
+                      type="number"
+                      value={tier.to ?? ''}
+                      onChange={(e) => {
+                        const raw = e.target.value
+                        if (!raw) { updateCategoryTier(i, j, { to: null }); return }
+                        const newTo = parseInt(raw)
+                        if (isNaN(newTo)) return
+                        updateCategoryTier(i, j, { to: newTo })
+                      }}
+                      className="h-9 w-14 rounded-lg border border-slate-200 px-2 text-sm text-center focus:outline-none focus:border-emerald-500"
+                      min={tier.from}
+                    />
                   </div>
+                  
+                  {/* Price per person */}
                   <div>
+                    <label className="block text-xs text-slate-500 mb-1">Price per {cat.name}</label>
                     <input
                       type="number"
                       value={tier.pricePerPerson ?? ''}
@@ -1035,14 +1058,22 @@ function PerPersonPriceStep({ errors = {} }) {
                       placeholder="USD"
                       className="h-11 w-full rounded-lg border border-slate-200 px-3 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
                     />
-                    {errors[`pricingCategories.${i}.tiers`] && (
+                    {errors[`pricingCategories.${i}.tiers`] && j === 0 && (
                       <span className="block text-[13px] text-red-600 font-medium mt-1">{errors[`pricingCategories.${i}.tiers`]}</span>
                     )}
                   </div>
+                  
+                  {/* Commission */}
                   <div>
-                    <div className="h-11 rounded-lg bg-slate-100 flex items-center px-3 text-sm text-slate-500">30%</div>
+                    <label className="block text-xs text-slate-500 mb-1">Commission (30%)</label>
+                    <div className="h-11 rounded-lg bg-slate-100 flex items-center px-3 text-sm text-slate-500">
+                      {tier.pricePerPerson ? `${(tier.pricePerPerson * 0.3).toFixed(2)} USD` : '-'}
+                    </div>
                   </div>
+                  
+                  {/* Actions */}
                   <div>
+                    <label className="block text-xs text-slate-500 mb-1">Actions</label>
                     <div className="h-11 flex items-center">
                       <button
                         type="button"
@@ -1068,8 +1099,15 @@ function PerPersonPriceStep({ errors = {} }) {
               className="flex items-center gap-1.5 mt-3 text-sm text-emerald-600 hover:text-emerald-700 font-medium"
             >
               <Plus className="w-3.5 h-3.5" />
-              Tier price
+              Add tier price
             </button>
+            
+            {cat.tiers && cat.tiers.length > 0 && (
+              <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+                💡 Tier pricing applies based on <strong>total group size</strong> across all age categories. 
+                Example: 3 adults + 2 children = 5 total → uses pricing for tier covering 5 participants.
+              </p>
+            )}
           </div>
         )
       })}

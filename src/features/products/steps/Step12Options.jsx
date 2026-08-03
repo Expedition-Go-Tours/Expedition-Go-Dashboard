@@ -8,12 +8,11 @@ import {
   SelectItem,
 } from '@/components/ui/select'
 import {
-  ArrowLeft, Plus, Check, X, Globe,
+  ArrowLeft, Plus, Check,
   Headphones, Book, Copy, Trash2,
 } from 'lucide-react'
 import { useProductBuilderStore } from '@/features/products/productBuilderStore'
 import { useStepErrors } from '@/features/products/useStepErrors'
-import { GYG_LANGUAGES } from '@/constants/gygLists'
 
 const MAX_OPTIONS = 8
 
@@ -55,87 +54,6 @@ function NoYesPill({ value, onChange }) {
       >
         Yes
       </button>
-    </div>
-  )
-}
-
-function LanguageInput({ languages, onAdd, onRemove }) {
-  const inputRef = useRef(null)
-  const [inputValue, setInputValue] = useState('')
-  const [showSuggestions, setShowSuggestions] = useState(false)
-
-  function handleAdd() {
-    const val = inputValue.trim()
-    if (val && !languages.some((l) => l.toLowerCase() === val.toLowerCase())) {
-      onAdd(val)
-      setInputValue('')
-      if (inputRef.current) inputRef.current.focus()
-    }
-  }
-
-  const filteredSuggestions = GYG_LANGUAGES.filter(
-    (lang) =>
-      lang.toLowerCase().includes(inputValue.toLowerCase()) &&
-      !languages.some((l) => l.toLowerCase() === lang.toLowerCase()),
-  )
-
-  return (
-    <div className="relative">
-      <div className="flex flex-wrap gap-1.5 mb-2">
-        {languages.map((lang, i) => (
-          <span
-            key={i}
-            className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-100 rounded-full text-[13px] font-medium text-slate-700"
-          >
-            <Globe size={12} className="shrink-0 text-slate-400" />
-            {lang}
-            <button
-              onClick={() => onRemove(i)}
-              type="button"
-              className="bg-transparent border-0 cursor-pointer text-slate-400 hover:text-red-500 p-0 leading-none transition-colors"
-            >
-              <X size={12} />
-            </button>
-          </span>
-        ))}
-      </div>
-      <div className="relative">
-        <Globe size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-        <input
-          ref={inputRef}
-          className="w-full min-h-[40px] rounded-lg border border-slate-200 bg-white pl-8 pr-3 py-2 text-sm transition-all focus-ring"
-          type="text"
-          value={inputValue}
-          onChange={(e) => { setInputValue(e.target.value); setShowSuggestions(true) }}
-          onFocus={() => setShowSuggestions(true)}
-          onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-          placeholder="Search for language"
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') { e.preventDefault(); handleAdd() }
-          }}
-        />
-      </div>
-      {showSuggestions && filteredSuggestions.length > 0 && (
-        <div className="absolute z-10 w-full max-h-48 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-lg mt-1">
-          {filteredSuggestions.slice(0, 30).map((lang) => (
-            <button
-              key={lang}
-              type="button"
-              onMouseDown={() => {
-                if (lang && !languages.some((l) => l.toLowerCase() === lang.toLowerCase())) {
-                  onAdd(lang)
-                }
-                setInputValue('')
-                inputRef.current?.focus()
-              }}
-              className="w-full text-left px-3.5 py-2.5 text-sm hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-0 flex items-center gap-2 cursor-pointer bg-transparent"
-            >
-              <Globe size={14} className="shrink-0 text-slate-400" />
-              {lang}
-            </button>
-          ))}
-        </div>
-      )}
     </div>
   )
 }
@@ -319,7 +237,6 @@ function OptionSummaryCard({ option, index, onEdit, onDuplicate, onRemove }) {
   if (option.audioGuide) featurePills.push({ label: 'Audio guide', type: 'audio' })
   if (option.infoBooklet) featurePills.push({ label: 'Booklet', type: 'booklet' })
   if (option.maxGroupSize) featurePills.push({ label: `Max ${option.maxGroupSize} ppl`, type: 'group' })
-  const langCount = option.languages?.length || 0
 
   let durationSummary
   if (option.duration) {
@@ -345,10 +262,6 @@ function OptionSummaryCard({ option, index, onEdit, onDuplicate, onRemove }) {
           </div>
 
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-400">
-            {langCount > 0 && (
-              <span>{langCount} {langCount === 1 ? 'language' : 'languages'}</span>
-            )}
-            <span className="text-slate-300">|</span>
             <span>{durationSummary}</span>
             {option.refCode && option.refCode !== 'default' && (
               <>
@@ -409,7 +322,6 @@ function OptionSummaryCard({ option, index, onEdit, onDuplicate, onRemove }) {
 
 function OptionEditorScreen({ option, index, updateOption, onBack, onRemove, errors }) {
   const titleError = errors[`options.${index}.title`]
-  const languagesError = errors[`options.${index}.languages`]
   const [maxGroupSizeDraft, setMaxGroupSizeDraft] = useState(() =>
     option.maxGroupSize == null ? '' : String(option.maxGroupSize)
   )
@@ -470,13 +382,15 @@ function OptionEditorScreen({ option, index, updateOption, onBack, onRemove, err
           </p>
           <div className="relative">
             <input
-              className="w-full min-h-[42px] rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm transition-all focus-ring pr-16"
+              className={`w-full min-h-[42px] rounded-lg border bg-white px-3.5 py-2 text-sm transition-all focus-ring pr-16 ${
+                (option.refCode ?? '').length >= 20 ? 'border-red-300 text-red-600' : 'border-slate-200'
+              }`}
               type="text"
               value={option.refCode ?? ''}
               onChange={(e) => updateOption(index, { refCode: e.target.value })}
               maxLength={20}
             />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-medium">
+            <span className={`absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium ${(option.refCode ?? '').length >= 20 ? 'text-red-600' : 'text-slate-400'}`}>
               {(option.refCode ?? '').length} / 20
             </span>
           </div>
@@ -546,23 +460,6 @@ function OptionEditorScreen({ option, index, updateOption, onBack, onRemove, err
               )}
             </div>
           </div>
-        </div>
-
-        <hr className="border-slate-100 mb-6" />
-
-        <div className="mb-6" data-field={`options.${index}.languages`}>
-          <label className="block text-sm font-semibold text-slate-800 mb-1">
-            What languages is the activity offered in? <span className="text-red-500">*</span>
-          </label>
-          <p className="text-xs text-slate-500 mb-2">
-            List all available languages to attract more customers.
-          </p>
-          <LanguageInput
-            languages={option.languages}
-            onAdd={(lang) => updateOption(index, { languages: [...option.languages, lang] })}
-            onRemove={(idx) => updateOption(index, { languages: option.languages.filter((_, li) => li !== idx) })}
-          />
-          {languagesError && <span className="text-[13px] text-red-600 font-medium mt-1 flex items-center gap-1">{languagesError[0]}</span>}
         </div>
 
         <hr className="border-slate-100 mb-6" />
