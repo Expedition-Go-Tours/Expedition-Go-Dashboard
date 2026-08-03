@@ -507,13 +507,32 @@ export const useProductBuilderStore = create(
                   ...c,
                   tiers: catTiers.map((t, j) => {
                     if (j === tierIndex) {
-                      // Update range but keep the category's own price
+                      // Update the current tier's range
                       return {
                         ...t,
                         from: merged.from,
                         to: merged.to,
                       }
                     }
+                    
+                    // Cascade: If next tier exists, update its "from" to be current tier's "to" + 1
+                    // (GetYourGuide behavior: maintain sequential continuity)
+                    if (j === tierIndex + 1 && 'to' in updates) {
+                      return {
+                        ...t,
+                        from: merged.to + 1,
+                      }
+                    }
+                    
+                    // Cascade backwards: If previous tier exists and we're updating "from",
+                    // update previous tier's "to" to be current tier's "from" - 1
+                    if (j === tierIndex - 1 && 'from' in updates && merged.from > 1) {
+                      return {
+                        ...t,
+                        to: merged.from - 1,
+                      }
+                    }
+                    
                     return t
                   })
                 }
