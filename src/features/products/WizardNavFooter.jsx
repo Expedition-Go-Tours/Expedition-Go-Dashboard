@@ -1,13 +1,10 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Loader2 } from 'lucide-react'
 import { validateStep } from './stepValidation'
 import { useProductBuilderStore } from './productBuilderStore'
 import { scrollToField, getFieldLabel } from './fieldLabels'
 import { GYG_STEPS } from './gygSteps'
 
-export default function WizardNavFooter({ currentStep, totalSteps, onBack, onNext, onSave, saving, isEditing }) {
-  const navigate = useNavigate()
+export default function WizardNavFooter({ currentStep, totalSteps, onBack, onNext, onSave, onSubmitForReview, saving, isEditing }) {
   const formData = useProductBuilderStore()
   const setStepErrors = useProductBuilderStore((s) => s.setStepErrors)
   const clearStepErrors = useProductBuilderStore((s) => s.clearStepErrors)
@@ -65,12 +62,38 @@ export default function WizardNavFooter({ currentStep, totalSteps, onBack, onNex
     }
     try {
       await onSave?.()
-      completeStep('itinerary')
-      navigate('/products')
+      completeStep(GYG_STEPS[currentStep - 1]?.stepId)
     } catch {
       // Error already handled by the global interceptor + handleSave catch
     }
   }
+
+  async function handleSubmitForReview(e) {
+    e.preventDefault()
+    const errors = validateStep(currentStep, formData)
+    if (Object.keys(errors).length > 0) {
+      setStepErrors(currentStep, errors)
+      return
+    }
+    clearStepErrors(currentStep)
+    for (let i = 1; i < totalSteps; i++) {
+      if (i === currentStep) continue
+      const stepErr = validateStep(i, formData)
+      if (Object.keys(stepErr).length > 0) {
+        setStepErrors(i, stepErr)
+        goToStep(i - 1)
+        return
+      }
+    }
+    try {
+      await onSubmitForReview?.()
+      completeStep(GYG_STEPS[currentStep - 1]?.stepId)
+    } catch {
+      // Error already handled upstream
+    }
+  }
+
+  const handleFinalClick = onSubmitForReview ? handleSubmitForReview : handleSubmit
 
   return (
     <div className="flex items-start justify-between px-8 py-4 border-t border-slate-200 bg-slate-50/80">
@@ -131,11 +154,17 @@ export default function WizardNavFooter({ currentStep, totalSteps, onBack, onNex
         ) : (
           <button
             className="px-5 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-medium hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            onClick={handleSubmit}
+            onClick={onSubmitForReview ? handleFinalClick : handleSubmit}
             disabled={saving}
             type="button"
           >
-            {saving ? 'Saving...' : isEditing ? 'Update' : 'Submit'}
+            {saving
+              ? (onSubmitForReview ? 'Submitting...' : 'Saving...')
+              : onSubmitForReview
+                ? 'Submit for Review'
+                : isEditing
+                  ? 'Update'
+                  : 'Save'}
           </button>
         )}
       </div>

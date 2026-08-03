@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Search, Grid3X3, List, Plus, Eye, Edit, Trash2, Loader2,
-  AlertCircle, RefreshCw, Package, Star, ShoppingBag, TrendingUp,
+  AlertCircle, RefreshCw, Package, Star, TrendingUp,
 } from "lucide-react";
 import { toast } from "sonner";
 import StatusBadge from "@/components/shared/StatusBadge";
@@ -178,9 +178,10 @@ export default function ProductsListPage() {
     const total = products.length;
     const active = products.filter((p) => p.status === "ACTIVE").length;
     const pending = products.filter((p) => p.status === "PENDING_APPROVAL").length;
+    const rejected = products.filter((p) => p.status === "REJECTED").length;
     const draft = products.filter((p) => p.status === "DRAFT").length;
     const totalBookings = products.reduce((sum, p) => sum + (p._count?.bookings || 0), 0);
-    return { total, active, pending, draft, totalBookings };
+    return { total, active, pending, rejected, draft, totalBookings };
   }, [products]);
 
   const handleClearFilters = () => {
@@ -240,12 +241,12 @@ export default function ProductsListPage() {
             { label: "Active", value: stats.active, icon: Package, accent: "emerald" },
             { label: "Pending Approval", value: stats.pending, icon: TrendingUp, accent: "amber" },
             { label: "Drafts", value: stats.draft, icon: Edit, accent: "emerald" },
-            { label: "Total Bookings", value: stats.totalBookings, icon: ShoppingBag, accent: "emerald" },
+            { label: "Rejected", value: stats.rejected, icon: AlertCircle, accent: "rose" },
           ].map((s) => {
             const accentMap = {
               emerald: "bg-emerald-50 text-emerald-600 border-emerald-200/50",
               amber: "bg-amber-50 text-amber-600 border-amber-200/50",
-              emerald: "bg-emerald-50 text-emerald-600 border-emerald-200/50",
+              rose: "bg-rose-50 text-rose-600 border-rose-200/50",
             };
             return (
               <div key={s.label} className="bg-white border border-slate-100 rounded-xl p-4 hover:shadow-sm hover:border-slate-200 transition-all">
@@ -299,7 +300,7 @@ export default function ProductsListPage() {
               </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Statuses</SelectItem>
-              {["ACTIVE", "DRAFT", "PENDING_APPROVAL", "INACTIVE", "PAUSED", "ARCHIVED"].map((s) => (
+              {["ACTIVE", "DRAFT", "PENDING_APPROVAL", "REJECTED", "INACTIVE", "PAUSED", "ARCHIVED"].map((s) => (
                 <SelectItem key={s} value={s}>{s.replace(/_/g, " ")}</SelectItem>
               ))}
             </SelectContent>

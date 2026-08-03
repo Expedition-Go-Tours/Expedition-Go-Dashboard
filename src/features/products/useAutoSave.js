@@ -77,6 +77,8 @@ export function buildPayload(state) {
 
   const payload = {
     ...state,
+    description: state.fullDescription || '',
+    shortSummary: state.shortDescription || '',
     highlights: (state.highlights || []).filter(Boolean),
     photos: outgoingPhotos,
     ...(outgoingPhotos.length > 0 ? { existingPhotos: outgoingPhotos } : {}),

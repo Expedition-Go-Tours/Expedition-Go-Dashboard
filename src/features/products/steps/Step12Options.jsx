@@ -410,6 +410,9 @@ function OptionSummaryCard({ option, index, onEdit, onDuplicate, onRemove }) {
 function OptionEditorScreen({ option, index, updateOption, onBack, onRemove, errors }) {
   const titleError = errors[`options.${index}.title`]
   const languagesError = errors[`options.${index}.languages`]
+  const [maxGroupSizeDraft, setMaxGroupSizeDraft] = useState(() =>
+    option.maxGroupSize == null ? '' : String(option.maxGroupSize)
+  )
 
   return (
     <motion.div
@@ -494,7 +497,10 @@ function OptionEditorScreen({ option, index, updateOption, onBack, onRemove, err
                 type="radio"
                 name={`maxGroupSize-${option.id}`}
                 checked={option.maxGroupSize === null}
-                onChange={() => updateOption(index, { maxGroupSize: null })}
+                onChange={() => {
+                  setMaxGroupSizeDraft('')
+                  updateOption(index, { maxGroupSize: null })
+                }}
                 className="accent-emerald-600"
               />
               <span className="text-sm text-slate-600">No limit</span>
@@ -505,7 +511,10 @@ function OptionEditorScreen({ option, index, updateOption, onBack, onRemove, err
                   type="radio"
                   name={`maxGroupSize-${option.id}`}
                   checked={option.maxGroupSize !== null}
-                  onChange={() => updateOption(index, { maxGroupSize: 10 })}
+                  onChange={() => {
+                    setMaxGroupSizeDraft('10')
+                    updateOption(index, { maxGroupSize: 10 })
+                  }}
                   className="accent-emerald-600"
                 />
                 <span className="text-sm text-slate-600">Max</span>
@@ -517,8 +526,20 @@ function OptionEditorScreen({ option, index, updateOption, onBack, onRemove, err
                     type="number"
                     min={1}
                     max={100}
-                    value={option.maxGroupSize ?? ''}
-                    onChange={(e) => updateOption(index, { maxGroupSize: e.target.value ? Number(e.target.value) : null })}
+                    value={maxGroupSizeDraft}
+                    onChange={(e) => {
+                      if (e.target.value === '') {
+                        setMaxGroupSizeDraft('')
+                        return
+                      }
+                      setMaxGroupSizeDraft(e.target.value)
+                      updateOption(index, { maxGroupSize: Number(e.target.value) })
+                    }}
+                    onBlur={() => {
+                      if (maxGroupSizeDraft === '') {
+                        setMaxGroupSizeDraft(option.maxGroupSize == null ? '' : String(option.maxGroupSize))
+                      }
+                    }}
                   />
                   <span className="text-xs text-slate-400">people</span>
                 </div>

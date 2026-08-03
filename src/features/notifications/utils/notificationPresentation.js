@@ -9,6 +9,9 @@
   PAYOUT_APPROVED: "payment",
   SYSTEM_ALERT: "system",
   NEW_MESSAGE: "message",
+  TOUR_SUBMITTED: "product",
+  TOUR_APPROVED: "product",
+  TOUR_FLAGGED: "product",
 };
 
 function getNotificationRoute(type, data = {}) {

@@ -11,6 +11,7 @@ import { Info, HelpCircle, Plus, X } from 'lucide-react'
 import { useProductBuilderStore } from '@/features/products/productBuilderStore'
 import { useStepErrors } from '@/features/products/useStepErrors'
 import { DIETARY_OPTIONS } from '@/constants/gygLists'
+import { INCLUSION_ITEM_MAX_CHARS, limitMessage } from '@/features/products/productFormSchema'
 
 const MEAL_TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Brunch', 'Lunch or dinner, depending on starting time']
 const MEAL_FORMATS_BY_TYPE = {
@@ -81,32 +82,49 @@ function InclusionList({ items, field, placeholder, accent }) {
   return (
     <div>
       <div className="space-y-2">
-        {items.map((item, i) => (
-          <motion.div
-            key={i}
-            initial={{ opacity: 0, y: -8, height: 0 }}
-            animate={{ opacity: 1, y: 0, height: 'auto' }}
-            exit={{ opacity: 0, y: -8, height: 0 }}
-            transition={{ duration: 0.18 }}
-            className="flex items-center gap-2.5"
-          >
-            <input
-              ref={(el) => { inputRefs.current[i] = el }}
-              className="flex-1 h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm transition-all focus-ring"
-              type="text"
-              value={item}
-              onChange={(e) => updateInclusionItem(field, i, e.target.value)}
-              placeholder={placeholder}
-            />
-            <button
-              type="button"
-              onClick={() => removeInclusionItem(field, i)}
-              className="shrink-0 w-7 h-7 rounded-lg border-0 bg-transparent text-slate-400 cursor-pointer grid place-items-center hover:text-red-600 hover:bg-red-50 transition-colors"
+        {items.map((item, i) => {
+          const atLimit = item.length >= INCLUSION_ITEM_MAX_CHARS
+          return (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: -8, height: 0 }}
+              animate={{ opacity: 1, y: 0, height: 'auto' }}
+              exit={{ opacity: 0, y: -8, height: 0 }}
+              transition={{ duration: 0.18 }}
+              className="flex items-start gap-2.5"
             >
-              <X size={14} />
-            </button>
-          </motion.div>
-        ))}
+              <div className="flex-1 min-w-0">
+                <input
+                  ref={(el) => { inputRefs.current[i] = el }}
+                  className="w-full h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm transition-all focus-ring"
+                  type="text"
+                  value={item}
+                  onChange={(e) => updateInclusionItem(field, i, e.target.value)}
+                  maxLength={INCLUSION_ITEM_MAX_CHARS}
+                  aria-invalid={atLimit}
+                  placeholder={placeholder}
+                />
+                <div className="flex justify-end mt-1">
+                  <span className={`text-xs tabular-nums ${atLimit ? 'text-red-600 font-medium' : 'text-slate-400'}`}>
+                    {item.length} / {INCLUSION_ITEM_MAX_CHARS}
+                  </span>
+                </div>
+                {atLimit && (
+                  <span aria-live="polite" className="text-[13px] text-red-600 font-medium mt-1 flex items-center gap-1">
+                    {limitMessage(INCLUSION_ITEM_MAX_CHARS)}
+                  </span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => removeInclusionItem(field, i)}
+                className="shrink-0 w-7 h-7 mt-1.5 rounded-lg border-0 bg-transparent text-slate-400 cursor-pointer grid place-items-center hover:text-red-600 hover:bg-red-50 transition-colors"
+              >
+                <X size={14} />
+              </button>
+            </motion.div>
+          )
+        })}
       </div>
       {items.length === 0 ? (
         <button

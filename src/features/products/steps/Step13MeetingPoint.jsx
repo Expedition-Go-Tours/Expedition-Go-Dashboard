@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import {
   Select,
   SelectTrigger,
@@ -775,18 +775,32 @@ function TransportationSection() {
     removePickupTransportType,
   } = useProductBuilderStore()
   const [isOpen, setIsOpen] = useState(false)
+  const ref = useRef(null)
 
   const selectedCount = pickupTransportTypes.length
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (ref.current && !ref.current.contains(e.target)) setIsOpen(false)
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   return (
     <div className="space-y-3">
       <h3 className="text-base font-bold text-slate-900">Transportation</h3>
       <label className="block text-sm font-bold text-slate-900 mb-1">What's the transportation used for pickup and drop-off?</label>
 
-      <div className="relative">
+      <div ref={ref} className="relative">
         <button
           type="button"
           onClick={() => setIsOpen(!isOpen)}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') setIsOpen(false)
+          }}
+          aria-haspopup="listbox"
+          aria-expanded={isOpen}
           className="w-full h-11 rounded-lg border border-slate-200 px-3.5 text-sm text-left bg-white flex items-center justify-between focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
         >
           <span className={selectedCount > 0 ? 'text-slate-700' : 'text-slate-400'}>

@@ -2,8 +2,9 @@ import { useParams, useSearchParams, useNavigate, useBlocker } from 'react-route
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { Loader2, AlertCircle, X } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { toast } from 'sonner'
 import { useProductBuilderStore } from '@/features/products/productBuilderStore'
-import { getMyProduct, createProduct, updateProduct, cleanupMediaUrls } from '@/features/products/api'
+import { getMyProduct, createProduct, updateProduct, submitProductForReview, cleanupMediaUrls } from '@/features/products/api'
 import { buildPayload, useAutoSave } from '@/features/products/useAutoSave'
 import { GYG_STEPS, GYG_SECTIONS } from '@/features/products/gygSteps'
 import ErrorBoundary from '@/components/shared/ErrorBoundary'
@@ -406,15 +407,15 @@ export default function ProductBuilderPage() {
       if (newId) setStoreSavedProductId(newId)
       state.markSaved()
       state.clearUploadedUrls()
-      if (gygStepNumber === 16) {
-        useProductBuilderStore.getState().completeStep('itinerary')
+      if (gygStepNumber === GYG_STEPS.length) {
+        useProductBuilderStore.getState().completeStep(GYG_STEPS[gygStepNumber - 1]?.stepId)
         navigate('/products')
       } else if (!savedProductId && newId) {
         const section = GYG_STEPS[0]?.sectionId
         const step = GYG_STEPS[0]?.stepId
         navigate(`/products/build/${newId}?section=${section}&step=${step}`, { replace: true })
       }
-      return res
+       return res
     } catch (err) {
       throw err
     } finally {
@@ -423,8 +424,24 @@ export default function ProductBuilderPage() {
     }
   }
 
+  const handleSubmitForReview = async () => {
+    const state = useProductBuilderStore.getState()
+    if (!state.isDirty) {
+      // ensure persisted
+    } else {
+      await handleSave()
+    }
+    const currentId = useProductBuilderStore.getState().savedProductId
+    if (!currentId) {
+      throw new Error('Failed to obtain product ID')
+    }
+    await submitProductForReview(currentId)
+    toast.success('Submit for review successful')
+    navigate('/products')
+  }
+
   function handleNext() {
-    if (gygStepNumber < 16) {
+    if (gygStepNumber < GYG_STEPS.length) {
       setStepDirection(1)
       const storeState = useProductBuilderStore.getState()
       storeState.nextStep()
@@ -499,7 +516,7 @@ export default function ProductBuilderPage() {
                   {id && id !== 'new' ? 'Edit Product' : 'Create New Product'}
                 </h1>
                 <p className="text-xs text-slate-500">
-                  Step {gygStepNumber} of 16: {STEP_LABELS[gygStepNumber]}
+                  Step {gygStepNumber} of {GYG_STEPS.length}: {STEP_LABELS[gygStepNumber]}
                 </p>
               </div>
             </div>
@@ -535,10 +552,11 @@ export default function ProductBuilderPage() {
               </div>
               <WizardNavFooter
                 currentStep={gygStepNumber}
-                totalSteps={16}
+                totalSteps={GYG_STEPS.length}
                 onBack={handleBack}
                 onNext={handleNext}
                 onSave={handleSave}
+                onSubmitForReview={handleSubmitForReview}
                 saving={saving}
                 isEditing={id && id !== 'new'}
               />

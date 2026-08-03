@@ -780,7 +780,7 @@ export const useProductBuilderStore = create(
         const { currentStep, completedStepIds } = get()
         const mapping = getSectionStep(currentStep)
         const newCompleted = [...new Set([...completedStepIds, mapping.stepId])]
-        const next = Math.min(currentStep + 1, 15)
+        const next = Math.min(currentStep + 1, GYG_STEPS.length - 1)
         const nextMapping = getSectionStep(next)
         set({
           currentStep: next,
@@ -799,7 +799,7 @@ export const useProductBuilderStore = create(
       },
 
       goToStep: (step) => {
-        const idx = Math.max(0, Math.min(step, 15))
+        const idx = Math.max(0, Math.min(step, GYG_STEPS.length - 1))
         const mapping = getSectionStep(idx)
         set({ currentStep: idx, currentSectionId: mapping.sectionId, currentStepId: mapping.stepId })
       },
@@ -815,7 +815,7 @@ export const useProductBuilderStore = create(
       },
 
       getOverallProgress: () => {
-        return Math.round((get().completedStepIds.length / 16) * 100)
+        return Math.round((get().completedStepIds.length / GYG_STEPS.length) * 100)
       },
 
       setSaving: (val) => set({ isSaving: val }),

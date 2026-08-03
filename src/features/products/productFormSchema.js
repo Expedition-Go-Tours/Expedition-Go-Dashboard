@@ -1,5 +1,19 @@
 import { z } from 'zod'
 
+export const TITLE_MAX_CHARS = 60
+export const REFERENCE_CODE_MAX_CHARS = 20
+export const SHORT_DESCRIPTION_MAX_CHARS = 200
+export const FULL_DESCRIPTION_MAX_CHARS = 3000
+export const HIGHLIGHT_MAX_CHARS = 80
+export const INCLUSION_ITEM_MAX_CHARS = 100
+export const EXTRA_INFO_TAG_MAX_CHARS = 50
+export const KNOW_BEFORE_YOU_GO_MAX_CHARS = 2000
+export const VOUCHER_INFO_MAX_CHARS = 500
+
+export function limitMessage(max) {
+  return `You've reached the ${max} character limit.`
+}
+
 export const locationSchema = z.object({
   name: z.string().min(1, 'Location name is required').max(200),
   address: z.string().max(300).optional(),
@@ -83,8 +97,8 @@ export const stepSchemas = {
      language: z.string().min(1, 'Select a language'),
    }),
   2: z.object({
-      title: z.string().min(1, 'Title is required').max(60, 'Title must be 60 characters or fewer'),
-      referenceCode: z.string().max(20, 'Reference code must be 20 characters or fewer').optional(),
+      title: z.string().min(1, 'Title is required').max(TITLE_MAX_CHARS, `Title must be ${TITLE_MAX_CHARS} characters or fewer`),
+      referenceCode: z.string().max(REFERENCE_CODE_MAX_CHARS, `Reference code must be ${REFERENCE_CODE_MAX_CHARS} characters or fewer`).optional(),
     }),
     3: z.object({
       category: z.enum(['tour', 'activity', 'transport'], { errorMap: () => ({ message: 'Select a product type' }) }),
@@ -99,13 +113,13 @@ export const stepSchemas = {
     shortDescription: z
       .string()
       .min(10, 'Short description must be at least 10 characters')
-      .max(200, 'Short description must be at most 200 characters'),
+      .max(SHORT_DESCRIPTION_MAX_CHARS, 'Short description must be at most 200 characters'),
     fullDescription: z
       .string()
       .min(500, 'Full description must be at least 500 characters')
-      .max(3000, 'Full description must be at most 3000 characters'),
+      .max(FULL_DESCRIPTION_MAX_CHARS, 'Full description must be at most 3000 characters'),
     highlights: z
-      .array(z.string().min(1).max(80, 'Each highlight must be 80 characters or fewer'))
+      .array(z.string().min(1).max(HIGHLIGHT_MAX_CHARS, 'Each highlight must be 80 characters or fewer'))
       .min(3, 'Add at least 3 highlights')
       .max(5, 'Maximum 5 highlights'),
   }),
@@ -119,8 +133,8 @@ export const stepSchemas = {
     activitiesIncluded: z.array(z.string()).optional(),
   }),
    7: z.object({
-    whatsIncluded: z.array(z.string()).optional(),
-    whatsNotIncluded: z.array(z.string()).optional(),
+    whatsIncluded: z.array(z.string().max(INCLUSION_ITEM_MAX_CHARS, `Each inclusion must be ${INCLUSION_ITEM_MAX_CHARS} characters or fewer`)).optional(),
+    whatsNotIncluded: z.array(z.string().max(INCLUSION_ITEM_MAX_CHARS, `Each exclusion must be ${INCLUSION_ITEM_MAX_CHARS} characters or fewer`)).optional(),
     foodProvided: z.boolean(),
     meals: z.array(z.object({
       type: z.string().optional(),
@@ -143,15 +157,15 @@ export const stepSchemas = {
     }),
   }),
   10: z.object({
-    notSuitableFor: z.array(z.string()).optional(),
-    notAllowed: z.array(z.string()).optional(),
+    notSuitableFor: z.array(z.string().max(EXTRA_INFO_TAG_MAX_CHARS, `Each item must be ${EXTRA_INFO_TAG_MAX_CHARS} characters or fewer`)).optional(),
+    notAllowed: z.array(z.string().max(EXTRA_INFO_TAG_MAX_CHARS, `Each item must be ${EXTRA_INFO_TAG_MAX_CHARS} characters or fewer`)).optional(),
     petFriendly: z.boolean().optional(),
-    mandatoryItems: z.array(z.string()).optional(),
-    knowBeforeYouGo: z.string().max(2000).optional(),
+    mandatoryItems: z.array(z.string().max(EXTRA_INFO_TAG_MAX_CHARS, `Each item must be ${EXTRA_INFO_TAG_MAX_CHARS} characters or fewer`)).optional(),
+    knowBeforeYouGo: z.string().max(KNOW_BEFORE_YOU_GO_MAX_CHARS, `Know before you go must be ${KNOW_BEFORE_YOU_GO_MAX_CHARS} characters or fewer`).optional(),
     emergencyPhone: z.string()
       .refine((val) => !val || /^\+[1-9]\d{2,14}$/.test(val), 'Enter a complete phone number with country code')
       .optional(),
-    voucherInfo: z.string().max(500).optional(),
+    voucherInfo: z.string().max(VOUCHER_INFO_MAX_CHARS, `Voucher info must be ${VOUCHER_INFO_MAX_CHARS} characters or fewer`).optional(),
   }),
   11: z.object({
     photos: z

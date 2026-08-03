@@ -68,6 +68,7 @@ export const PRODUCT_STATUSES = {
   INACTIVE: { label: "Inactive", color: "muted" },
   DRAFT: { label: "Draft", color: "warning" },
   PENDING_APPROVAL: { label: "Pending Approval", color: "info" },
+  REJECTED: { label: "Rejected", color: "danger" },
 };
 
 // User Roles

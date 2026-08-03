@@ -2,8 +2,12 @@ import { useState } from 'react'
 import { HelpCircle, Plus, X, Info } from 'lucide-react'
 import { useProductBuilderStore } from '@/features/products/productBuilderStore'
 import { useStepErrors } from '@/features/products/useStepErrors'
-
-const HIGHLIGHT_MAX = 80
+import {
+  SHORT_DESCRIPTION_MAX_CHARS,
+  FULL_DESCRIPTION_MAX_CHARS,
+  HIGHLIGHT_MAX_CHARS,
+  limitMessage,
+} from '@/features/products/productFormSchema'
 
 export default function Step04Descriptions() {
   const shortDescription = useProductBuilderStore((s) => s.shortDescription)
@@ -12,9 +16,11 @@ export default function Step04Descriptions() {
   const setField = useProductBuilderStore((s) => s.setField)
   const addHighlight = useProductBuilderStore((s) => s.addHighlight)
   const updateHighlight = useProductBuilderStore((s) => s.updateHighlight)
-  const removeHighlight = useProductBuilderStore((s) => s.removeHighlight)
   const errors = useStepErrors(4)
   const [tipDismissed, setTipDismissed] = useState(false)
+
+  const shortAtLimit = shortDescription.length >= SHORT_DESCRIPTION_MAX_CHARS
+  const fullAtLimit = fullDescription.length >= FULL_DESCRIPTION_MAX_CHARS
 
   function addHighlightItem() {
     if (highlights.length < 5) {
@@ -37,15 +43,19 @@ export default function Step04Descriptions() {
           rows={3}
           value={shortDescription}
           onChange={(e) => setField('shortDescription', e.target.value)}
+          maxLength={SHORT_DESCRIPTION_MAX_CHARS}
+          aria-invalid={!!errors.shortDescription || shortAtLimit}
           placeholder="Describe the experience in 2-3 sentences. Shown on landing pages."
         />
         <div className="flex items-center justify-between mt-1">
           {errors.shortDescription ? (
-            <span className="text-[13px] text-red-600 font-medium flex items-center gap-1">{errors.shortDescription[0]}</span>
+            <span aria-live="polite" className="text-[13px] text-red-600 font-medium flex items-center gap-1">{errors.shortDescription[0]}</span>
+          ) : shortAtLimit ? (
+            <span aria-live="polite" className="text-[13px] text-red-600 font-medium flex items-center gap-1">{limitMessage(SHORT_DESCRIPTION_MAX_CHARS)}</span>
           ) : (
             <span />
           )}
-          <span className="text-[13px] text-slate-400">{shortDescription.length} / 200</span>
+          <span className={`text-[13px] tabular-nums shrink-0 ${shortAtLimit ? 'text-red-600 font-medium' : 'text-slate-400'}`}>{shortDescription.length} / {SHORT_DESCRIPTION_MAX_CHARS}</span>
         </div>
       </div>
 
@@ -62,15 +72,19 @@ export default function Step04Descriptions() {
           rows={8}
           value={fullDescription}
           onChange={(e) => setField('fullDescription', e.target.value)}
+          maxLength={FULL_DESCRIPTION_MAX_CHARS}
+          aria-invalid={!!errors.fullDescription || fullAtLimit}
           placeholder="Detailed description of the activity. Use descriptive language and bring the experience to life."
         />
         <div className="flex items-center justify-between mt-1">
           {errors.fullDescription ? (
-            <span className="text-[13px] text-red-600 font-medium flex items-center gap-1">{errors.fullDescription[0]}</span>
+            <span aria-live="polite" className="text-[13px] text-red-600 font-medium flex items-center gap-1">{errors.fullDescription[0]}</span>
+          ) : fullAtLimit ? (
+            <span aria-live="polite" className="text-[13px] text-red-600 font-medium flex items-center gap-1">{limitMessage(FULL_DESCRIPTION_MAX_CHARS)}</span>
           ) : (
             <span />
           )}
-          <span className="text-[13px] text-slate-400">{fullDescription.length} / 3000</span>
+          <span className={`text-[13px] tabular-nums shrink-0 ${fullAtLimit ? 'text-red-600 font-medium' : 'text-slate-400'}`}>{fullDescription.length} / {FULL_DESCRIPTION_MAX_CHARS}</span>
         </div>
       </div>
 
@@ -84,24 +98,33 @@ export default function Step04Descriptions() {
         </p>
 
         <div className="space-y-3">
-          {highlights.map((item, i) => (
-            <div key={i}>
-              <input
-                data-field="highlights"
-                className="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-sm transition-all focus-ring"
-                type="text"
-                value={item}
-                maxLength={HIGHLIGHT_MAX}
-                onChange={(e) => updateHighlight(i, e.target.value)}
-                placeholder="Describe a highlight of your activity..."
-              />
-              <div className="flex justify-end mt-1">
-                <span className={`text-xs ${item.length >= HIGHLIGHT_MAX ? 'text-amber-600 font-medium' : 'text-slate-400'}`}>
-                  {item.length} / {HIGHLIGHT_MAX}
-                </span>
+          {highlights.map((item, i) => {
+            const atLimit = item.length >= HIGHLIGHT_MAX_CHARS
+            return (
+              <div key={i}>
+                <input
+                  data-field="highlights"
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-sm transition-all focus-ring"
+                  type="text"
+                  value={item}
+                  maxLength={HIGHLIGHT_MAX_CHARS}
+                  onChange={(e) => updateHighlight(i, e.target.value)}
+                  aria-invalid={atLimit}
+                  placeholder="Describe a highlight of your activity..."
+                />
+                <div className="flex justify-end mt-1">
+                  <span className={`text-xs tabular-nums ${atLimit ? 'text-red-600 font-medium' : 'text-slate-400'}`}>
+                    {item.length} / {HIGHLIGHT_MAX_CHARS}
+                  </span>
+                </div>
+                {atLimit && (
+                  <span aria-live="polite" className="text-[13px] text-red-600 font-medium mt-1 flex items-center gap-1">
+                    {limitMessage(HIGHLIGHT_MAX_CHARS)}
+                  </span>
+                )}
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
 
         {highlights.length < 5 && (

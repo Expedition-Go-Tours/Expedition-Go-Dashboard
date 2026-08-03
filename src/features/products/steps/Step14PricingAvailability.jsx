@@ -22,7 +22,7 @@ const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'
 const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'))
 const MINUTES = ['00', '15', '30', '45']
 
-const WIZARD_STEPS = ['Schedule', 'Pricing Categories', 'Capacity', 'Price', 'Add-ons (optional)']
+const WIZARD_STEPS = ['Schedule', 'Pricing Categories', 'Capacity', 'Price']
 
 function hasAnyWeeklyHours(weeklySchedule) {
   return Object.values(weeklySchedule || {}).some((hours) => Array.isArray(hours) && hours.length > 0)
@@ -1087,21 +1087,7 @@ function PriceStep({ errors = {} }) {
   return <PerPersonPriceStep errors={errors} />
 }
 
-function AddonsStep() {
-  return (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-base font-bold text-slate-900 mb-2">Add-ons (optional)</h3>
-        <p className="text-sm text-slate-500">
-          Add optional extras that customers can book alongside your activity.
-        </p>
-      </div>
-      <div className="p-6 rounded-lg border border-dashed border-slate-200 text-center">
-        <p className="text-sm text-slate-400">No add-ons configured yet.</p>
-      </div>
-    </div>
-  )
-}
+
 
 function ScheduleWizard({ onBack }) {
   const { currentScheduleStep, setField, saveSchedule, resetScheduleForm } = useProductBuilderStore()
@@ -1112,7 +1098,7 @@ function ScheduleWizard({ onBack }) {
     setDirection(1)
     const state = useProductBuilderStore.getState()
 
-    if (currentScheduleStep < 5) {
+    if (currentScheduleStep < 4) {
       const errors = validateScheduleStep(currentScheduleStep, state)
       if (Object.keys(errors).length > 0) {
         setWizardErrors(errors)
@@ -1190,7 +1176,6 @@ function ScheduleWizard({ onBack }) {
             {currentScheduleStep === 2 && <PricingCategoriesStep errors={wizardErrors} />}
             {currentScheduleStep === 3 && <CapacityStep errors={wizardErrors} />}
             {currentScheduleStep === 4 && <PriceStep errors={wizardErrors} />}
-            {currentScheduleStep === 5 && <AddonsStep />}
           </motion.div>
         </AnimatePresence>
       </div>

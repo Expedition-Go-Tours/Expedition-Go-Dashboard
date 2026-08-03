@@ -336,9 +336,10 @@ function SegmentWizard({ onComplete, onCancel, initialData, taggedLocations }) {
   function next() {
     if (step === 2 && isTransfer && !data.transportMode) return
     if (step === 2 && !isTransfer && !data.activityName.trim()) return
+    if (step === 2 && isTransfer) { setStep(4); return }
     if (step < maxStep) setStep(step + 1); else onComplete(data)
   }
-  function back() { if (step > 1) setStep(step - 1); else onCancel() }
+  function back() { if (step === 4 && isTransfer) { setStep(2); return }; if (step > 1) setStep(step - 1); else onCancel() }
 
   return (
     <div className="border border-slate-200 rounded-xl bg-white">
@@ -446,23 +447,6 @@ function SegmentWizard({ onComplete, onCancel, initialData, taggedLocations }) {
             <h3 className="text-xl font-bold text-slate-900 mb-1">Where does this part of your experience take place?</h3>
             <p className="text-sm text-slate-500 mb-4">Select one of the locations tagged to your experience from the list below.</p>
             <LocationSearch selected={data.location} onSelect={(l) => update({ location: l })} taggedLocations={taggedLocations} />
-          </>
-        )}
-
-        {step === 3 && isTransfer && (
-          <>
-            <h3 className="text-xl font-bold text-slate-900 mb-1">Where does this transfer start and end?</h3>
-            <p className="text-sm text-slate-500 mb-4">Select the pickup and drop-off locations for this transfer.</p>
-            <div className="space-y-4">
-              <div>
-                <p className="text-sm font-semibold text-slate-700 mb-1.5">From</p>
-                <LocationSearch selected={data.fromLocation} onSelect={(l) => update({ fromLocation: l })} taggedLocations={taggedLocations} />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-slate-700 mb-1.5">To</p>
-                <LocationSearch selected={data.toLocation} onSelect={(l) => update({ toLocation: l })} taggedLocations={taggedLocations} />
-              </div>
-            </div>
           </>
         )}
 

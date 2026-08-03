@@ -305,7 +305,6 @@ export default function ProductDetailPage() {
 
   const [deleting, setDeleting] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [publishing, setPublishing] = useState(false);
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -338,19 +337,6 @@ export default function ProductDetailPage() {
       .catch(() => {})
       .finally(() => setAvailLoading(false));
   }, [id, availMonth]);
-
-  const handlePublish = async () => {
-    setPublishing(true);
-    try {
-      await updateProduct(id, { status: "ACTIVE" });
-      toast.success("Product is now live!");
-      setTour((prev) => ({ ...prev, status: "ACTIVE" }));
-    } catch (err) {
-      toast.error(err.response?.data?.message || err.message || "Failed to publish product");
-    } finally {
-      setPublishing(false);
-    }
-  };
 
   const handleDeleteConfirm = () => {
     setDeleteModalOpen(false);
@@ -494,20 +480,7 @@ export default function ProductDetailPage() {
               <h1 className="text-sm font-semibold text-slate-800 truncate">{tour.title}</h1>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              {tour.status !== "ACTIVE" ? (
-                <button
-                  onClick={handlePublish}
-                  disabled={publishing}
-                  className="flex items-center gap-1.5 px-3.5 h-8 bg-emerald-600 text-white rounded-lg text-xs font-medium hover:bg-emerald-700 transition-all shadow-sm shadow-emerald-200 disabled:opacity-50"
-                >
-                  {publishing ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
-                  <span>{publishing ? "Publishing..." : "Set Live"}</span>
-                </button>
-              ) : (
-                <span className="flex items-center gap-1.5 px-3.5 h-8 text-emerald-700 bg-emerald-50 rounded-lg text-xs font-medium border border-emerald-200">
-                  <Check size={13} /> Published
-                </span>
-              )}
+              <StatusBadge status={tour.status} size="sm" />
               <button
                 onClick={() => navigate(`/products/build/${id}/type`)}
                 className="flex items-center gap-1.5 px-3.5 h-8 bg-emerald-700 text-white rounded-lg text-xs font-medium hover:bg-emerald-800 transition-all shadow-sm shadow-emerald-200"
@@ -637,6 +610,26 @@ export default function ProductDetailPage() {
               )}
             </div>
           </div>
+
+          {tour.status === "REJECTED" && (
+            <div className="mt-5 flex items-start gap-3 bg-rose-50 border border-rose-200 rounded-xl px-4 py-3.5">
+              <AlertCircle size={17} className="text-rose-500 mt-0.5 shrink-0" />
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-rose-700">Tour was flagged for changes</p>
+                <p className="text-sm text-rose-600 mt-0.5 leading-relaxed">
+                  {tour.reviewNote || "An admin flagged this tour for review. Make the requested changes and resubmit it for approval."}
+                </p>
+              </div>
+              <button
+                onClick={() => navigate(`/products/build/${id}/type`)}
+                className="shrink-0 flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-lg text-xs font-medium hover:bg-emerald-700 transition-all"
+                title="Edit and fix your tour, then resubmit for review from the builder"
+              >
+                <Edit size={12} />
+                <span>Fix & Resubmit</span>
+              </button>
+            </div>
+          )}
         </motion.div>
 
         {/* ===== MAIN LAYOUT ===== */}
