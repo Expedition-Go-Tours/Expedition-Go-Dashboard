@@ -127,7 +127,10 @@ export default function AvailabilityPage() {
   });
 
   const tours = toursData || [];
-  const tourId = selectedTour || (tours.length > 0 ? tours[0].id : null);
+  const validSelected = tours.some((t) => t.id === selectedTour);
+  // A stale/invalid ?tour= id silently renders an empty "all available" calendar,
+  // so resolve to the selected tour only when it actually exists in the list.
+  const tourId = validSelected ? selectedTour : (tours.length > 0 ? tours[0].id : null);
 
   const { data: availData, isLoading: availLoading, isError: availError, refetch: refetchAvail } = useQuery({
     queryKey: ["tour-availability", tourId, range.start, range.end],
@@ -232,6 +235,14 @@ export default function AvailabilityPage() {
       <div className="mb-4 p-4 bg-slate-50 rounded-full"><Package size={56} className="text-slate-400" strokeWidth={1.5} /></div>
       <h3 className="text-lg font-semibold text-slate-900 mb-2">No Tours Yet</h3>
       <p className="text-slate-500 max-w-md">Create a tour first to manage its availability.</p>
+    </div>
+  );
+
+  if (availError) return (
+    <div className="p-6 flex flex-col items-center justify-center min-h-[60vh] gap-4">
+      <AlertCircle size={40} className="text-red-500" />
+      <p className="text-slate-500">Failed to load availability for this tour</p>
+      <button onClick={() => refetchAvail()} className="flex items-center gap-2 px-4 py-2 bg-[#044b3b] text-white rounded-lg text-sm hover:bg-[#033629]"><RefreshCw size={14} /> Retry</button>
     </div>
   );
 

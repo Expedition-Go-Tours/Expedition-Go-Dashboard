@@ -418,7 +418,7 @@ export default function ProductDetailPage() {
   const scheduleData = {
     operatingDays: schedules.operatingDays || avail.daysOfWeek || [],
     timeSlots: schedules.timeSlots || pricing.timeSlots || avail.timeSlots || [],
-    capacityPerSlot: schedules.capacityPerSlot || travelerDetails.maxParticipants || null,
+    capacityPerSlot: travelerDetails.maxParticipants || null,
     availableDates: schedules.availableDates || (pricing.dateExceptions || []).filter(d => d.type === 'override').map(d => d.date),
     scheduleType: avail.scheduleType || null,
   };
@@ -1463,9 +1463,9 @@ export default function ProductDetailPage() {
                     <span>{booking.instantConfirmation ? "Instant confirmation" : "Manual confirmation"}</span>
                   </div>
                 )}
-                {(travelerDetails.maxTravelersPerBooking || travelerDetails.maxParticipants) && (
+                {travelerDetails.maxParticipants && (
                   <div className="flex items-center gap-2.5 text-slate-600">
-                    <Users size={14} className="text-slate-400 shrink-0" /> Max travelers: <strong className="text-slate-700">{travelerDetails.maxTravelersPerBooking || travelerDetails.maxParticipants}</strong>
+                    <Users size={14} className="text-slate-400 shrink-0" /> Max travelers: <strong className="text-slate-700">{travelerDetails.maxParticipants}</strong>
                   </div>
                 )}
                 {booking.maxQuantity && (

@@ -60,7 +60,7 @@ function buildSchedulesAndPricing(state) {
         : [],
     },
     availability: {
-      scheduleType: state.scheduleType || 'fixedTimeSlot',
+      scheduleType: state.scheduleType || 'operatingHours',
       operatingHoursStart: state.operatingHoursStart || '09:00',
       operatingHoursEnd: state.operatingHoursEnd || '17:00',
       weeklySchedule: state.weeklySchedule || null,
