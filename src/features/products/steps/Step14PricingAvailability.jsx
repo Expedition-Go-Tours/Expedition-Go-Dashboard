@@ -803,7 +803,7 @@ function CapacityStep({ errors = {} }) {
     <div className="space-y-6">
       <div>
         <h3 className="text-base font-bold text-slate-900 mb-2">Now, let's look at your capacity</h3>
-        <p className="text-sm text-slate-600 mb-6">How many participants (who book on GetYourGuide) can you take per time slot?</p>
+        <p className="text-sm text-slate-600 mb-6">How many participants can you take per time slot?</p>
 
         <div className="space-y-4">
           <div className="flex items-center gap-4">
@@ -938,16 +938,23 @@ function PerPersonPriceStep({ errors = {} }) {
     : pricingCategories
 
   function getCatPrice(cat) {
+    const tier0 = Array.isArray(cat.tiers) && cat.tiers[0] ? cat.tiers[0].pricePerPerson : null
+    if (tier0 != null) return tier0
     return isSameForEveryone ? uniformPrice : (cat.price ?? '')
   }
 
   function handlePriceChange(i, value) {
+    const num = value ? parseFloat(value) : null
     if (isSameForEveryone) {
-      setField('uniformPrice', value ? parseFloat(value) : null)
+      setField('uniformPrice', num)
     } else {
       const updated = [...pricingCategories]
-      updated[i] = { ...updated[i], price: value ? parseFloat(value) : null }
+      updated[i] = { ...updated[i], price: num }
       setField('pricingCategories', updated)
+      const cat = categories[i]
+      if (Array.isArray(cat?.tiers) && cat.tiers[0]) {
+        updateCategoryTier(i, 0, { pricePerPerson: num })
+      }
     }
   }
 
@@ -964,35 +971,39 @@ function PerPersonPriceStep({ errors = {} }) {
       {categories.map((cat, i) => {
         const catPrice = getCatPrice(cat)
         const computed = catPrice ? (parseFloat(catPrice) * (1 - commission)).toFixed(2) : ''
+        const tier0 = Array.isArray(cat.tiers) ? cat.tiers[0] : null
+        const subTiers = Array.isArray(cat.tiers) ? cat.tiers.slice(1) : []
 
         return (
           <div key={i} className="p-4 rounded-lg border border-slate-200 bg-white">
             <h4 className="text-sm font-bold text-slate-900 mb-3">{cat.name}</h4>
             
-            {/* Show base price section only when NO tiers exist */}
-            {(!cat.tiers || cat.tiers.length === 0) && (
-              <div className="grid grid-cols-4 gap-3 items-end mb-3">
-                <div>
-                  <label className="block text-xs text-slate-500 mb-1">Number of people</label>
-                  <div className="text-sm text-slate-700 font-medium">
-                    {minParticipants} to {maxParticipants ?? ''}
-                  </div>
+            {/* Tier 1 — the primary price row (always shown) */}
+            <div className="grid grid-cols-4 gap-3 items-end mb-3">
+              <div>
+                <label className="block text-xs text-slate-500 mb-1">Number of people</label>
+                <div className="text-sm text-slate-700 font-medium">
+                  {tier0 ? `1 to ${tier0.to ?? maxParticipants}` : `${minParticipants} to ${maxParticipants ?? ''}`}
                 </div>
-                <div>
-                  <label className="block text-xs text-slate-500 mb-1">Customer pays</label>
-                  <div className="flex items-center">
-                    <input
-                      type="number"
-                      value={catPrice}
-                      onChange={(e) => handlePriceChange(i, e.target.value)}
-                      placeholder="USD"
-                      className="h-11 w-full rounded-lg border border-slate-200 px-3 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
-                    />
-                  </div>
-                  {errors[isSameForEveryone ? 'uniformPrice' : `pricingCategories.${i}.price`] && (
-                    <span className="block text-[13px] text-red-600 font-medium mt-1">{errors[isSameForEveryone ? 'uniformPrice' : `pricingCategories.${i}.price`]}</span>
-                  )}
+              </div>
+              <div>
+                <label className="block text-xs text-slate-500 mb-1">Customer pays</label>
+                <div className="flex items-center">
+                  <input
+                    type="number"
+                    value={catPrice}
+                    onChange={(e) => handlePriceChange(i, e.target.value)}
+                    placeholder="USD"
+                    className="h-11 w-full rounded-lg border border-slate-200 px-3 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                  />
                 </div>
+                {errors[isSameForEveryone ? 'uniformPrice' : `pricingCategories.${i}.price`] && (
+                  <span className="block text-[13px] text-red-600 font-medium mt-1">{errors[isSameForEveryone ? 'uniformPrice' : `pricingCategories.${i}.price`]}</span>
+                )}
+                {errors[`pricingCategories.${i}.tiers`] && (
+                  <span className="block text-[13px] text-red-600 font-medium mt-1">{errors[`pricingCategories.${i}.tiers`][0]}</span>
+                )}
+              </div>
                 <div>
                   <label className="block text-xs text-slate-500 mb-1">Commission</label>
                   <div className="h-11 rounded-lg bg-slate-100 flex items-center px-3 text-sm text-slate-500">
@@ -1006,18 +1017,8 @@ function PerPersonPriceStep({ errors = {} }) {
                   </div>
                 </div>
               </div>
-            )}
-            
-            {/* Show helpful note when tiers exist */}
-            {cat.tiers && cat.tiers.length > 0 && (
-              <div className="mb-3 p-2 bg-blue-50 border border-blue-100 rounded-lg">
-                <p className="text-xs text-blue-700">
-                  <strong>Base price ({catPrice || '0'} USD)</strong> is only used if no tier matches. Define tier prices below.
-                </p>
-              </div>
-            )}
-
-              {(cat.tiers || []).map((tier, j) => (
+              
+              {subTiers.map((tier, k) => { const j = k + 1; return (
               <div key={tier.id || j} className="p-3 mt-3 rounded-lg border border-slate-100 bg-slate-50">
                 <div className="text-xs font-medium text-slate-500 mb-2">
                   Tier {j + 1}: For groups of {tier.from} to {tier.to ?? '?'} total participants
@@ -1058,9 +1059,6 @@ function PerPersonPriceStep({ errors = {} }) {
                       placeholder="USD"
                       className="h-11 w-full rounded-lg border border-slate-200 px-3 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
                     />
-                    {errors[`pricingCategories.${i}.tiers`] && j === 0 && (
-                      <span className="block text-[13px] text-red-600 font-medium mt-1">{errors[`pricingCategories.${i}.tiers`]}</span>
-                    )}
                   </div>
                   
                   {/* Commission */}
@@ -1091,7 +1089,7 @@ function PerPersonPriceStep({ errors = {} }) {
                   </div>
                 </div>
               </div>
-            ))}
+              )})}
 
             <button
               type="button"

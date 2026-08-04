@@ -307,7 +307,6 @@ export const useProductBuilderStore = create(
               title: '',
               refCode: 'default',
               description: '',
-              languages: [],
               isPrivate: false,
               skipTheLine: 'none',
               wheelchairAccessible: false,
@@ -431,55 +430,61 @@ export const useProductBuilderStore = create(
           const tiers = cat.tiers || []
           const lastTier = tiers[tiers.length - 1]
 
-          // First tier: starts from 1 (GetYourGuide standard)
+          // First tier: starts from 1 (GetYourGuide standard).
+          // Peel a single unit off the front: Tier 1 becomes 1..1 and the
+          // remaining 2..N becomes the first sub-tier. The base row (Tier 1)
+          // stays in place and a sub-tier card appears right away.
           if (!lastTier) {
             const firstTo = s.maxParticipants ?? 10
             if (1 >= firstTo) return s
-            
+
             // GetYourGuide behavior: Add same tier structure to ALL categories
             return {
               pricingCategories: s.pricingCategories.map((c) => ({
                 ...c,
-                tiers: [{ id: safeId(), from: 1, to: firstTo, pricePerPerson: null }]
+                tiers: [
+                  { id: safeId(), from: 1, to: 1, pricePerPerson: c.price != null ? c.price : null },
+                  { id: safeId(), from: 2, to: firstTo, pricePerPerson: null },
+                ]
               })),
               isDirty: true,
             }
           }
 
-          // Additional tiers: split the last tier into two
+          // Additional tiers: peel a single unit off the front of the last tier.
+          // The new tier extends to the last tier's current upper bound
+          // (normally the capacity step's max).
           const lastTo = lastTier.to ?? s.maxParticipants ?? 10
           const lastFrom = lastTier.from
-          
+
           // Can't split if the range is too small (need at least 2 units)
           if (lastTo - lastFrom < 1) return s
-          
-          // Calculate the midpoint for splitting
-          const midPoint = Math.floor((lastFrom + lastTo) / 2)
-          
+
           // GetYourGuide behavior: Apply tier structure change to ALL categories
           return {
             pricingCategories: s.pricingCategories.map((c) => {
               const catTiers = c.tiers || []
               const catLastTier = catTiers[catTiers.length - 1]
-              
+
               if (!catLastTier) {
                 // Category has no tiers yet, add the new tier structure
                 return {
                   ...c,
                   tiers: [
-                    { id: safeId(), from: 1, to: midPoint, pricePerPerson: null },
-                    { id: safeId(), from: midPoint + 1, to: lastTo, pricePerPerson: null },
+                    { id: safeId(), from: 1, to: 1, pricePerPerson: null },
+                    { id: safeId(), from: 2, to: lastTo, pricePerPerson: null },
                   ]
                 }
               }
-              
-              // Split the last tier
+
+              // Split the last tier: keep [from..from] with its existing price,
+              // the rest [from+1..to] becomes a new tier needing a price
               return {
                 ...c,
                 tiers: [
                   ...catTiers.slice(0, -1),
-                  { ...catLastTier, to: midPoint },  // First half keeps existing price
-                  { id: safeId(), from: midPoint + 1, to: lastTo, pricePerPerson: null },  // Second half needs new price
+                  { ...catLastTier, to: catLastTier.from },
+                  { id: safeId(), from: catLastTier.from + 1, to: lastTo, pricePerPerson: null },
                 ]
               }
             }),
@@ -494,8 +499,7 @@ export const useProductBuilderStore = create(
           if (!tier) return s
           
           const merged = { ...tier, ...updates }
-          if (merged.to < merged.from) return s
-          
+
           // If updating from/to range, sync across all categories (GetYourGuide behavior)
           const isRangeUpdate = 'from' in updates || 'to' in updates
           
@@ -517,7 +521,7 @@ export const useProductBuilderStore = create(
                     
                     // Cascade: If next tier exists, update its "from" to be current tier's "to" + 1
                     // (GetYourGuide behavior: maintain sequential continuity)
-                    if (j === tierIndex + 1 && 'to' in updates) {
+                    if (j === tierIndex + 1 && 'to' in updates && merged.to != null) {
                       return {
                         ...t,
                         from: merged.to + 1,

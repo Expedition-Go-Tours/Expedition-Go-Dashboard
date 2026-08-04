@@ -403,7 +403,7 @@ function OptionEditorScreen({ option, index, updateOption, onBack, onRemove, err
             Maximum group size
           </label>
           <p className="text-xs text-slate-500 mb-3 leading-relaxed">
-            What&apos;s the maximum total of people in your activity for each time slot? This includes those who don&apos;t book on GetYourGuide.
+            What&apos;s the maximum total of people in your activity for each time slot?
           </p>
           <div className="flex items-center gap-4">
             <label className="flex items-center gap-2 cursor-pointer">
