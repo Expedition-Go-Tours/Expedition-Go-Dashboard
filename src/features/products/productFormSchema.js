@@ -248,6 +248,11 @@ export const stepSchemas = {
             if (Array.isArray(g.tiers) && g.tiers.length > 0) {
               // Validate each tier
               g.tiers.forEach((tier, ti) => {
+                // Base tier (Tier 1) must always have an explicit upper bound.
+                // Its `from` is fixed at 1; `to` is editable, so require a value.
+                if (ti === 0 && (tier.from == null || tier.to == null)) {
+                  ctx.addIssue({ code: 'custom', path: [`pricingCategories.${i}.tiers.${ti}.to`], message: 'Set the maximum group size for the first people group (e.g. 1)' })
+                }
                 if (tier.from === null || tier.to === null || tier.pricePerPerson === null) return
                 
                 // Tier range validation

@@ -969,13 +969,44 @@ function PerPersonPriceStep({ errors = {} }) {
           <div key={i} className="p-4 rounded-lg border border-slate-200 bg-white">
             <h4 className="text-sm font-bold text-slate-900 mb-3">{cat.name}</h4>
             
-            {/* Tier 1 — the primary price row (always shown) */}
+            {/* Tier 1 — the primary price row (always shown).
+                Tier 1 is the canonical `1 to N` band: its lower bound is fixed
+                at 1 (GetYourGuide convention) and its upper bound is editable,
+                cascading into the next tier's lower bound on change. */}
             <div className="grid grid-cols-4 gap-3 items-end mb-3">
               <div>
                 <label className="block text-xs text-slate-500 mb-1">Number of people</label>
-                <div className="text-sm text-slate-700 font-medium">
-                  {tier0 ? `1 to ${tier0.to ?? maxParticipants}` : `${minParticipants} to ${maxParticipants ?? ''}`}
-                </div>
+                {tier0 ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      value={1}
+                      disabled
+                      min={1}
+                      className="h-9 w-14 rounded-lg border border-slate-200 bg-slate-100 px-2 text-sm text-center text-slate-500 cursor-not-allowed"
+                    />
+                    <span className="text-xs text-slate-500">to</span>
+                    <input
+                      type="number"
+                      value={tier0.to != null ? tier0.to : (maxParticipants ?? '')}
+                      min={1}
+                      onChange={(e) => {
+                        const raw = e.target.value
+                        if (!raw) {
+                          updateCategoryTier(i, 0, { to: null })
+                        } else {
+                          const newTo = parseInt(raw, 10)
+                          if (!isNaN(newTo)) updateCategoryTier(i, 0, { to: newTo })
+                        }
+                      }}
+                      className="h-9 w-14 rounded-lg border border-slate-200 px-2 text-sm text-center focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                ) : (
+                  <div className="text-sm text-slate-700 font-medium">
+                    {`${minParticipants} to ${maxParticipants ?? ''}`}
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-xs text-slate-500 mb-1">Customer pays</label>

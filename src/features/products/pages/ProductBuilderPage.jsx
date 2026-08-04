@@ -7,6 +7,7 @@ import { useProductBuilderStore } from '@/features/products/productBuilderStore'
 import { getMyProduct, getTourDraft, createProduct, updateProduct, submitProductForReview, cleanupMediaUrls } from '@/features/products/api'
 import { buildPayload, useAutoSave } from '@/features/products/useAutoSave'
 import { GYG_STEPS } from '@/features/products/gygSteps'
+import { normalizePricingCategories } from '@/features/products/tierUtils'
 import ErrorBoundary from '@/components/shared/ErrorBoundary'
 import WizardSidebar from '@/features/products/WizardSidebar'
 import WizardNavFooter from '@/features/products/WizardNavFooter'
@@ -189,11 +190,11 @@ function tourToProduct(tour) {
     uniformPrice: td.uniformPrice ?? (td.pricingApproach === 'sameForEveryone'
       ? ((Array.isArray(td.pricingCategories) && td.pricingCategories[0]?.price != null) || (Array.isArray(td.ageGroups) && td.ageGroups[0]?.price != null) ? (td.pricingCategories || td.ageGroups)[0].price : null)
       : null),
-    pricingCategories: (Array.isArray(td.pricingCategories) && td.pricingCategories.length > 0)
-      ? td.pricingCategories.map((c) => ({ ...c, tiers: c.tiers || [] }))
-      : (Array.isArray(td.ageGroups) && td.ageGroups.length > 0)
-        ? td.ageGroups.map((c) => ({ ...c, tiers: [] }))
-        : [{ name: 'Adult', price: null, minAge: 13, maxAge: 99, notAllowed: false, ticketNotRequired: false, needsAdult: false, idRequired: false, idType: '', tiers: [] }],
+     pricingCategories: (Array.isArray(td.pricingCategories) && td.pricingCategories.length > 0)
+       ? normalizePricingCategories(td.pricingCategories, td.maxParticipants ?? 10)
+       : (Array.isArray(td.ageGroups) && td.ageGroups.length > 0)
+         ? normalizePricingCategories(td.ageGroups, td.maxParticipants ?? 10)
+         : [{ name: 'Adult', price: null, minAge: 13, maxAge: 99, notAllowed: false, ticketNotRequired: false, needsAdult: false, idRequired: false, idType: '', tiers: [] }],
     minParticipants: td.minParticipants ?? 1,
     maxParticipants: td.maxParticipants ?? 10,
     groupSizes: Array.isArray(td.groupSizes) ? td.groupSizes : [],
@@ -225,9 +226,9 @@ function tourToProduct(tour) {
           pricingApproach: td.pricingApproach || 'dependsOnAge',
           uniformPrice: td.uniformPrice ?? null,
           pricingCategories: (Array.isArray(td.pricingCategories) && td.pricingCategories.length > 0)
-            ? td.pricingCategories.map((c) => ({ ...c, tiers: c.tiers || [] }))
+            ? normalizePricingCategories(td.pricingCategories, td.maxParticipants ?? 10)
             : (Array.isArray(td.ageGroups) && td.ageGroups.length > 0)
-              ? td.ageGroups.map((c) => ({ ...c, tiers: [] }))
+              ? normalizePricingCategories(td.ageGroups, td.maxParticipants ?? 10)
               : [{ name: 'Adult', price: null, minAge: 13, maxAge: 99, notAllowed: false, ticketNotRequired: false, needsAdult: false, idRequired: false, idType: '', tiers: [] }],
           minParticipants: td.minParticipants ?? 1,
           maxParticipants: td.maxParticipants ?? 10,
