@@ -4,9 +4,9 @@ import { Loader2, AlertCircle, X } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
 import { useProductBuilderStore } from '@/features/products/productBuilderStore'
-import { getMyProduct, createProduct, updateProduct, submitProductForReview, cleanupMediaUrls } from '@/features/products/api'
+import { getMyProduct, getTourDraft, createProduct, updateProduct, submitProductForReview, cleanupMediaUrls } from '@/features/products/api'
 import { buildPayload, useAutoSave } from '@/features/products/useAutoSave'
-import { GYG_STEPS, GYG_SECTIONS } from '@/features/products/gygSteps'
+import { GYG_STEPS } from '@/features/products/gygSteps'
 import ErrorBoundary from '@/components/shared/ErrorBoundary'
 import WizardSidebar from '@/features/products/WizardSidebar'
 import WizardNavFooter from '@/features/products/WizardNavFooter'
@@ -85,7 +85,6 @@ function tourToProduct(tour) {
   const ps = sp.pricingSchedules || {}
   const schedule = Array.isArray(ps.schedules) && ps.schedules.length > 0 ? ps.schedules[0] : {}
   const avail = sp.availability || {}
-  const theme = tour.theme || {}
 
   const result = {
     language: content.writingLanguage || '',
@@ -256,7 +255,6 @@ export default function ProductBuilderPage() {
   const {
     currentStep,
     hasHydrated,
-    completedStepIds,
     isDirty,
     isSubmitting,
     navigateTo,
@@ -266,10 +264,14 @@ export default function ProductBuilderPage() {
 
   const contentRef = useRef(null)
 
-  const [loadingProduct, setLoadingProduct] = useState(false)
+  const [loadingProduct, setLoadingProduct] = useState(() => Boolean(id) && id !== 'new')
   const [productError, setProductError] = useState(null)
-  const [showExitWarning, setShowExitWarning] = useState(false)
   const [stepDirection, setStepDirection] = useState(1)
+  const [draftInfo, setDraftInfo] = useState(null)
+
+  const [saving, setSaving] = useState(false)
+  const savedProductId = useProductBuilderStore((s) => s.savedProductId)
+  const setStoreSavedProductId = useProductBuilderStore((s) => s.setSavedProductId)
 
   const gygStepNumber = currentStep + 1
   const StepComponent = STEP_COMPONENTS[gygStepNumber]
@@ -282,22 +284,16 @@ export default function ProductBuilderPage() {
     ),
   )
 
-  useEffect(() => {
-    if (blocker.state === 'blocked') {
-      setShowExitWarning(true)
-    }
-  }, [blocker.state])
+  const showExitWarning = blocker.state === 'blocked'
 
   const handleConfirmExit = () => {
     const urls = useProductBuilderStore.getState()._uploadedUrls
     if (urls.length > 0) cleanupMediaUrls(urls)
     useProductBuilderStore.getState().clearUploadedUrls()
-    setShowExitWarning(false)
     blocker.proceed?.()
   }
 
   const handleCancelExit = () => {
-    setShowExitWarning(false)
     blocker.reset?.()
   }
 
@@ -313,19 +309,17 @@ export default function ProductBuilderPage() {
 
   const querySection = searchParams.get('section') || ''
   const queryStep = searchParams.get('step') || ''
+  const urlStepAppliedRef = useRef(false)
 
   useEffect(() => {
-    if (!hasHydrated) return
-    if (querySection && queryStep) {
-      const idx = getGygStepIndex(querySection, queryStep)
-      if (idx !== currentStep) {
-        navigateTo(querySection, queryStep)
-      }
-    }
-  }, [querySection, queryStep, hasHydrated])
+    urlStepAppliedRef.current = false
+  }, [id])
 
+  // Keep the URL in sync with the current step (the store is the source of
+  // truth once the product has loaded). Gated on loading so the deep-link URL
+  // is not overwritten before the one-shot step-apply effect below reads it.
   useEffect(() => {
-    if (!hasHydrated) return
+    if (!hasHydrated || loadingProduct) return
     const gygStep = GYG_STEPS[currentStep]
     if (!gygStep) return
     const section = gygStep.sectionId
@@ -333,7 +327,24 @@ export default function ProductBuilderPage() {
     if (section !== querySection || step !== queryStep) {
       setSearchParams({ section, step }, { replace: true })
     }
-  }, [currentStep, hasHydrated])
+  }, [currentStep, hasHydrated, loadingProduct, querySection, queryStep, setSearchParams])
+
+  // Honor the URL (deep link / last visited step) exactly once per product
+  // load, AFTER the product has loaded. This breaks the previous two-way write
+  // loop: the URL-sync effect and the step-navigation effect kept overwriting
+  // each other when the persisted step disagreed with the URL (e.g. after
+  // loadDraft resets the step), flipping the wizard between steps forever.
+  useEffect(() => {
+    if (!hasHydrated || loadingProduct) return
+    if (urlStepAppliedRef.current) return
+    urlStepAppliedRef.current = true
+    if (querySection && queryStep) {
+      const idx = getGygStepIndex(querySection, queryStep)
+      if (idx !== useProductBuilderStore.getState().currentStep) {
+        navigateTo(querySection, queryStep)
+      }
+    }
+  }, [hasHydrated, loadingProduct, querySection, queryStep, navigateTo])
 
   useEffect(() => {
     contentRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
@@ -342,23 +353,57 @@ export default function ProductBuilderPage() {
   useEffect(() => {
     if (id !== 'new' || !hasHydrated) return
     reset()
-  }, [id, hasHydrated, navigate])
+  }, [id, hasHydrated, navigate, reset])
 
   useEffect(() => {
     if (!id || id === 'new' || !hasHydrated) return
 
     let cancelled = false
-    setLoadingProduct(true)
-    setProductError(null)
+    queueMicrotask(() => {
+      if (cancelled) return
+      setLoadingProduct(true)
+      setProductError(null)
+      setDraftInfo(null)
+    })
+
+    const hydrateFromDraft = async (tour) => {
+      try {
+        const res = await getTourDraft(id)
+        if (cancelled) return false
+        const data = res.data?.data
+        if (data && data.draft) {
+          setDraftInfo({
+            draftStatus: data.draftStatus || null,
+            draftSubmittedAt: data.draftSubmittedAt || null,
+            draftReviewNote: data.draftReviewNote || null,
+            changesSummary: data.changesSummary || null,
+          })
+          // Hydrate the builder from the merged draft snapshot so suppliers can
+          // continue editing exactly what an admin will review. The live tour
+          // keeps selling until the draft is approved.
+          const product = tourToProduct({ ...tour, ...data.draft })
+          loadDraft(product)
+          setStoreSavedProductId(id)
+          return true
+        }
+      } catch {
+        // draft endpoint may 404/403 on old tours — fall back to live content
+      }
+      return false
+    }
 
     getMyProduct(id)
-      .then((res) => {
+      .then(async (res) => {
         if (cancelled) return
+        setProductError(null)
+        setDraftInfo(null)
         const tour = res.data?.data?.tour
         if (!tour) {
           setProductError('Product not found')
           return
         }
+        const usedDraft = await hydrateFromDraft(tour)
+        if (cancelled || usedDraft) return
         const product = tourToProduct(tour)
         loadDraft(product)
         setStoreSavedProductId(id)
@@ -372,7 +417,7 @@ export default function ProductBuilderPage() {
       })
 
     return () => { cancelled = true }
-  }, [id, hasHydrated])
+  }, [id, hasHydrated, loadDraft, setStoreSavedProductId])
 
   useEffect(() => {
     return () => {
@@ -383,10 +428,6 @@ export default function ProductBuilderPage() {
       }
     }
   }, [])
-
-  const [saving, setSaving] = useState(false)
-  const savedProductId = useProductBuilderStore((s) => s.savedProductId)
-  const setStoreSavedProductId = useProductBuilderStore((s) => s.setSavedProductId)
 
   useAutoSave()
 
@@ -416,8 +457,6 @@ export default function ProductBuilderPage() {
         navigate(`/products/build/${newId}?section=${section}&step=${step}`, { replace: true })
       }
        return res
-    } catch (err) {
-      throw err
     } finally {
       state.setSaving(false)
       setSaving(false)
@@ -512,15 +551,65 @@ export default function ProductBuilderPage() {
               </button>
               <div className="w-0.5 h-6 bg-gradient-to-b from-emerald-500 to-emerald-300 rounded-full" />
               <div>
-                <h1 className="text-base font-bold text-slate-800">
-                  {id && id !== 'new' ? 'Edit Product' : 'Create New Product'}
-                </h1>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-base font-bold text-slate-800">
+                    {id && id !== 'new' ? 'Edit Product' : 'Create New Product'}
+                  </h1>
+                  {draftInfo?.draftStatus === 'PENDING_APPROVAL' && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 text-amber-700 border border-amber-200 px-2 py-0.5 text-[11px] font-semibold">
+                      Pending approval
+                    </span>
+                  )}
+                  {draftInfo?.draftStatus === 'REJECTED' && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-red-100 text-red-700 border border-red-200 px-2 py-0.5 text-[11px] font-semibold">
+                      Changes requested
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs text-slate-500">
                   Step {gygStepNumber} of {GYG_STEPS.length}: {STEP_LABELS[gygStepNumber]}
                 </p>
               </div>
             </div>
           </div>
+
+          {/* Draft banner */}
+          {draftInfo && (
+            <div className={[
+              'flex items-start gap-2.5 px-6 py-2.5 border-b text-sm shrink-0',
+              draftInfo.draftStatus === 'PENDING_APPROVAL'
+                ? 'bg-amber-50 border-amber-200 text-amber-800'
+                : draftInfo.draftStatus === 'REJECTED'
+                  ? 'bg-red-50 border-red-200 text-red-800'
+                  : 'bg-sky-50 border-sky-200 text-sky-800',
+            ].join(' ')}>
+              <AlertCircle size={16} className="shrink-0 mt-0.5" />
+              <div>
+                {draftInfo.draftStatus === 'PENDING_APPROVAL' && (
+                  <p>
+                    Your updates are pending admin review.{' '}
+                    <span className="opacity-80">
+                      The live version keeps selling until the draft is approved. Making changes below will withdraw the draft from review and require resubmission.
+                    </span>
+                  </p>
+                )}
+                {draftInfo.draftStatus === 'REJECTED' && (
+                  <p>
+                    An admin requested changes on your draft.{' '}
+                    <span className="opacity-80">
+                      {draftInfo.draftReviewNote ? `Reason: ${draftInfo.draftReviewNote}.` : ''} Edit below and resubmit for review.
+                    </span>
+                  </p>
+                )}
+                {draftInfo.draftStatus === 'DRAFT' && (
+                  <p>
+                    You have an unsent draft in progress.{' '}
+                    <span className="opacity-80">Continue editing, then submit for review to apply changes.</span>
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Main area: sidebar + content */}
           <div className="flex-1 flex gap-0 min-h-0 px-6 py-5">

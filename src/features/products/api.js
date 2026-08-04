@@ -61,6 +61,15 @@ export const getMyProduct = async (id) => {
 };
 
 /**
+ * Fetch the pending draft snapshot + diff for a product the supplier owns.
+ * Returns the merged draft content (live + pending edits) so the builder can
+ * continue editing exactly what an admin will review.
+ * @param {string} id - Product ID
+ * @returns {Promise} Axios response
+ */
+export const getTourDraft = (id) => api.get(`/tours/${id}/draft`);
+
+/**
  * Upload photos to Cloudinary (standalone, no tour creation)
  * @param {FormData} formData - FormData with `photos` field containing File[]
  * @returns {Promise} Axios response with { data: { photos: string[] } }

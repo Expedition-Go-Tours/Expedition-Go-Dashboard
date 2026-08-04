@@ -10,6 +10,7 @@ import {
 import { HelpCircle, Info, Plus, X, ChevronDown, ChevronUp, Check, Copy } from 'lucide-react'
 import { useProductBuilderStore } from '@/features/products/productBuilderStore'
 import { useStepErrors } from '@/features/products/useStepErrors'
+import DraftNumberInput from '@/components/ui/DraftNumberInput'
 
 const CATEGORY_TEMPLATES = [
   { name: 'Child', minAge: 0, maxAge: 17 },
@@ -414,16 +415,17 @@ function ScheduleStep({ errors = {} }) {
 
 function GroupSizeStep({ errors = {} }) {
   const {
-    pricingModel, groupSizes,
+    groupSizes,
     additionalPersonsEnabled, additionalPersonPrice,
     setField, addGroupSize, updateGroupSize, removeGroupSize,
   } = useProductBuilderStore()
 
   useEffect(() => {
-    if (pricingModel === 'perGroup' && groupSizes.length === 0) {
+    const { pricingModel: model, groupSizes: sizes } = useProductBuilderStore.getState()
+    if (model === 'perGroup' && sizes.length === 0) {
       addGroupSize()
     }
-  }, [])
+  }, [addGroupSize])
 
   return (
     <div className="space-y-6">
@@ -439,19 +441,17 @@ function GroupSizeStep({ errors = {} }) {
                   <label className="text-sm text-slate-700 shrink-0">Number of people</label>
                 )}
                 {i > 0 && <div className="w-[116px] shrink-0" />}
-                <input
-                  type="number"
-                  value={gs.from}
-                  onChange={(e) => updateGroupSize(i, { from: parseInt(e.target.value) || 1 })}
+                <DraftNumberInput
                   min={1}
+                  value={gs.from}
+                  onCommit={(v) => updateGroupSize(i, { from: v == null ? 1 : v })}
                   className="h-11 w-20 rounded-lg border border-slate-200 px-3 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
                 />
                 <span className="text-sm text-slate-400">to</span>
-                <input
-                  type="number"
-                  value={gs.to}
-                  onChange={(e) => updateGroupSize(i, { to: parseInt(e.target.value) || 1 })}
+                <DraftNumberInput
                   min={1}
+                  value={gs.to}
+                  onCommit={(v) => updateGroupSize(i, { to: v == null ? 1 : v })}
                   className="h-11 w-20 rounded-lg border border-slate-200 px-3 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
                 />
                 <button
@@ -842,7 +842,7 @@ function CapacityStep({ errors = {} }) {
 function PerGroupPriceStep({ errors = {} }) {
   const {
     groupSizes,
-    updateGroupSize, removeGroupSize, addGroupSize,
+    updateGroupSize, removeGroupSize,
   } = useProductBuilderStore()
 
   const commission = 0.30
@@ -910,15 +910,6 @@ function PerGroupPriceStep({ errors = {} }) {
           </div>
         )
       })}
-
-      <button
-        type="button"
-        onClick={addGroupSize}
-        className="flex items-center gap-1.5 text-sm text-emerald-600 hover:text-emerald-700 font-medium"
-      >
-        <Plus className="w-4 h-4" />
-        Additional group size
-      </button>
     </div>
   )
 }

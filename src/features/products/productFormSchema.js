@@ -293,6 +293,9 @@ export const stepSchemas = {
           }
         })
         const sorted = [...sizes].sort((a, b) => a.from - b.from)
+        if (sorted.length > 0 && sorted[0].from !== 1) {
+          ctx.addIssue({ code: 'custom', path: [`groupSizes.${sizes.indexOf(sorted[0])}.from`], message: 'First group size must start at 1' })
+        }
         for (let i = 1; i < sorted.length; i++) {
           if (sorted[i].from <= sorted[i - 1].to) {
             ctx.addIssue({ code: 'custom', path: [`groupSizes.${i}.from`], message: `Group sizes must not overlap ("${sorted[i-1].from}-${sorted[i-1].to}" → "${sorted[i].from}")` })

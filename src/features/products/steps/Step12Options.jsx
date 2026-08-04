@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import { useProductBuilderStore } from '@/features/products/productBuilderStore'
 import { useStepErrors } from '@/features/products/useStepErrors'
+import DraftNumberInput from '@/components/ui/DraftNumberInput'
 
 const MAX_OPTIONS = 8
 
@@ -126,12 +127,11 @@ function DurationValidityBlock({ option, index, updateOption }) {
             {hasDuration && (
               <div className="flex items-center gap-2 mt-2">
                 <span className="text-[13px] text-slate-500">Lasts</span>
-                <input
+                <DraftNumberInput
                   className="w-20 min-h-[34px] rounded-lg border border-slate-200 bg-white px-3 py-1 text-sm transition-all focus-ring text-right"
-                  type="number"
                   min={0}
                   value={option.duration ?? 1}
-                  onChange={(e) => updateOption(index, { duration: e.target.value ? Number(e.target.value) : null })}
+                  onCommit={(v) => updateOption(index, { duration: v == null ? 1 : v })}
                 />
                 <Select value={option.durationUnit ?? 'hours'} onValueChange={(v) => updateOption(index, { durationUnit: v })}>
                   <SelectTrigger className="min-h-[34px] h-9 text-sm px-2 border-slate-200 rounded-lg">
@@ -181,12 +181,11 @@ function DurationValidityBlock({ option, index, updateOption }) {
                 {option.validityType === 'from_activation' && (
                   <div className="flex items-center gap-2">
                     <span className="text-[13px] text-slate-500">Valid for</span>
-                    <input
+                    <DraftNumberInput
                       className="w-20 min-h-[34px] rounded-lg border border-slate-200 bg-white px-3 py-1 text-sm transition-all focus-ring text-right"
-                      type="number"
                       min={0}
                       value={option.validity ?? 1}
-                      onChange={(e) => updateOption(index, { validity: e.target.value ? Number(e.target.value) : null })}
+                      onCommit={(v) => updateOption(index, { validity: v == null ? 1 : v })}
                     />
                     <Select value={option.validityUnit ?? 'days'} onValueChange={(v) => updateOption(index, { validityUnit: v })}>
                       <SelectTrigger className="min-h-[34px] h-9 text-sm px-2 border-slate-200 rounded-lg">

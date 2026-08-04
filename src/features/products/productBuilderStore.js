@@ -594,7 +594,7 @@ export const useProductBuilderStore = create(
           const sizes = s.groupSizes
           if (sizes.length === 0) {
             return {
-              groupSizes: [{ id: safeId(), from: 1, to: 10, price: null }],
+              groupSizes: [{ id: safeId(), from: 1, to: 1, price: null }],
               isDirty: true,
             }
           }

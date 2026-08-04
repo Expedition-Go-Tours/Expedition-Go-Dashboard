@@ -3,7 +3,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  Search, Grid3X3, List, Plus, Eye, Edit, Trash2, Loader2,
+  Search, Grid3X3, List, Plus, Eye, Edit, Trash2,
   AlertCircle, RefreshCw, Package, Star, TrendingUp,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -73,6 +73,25 @@ const FADE_UP = {
   hidden: { opacity: 0, y: 16 },
   show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: "easeOut" } },
 };
+
+function DraftStatusBadge({ product }) {
+  if (product.status !== "ACTIVE") return null;
+  if (product.draftStatus === "PENDING_APPROVAL") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 text-amber-700 border border-amber-200 px-2 py-0.5 text-[10px] font-semibold">
+        Pending edits
+      </span>
+    );
+  }
+  if (product.draftStatus === "REJECTED") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-red-100 text-red-700 border border-red-200 px-2 py-0.5 text-[10px] font-semibold">
+        Edits rejected
+      </span>
+    );
+  }
+  return null;
+}
 
 function ProductCardSkeleton() {
   return (
@@ -150,7 +169,7 @@ export default function ProductsListPage() {
     },
   });
 
-  const products = data?.tours || [];
+  const products = useMemo(() => data?.tours || [], [data]);
   const usingSupplierEndpoint = data?.useSupplier ?? Boolean(getAuthToken());
 
   const getSupplierLabel = (product) => {
@@ -180,8 +199,9 @@ export default function ProductsListPage() {
     const pending = products.filter((p) => p.status === "PENDING_APPROVAL").length;
     const rejected = products.filter((p) => p.status === "REJECTED").length;
     const draft = products.filter((p) => p.status === "DRAFT").length;
+    const pendingEdits = products.filter((p) => p.status === "ACTIVE" && p.draftStatus === "PENDING_APPROVAL").length;
     const totalBookings = products.reduce((sum, p) => sum + (p._count?.bookings || 0), 0);
-    return { total, active, pending, rejected, draft, totalBookings };
+    return { total, active, pending, rejected, draft, pendingEdits, totalBookings };
   }, [products]);
 
   const handleClearFilters = () => {
@@ -240,8 +260,8 @@ export default function ProductsListPage() {
           {[
             { label: "Active", value: stats.active, icon: Package, accent: "emerald" },
             { label: "Pending Approval", value: stats.pending, icon: TrendingUp, accent: "amber" },
+            { label: "Pending Edits", value: stats.pendingEdits, icon: Edit, accent: "amber" },
             { label: "Drafts", value: stats.draft, icon: Edit, accent: "emerald" },
-            { label: "Rejected", value: stats.rejected, icon: AlertCircle, accent: "rose" },
           ].map((s) => {
             const accentMap = {
               emerald: "bg-emerald-50 text-emerald-600 border-emerald-200/50",
@@ -478,7 +498,10 @@ export default function ProductsListPage() {
                       ) : (
                         <span className="text-sm text-slate-400 italic">Price not set</span>
                       )}
-                      <StatusBadge status={product.status} label={PRODUCT_STATUSES[product.status]?.label} size="sm" />
+                      <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                        <StatusBadge status={product.status} label={PRODUCT_STATUSES[product.status]?.label} size="sm" />
+                        <DraftStatusBadge product={product} />
+                      </div>
                     </div>
 
                     {/* Footer */}
@@ -570,7 +593,10 @@ export default function ProductsListPage() {
                         <span className="text-xs text-slate-500 capitalize">{extractCategory(product) || "—"}</span>
                       </td>
                       <td className="px-4 py-3">
-                        <StatusBadge status={product.status} label={PRODUCT_STATUSES[product.status]?.label} size="sm" />
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <StatusBadge status={product.status} label={PRODUCT_STATUSES[product.status]?.label} size="sm" />
+                          <DraftStatusBadge product={product} />
+                        </div>
                       </td>
                       <td className="px-4 py-3">
                         {extractPrice(product) !== null
