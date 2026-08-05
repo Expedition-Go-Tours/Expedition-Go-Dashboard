@@ -86,6 +86,7 @@ export default function AvailabilityPage() {
   const [panelVisible, setPanelVisible] = useState(false);
   const panelTimer = useRef(null);
   const [confirmingBlock, setConfirmingBlock] = useState(false);
+  const [capacityDraft, setCapacityDraft] = useState("");
   const [statusFilter, setStatusFilter] = useState({ available: true, limited: true, full: true, blocked: true, past: true });
   const [dateMode, setDateMode] = useState("month");
 
@@ -189,13 +190,26 @@ export default function AvailabilityPage() {
     onError: (e) => { toast.error(e.response?.data?.message || "Failed to revert"); },
   });
 
+  const capacityMut = useMutation({
+    mutationFn: ({ tourId, date, capacity }) => updateDateAvailability(tourId, date, { capacity }),
+    onSuccess: (_, vars) => {
+      toast.success(vars.capacity === null ? "Day limit removed" : `Day limit set to ${vars.capacity}`);
+      const day = getDay(parseISO(vars.date));
+      setCapacityDraft(String(vars.capacity ?? day?.baseCapacity ?? ""));
+      queryClient.invalidateQueries({ queryKey: ["tour-availability", tourId] });
+    },
+    onError: (e) => { toast.error(e.response?.data?.message || "Failed to update day limit"); },
+  });
+
   const openPanel = useCallback((date) => {
     setSelectedDate(date);
     setConfirmingBlock(false);
+    const day = getDay(date);
+    setCapacityDraft(String(day.overrideCapacity ?? day.capacity ?? ""));
     if (panelOpen) return;
     setPanelOpen(true);
     requestAnimationFrame(() => requestAnimationFrame(() => setPanelVisible(true)));
-  }, [panelOpen]);
+  }, [panelOpen, getDay]);
 
   const handleRevert = () => {
     if (!selectedDate || !tourId) return;
@@ -221,9 +235,36 @@ export default function AvailabilityPage() {
     closePanel();
   };
 
+  const handleCapacityApply = () => {
+    if (!selectedDate || !tourId || !selectedDay) return;
+    const raw = String(capacityDraft).trim();
+    if (!raw) return;
+    const value = Number(raw);
+    if (!Number.isInteger(value) || value < 1 || value > 100000) {
+      toast.error("Enter a whole number between 1 and 100,000");
+      return;
+    }
+    if (value < selectedDay.booked) {
+      const unit = selectedDay.capacityUnit === "groups"
+        ? (selectedDay.booked === 1 ? "group" : "groups") + " already booked"
+        : "bookings already booked";
+      toast.error(`Can't go below ${selectedDay.booked} ${unit}`);
+      return;
+    }
+    capacityMut.mutate({ tourId, date: format(selectedDate, "yyyy-MM-dd"), capacity: value });
+  };
+
+  const handleCapacityClear = () => {
+    if (!selectedDate || !tourId) return;
+    capacityMut.mutate({ tourId, date: format(selectedDate, "yyyy-MM-dd"), capacity: null });
+  };
+
   const selectedDay = selectedDate ? getDay(selectedDate) : null;
   const cfg = selectedDay ? STATUS_CONFIG[selectedDay.status] || STATUS_CONFIG.available : null;
   const pending = blockMut.isPending || revertMut.isPending;
+
+  const effectiveCapacity = selectedDay ? (selectedDay.overrideCapacity ?? selectedDay.capacity) : 0;
+  const capacityDirty = !!selectedDay && String(capacityDraft).trim() !== "" && Number(capacityDraft) !== effectiveCapacity;
 
   const padStart = dateMode === "month" ? startOfMonth(currentDate).getDay() : 0;
 
@@ -537,43 +578,61 @@ export default function AvailabilityPage() {
                 </p>
               </div>
 
-              {/* --- Capacity (read-only, from the tour setup) --- */}
-              {selectedDay.status !== "blocked" && (
+              {/* --- Day limit (per-date capacity override) --- */}
+              {selectedDay.status !== "blocked" && selectedDay.status !== "past" && (
                 <div>
-                  <div className="flex items-center gap-1.5 mb-3">
-                    <Users size={12} className="text-slate-400" />
-                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Capacity</p>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-1.5">
+                      <Users size={12} className="text-slate-400" />
+                      <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Day limit</p>
+                    </div>
+                    {selectedDay.overrideCapacity != null && (
+                      <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">Override active</span>
+                    )}
                   </div>
                   <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-lg font-bold text-slate-900">{selectedDay.capacity}</span>
-                      <span className="text-[11px] text-slate-400">
-                        {selectedDay.capacityUnit === "groups" ? "group slots · from tour setup" : "people max · from tour setup"}
-                      </span>
-                    </div>
-                    {selectedDay.capacityUnit === "groups" && selectedDay.maxGroupSize && (
-                      <p className="text-[11px] text-slate-500">
-                        Up to {selectedDay.maxGroupSize} travelers per group &middot; {selectedDay.groupsPerSlot} groups per time slot
-                      </p>
-                    )}
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-500">
-                        <span className="font-semibold text-slate-800">{selectedDay.booked}</span>
+                    <div>
+                      <label className="block text-xs text-slate-500 mb-1.5">
+                        Maximum for {format(selectedDate, "EEEE, MMM d")} ·{" "}
+                        {selectedDay.capacityUnit === "groups" ? "group slots" : "people"}
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          min={1}
+                          max={100000}
+                          step={1}
+                          value={capacityDraft}
+                          onChange={(e) => setCapacityDraft(e.target.value)}
+                          disabled={capacityMut.isPending}
+                          className="w-full px-3 py-2 text-sm font-semibold text-slate-900 bg-white rounded-lg border border-slate-200 focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 disabled:opacity-50"
+                        />
+                        <button
+                          onClick={handleCapacityApply}
+                          disabled={capacityMut.isPending || !capacityDirty}
+                          className="shrink-0 px-3.5 py-2 text-xs font-semibold text-white bg-[#044b3b] rounded-lg hover:bg-[#033629] disabled:opacity-40 transition-colors"
+                        >
+                          Apply
+                        </button>
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-1.5 leading-relaxed">
+                        {selectedDay.overrideCapacity != null
+                          ? `Overrides the tour default of ${selectedDay.baseCapacity} for this day.`
+                          : `The tour default is ${selectedDay.baseCapacity}. Set a tighter day-wide cap.`}{" "}
                         {selectedDay.capacityUnit === "groups"
-                          ? ` ${selectedDay.booked === 1 ? "group" : "groups"} booked`
-                          : " booked"}
-                      </span>
-                      <span className="font-medium text-emerald-600">
-                        {Math.max(0, selectedDay.capacity - selectedDay.booked)}
-                        {selectedDay.capacityUnit === "groups" ? ` group slot${selectedDay.capacity - selectedDay.booked === 1 ? "" : "s"} remaining` : " remaining"}
-                      </span>
+                          ? "Counts group slots across all time slots."
+                          : "Counts people across all time slots."}
+                      </p>
                     </div>
-                    <div className="h-2.5 bg-slate-200 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all duration-500 ${cfg?.bar || "bg-emerald-400"}`}
-                        style={{ width: `${Math.min((selectedDay.booked / (selectedDay.capacity || 1)) * 100, 100)}%` }}
-                      />
-                    </div>
+                    {selectedDay.overrideCapacity != null && (
+                      <button
+                        onClick={handleCapacityClear}
+                        disabled={capacityMut.isPending}
+                        className="w-full text-xs font-medium text-slate-500 hover:text-red-600 transition-colors"
+                      >
+                        Remove day limit (back to {selectedDay.baseCapacity})
+                      </button>
+                    )}
                   </div>
                 </div>
               )}

@@ -7,6 +7,8 @@ export function mapCalendarDay(day) {
     isOperatingDay: day.isOperatingDay,
     status: (day.status || "available").toLowerCase(),
     capacity: day.capacity,
+    baseCapacity: day.baseCapacity ?? day.capacity,
+    overrideCapacity: day.overrideCapacity ?? null,
     booked: day.booked,
     remaining: day.remaining,
     capacityUnit: day.capacityUnit === "groups" ? "groups" : "people",
