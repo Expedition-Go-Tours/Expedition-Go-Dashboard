@@ -7,6 +7,52 @@ const CUTOFF_OPTIONS = [
   { group: 'Minutes', items: [5, 10, 15, 20, 30, 45, 60, 90, 120] },
 ]
 
+const TIMEZONE_OPTIONS = [
+  { value: 'UTC', label: 'UTC (Coordinated Universal Time)' },
+  { value: 'Africa/Dar_es_Salaam', label: 'East Africa Time (UTC+3) — Tanzania, Kenya, Uganda' },
+  { value: 'Africa/Addis_Ababa', label: 'East Africa Time (UTC+3) — Ethiopia' },
+  { value: 'Africa/Nairobi', label: 'East Africa Time (UTC+3) — Kenya' },
+  { value: 'Africa/Kigali', label: 'Central Africa Time (UTC+2) — Rwanda' },
+  { value: 'Africa/Kampala', label: 'East Africa Time (UTC+3) — Uganda' },
+  { value: 'Africa/Johannesburg', label: 'South Africa Standard Time (UTC+2)' },
+  { value: 'Africa/Cairo', label: 'Eastern European Time (UTC+2/+3) — Egypt' },
+  { value: 'Africa/Casablanca', label: 'Morocco (UTC+1)' },
+  { value: 'Africa/Lagos', label: 'West Africa Time (UTC+1) — Nigeria' },
+  { value: 'Africa/Accra', label: 'Greenwich Mean Time (UTC+0) — Ghana' },
+  { value: 'Europe/London', label: 'Greenwich Mean Time (UTC+0/+1) — UK' },
+  { value: 'Europe/Paris', label: 'Central European Time (UTC+1/+2)' },
+  { value: 'Europe/Berlin', label: 'Central European Time (UTC+1/+2) — Germany' },
+  { value: 'Europe/Istanbul', label: 'Turkey (UTC+3)' },
+  { value: 'Europe/Moscow', label: 'Moscow Standard Time (UTC+3)' },
+  { value: 'America/New_York', label: 'Eastern Time (UTC-5/-4)' },
+  { value: 'America/Chicago', label: 'Central Time (UTC-6/-5)' },
+  { value: 'America/Denver', label: 'Mountain Time (UTC-7/-6)' },
+  { value: 'America/Los_Angeles', label: 'Pacific Time (UTC-8/-7)' },
+  { value: 'America/Phoenix', label: 'Mountain Time, no DST (UTC-7)' },
+  { value: 'America/Anchorage', label: 'Alaska (UTC-9/-8)' },
+  { value: 'America/Honolulu', label: 'Hawaii (UTC-10)' },
+  { value: 'America/Toronto', label: 'Eastern Time (UTC-5/-4) — Canada' },
+  { value: 'America/Mexico_City', label: 'Central Time (UTC-6) — Mexico' },
+  { value: 'America/Bogota', label: 'Colombia (UTC-5)' },
+  { value: 'America/Lima', label: 'Peru (UTC-5)' },
+  { value: 'America/Santiago', label: 'Chile (UTC-4/-3)' },
+  { value: 'America/Sao_Paulo', label: 'Brasília Time (UTC-3)' },
+  { value: 'America/Argentina/Buenos_Aires', label: 'Argentina (UTC-3)' },
+  { value: 'Asia/Dubai', label: 'Gulf Standard Time (UTC+4) — UAE' },
+  { value: 'Asia/Riyadh', label: 'Arabia Standard Time (UTC+3) — Saudi Arabia' },
+  { value: 'Asia/Kolkata', label: 'India Standard Time (UTC+5:30)' },
+  { value: 'Asia/Karachi', label: 'Pakistan (UTC+5)' },
+  { value: 'Asia/Bangkok', label: 'Indochina Time (UTC+7) — Thailand' },
+  { value: 'Asia/Singapore', label: 'Singapore (UTC+8)' },
+  { value: 'Asia/Hong_Kong', label: 'Hong Kong (UTC+8)' },
+  { value: 'Asia/Shanghai', label: 'China Standard Time (UTC+8)' },
+  { value: 'Asia/Tokyo', label: 'Japan Standard Time (UTC+9)' },
+  { value: 'Asia/Seoul', label: 'Korea Standard Time (UTC+9)' },
+  { value: 'Australia/Sydney', label: 'Australia Eastern Time (UTC+10/+11)' },
+  { value: 'Australia/Perth', label: 'Australia Western Time (UTC+8)' },
+  { value: 'Pacific/Auckland', label: 'New Zealand (UTC+12/+13)' },
+]
+
 function formatCutoffLabel(minutes) {
   if (minutes < 60) return `${minutes} Minutes`
   const h = minutes / 60
@@ -17,8 +63,9 @@ export default function Step15Cutoff() {
   const cutoffMinutes = useProductBuilderStore((s) => s.cutoffMinutes)
   const lastMinuteBookings = useProductBuilderStore((s) => s.lastMinuteBookings)
   const perSlotCutoff = useProductBuilderStore((s) => s.perSlotCutoff)
+  const timezone = useProductBuilderStore((s) => s.timezone)
   const setField = useProductBuilderStore((s) => s.setField)
-  const errors = useStepErrors(15)
+  const errors = useStepErrors(17)
 
   const [showBanner, setShowBanner] = useState(true)
 
@@ -29,6 +76,25 @@ export default function Step15Cutoff() {
         <p className="text-sm text-slate-500 leading-relaxed">
           The cut-off time is the very latest you accept new bookings before the start time or end of opening hours.{' '}
           <a href="#" className="text-blue-600 hover:underline font-medium">Learn more</a>
+        </p>
+      </div>
+
+      {/* Tour timezone */}
+      <div data-field="timezone">
+        <label className="block text-sm font-semibold text-slate-800 mb-1.5">
+          What timezone are your slots and cut-off times in?
+        </label>
+        <select
+          value={timezone}
+          onChange={(e) => setField('timezone', e.target.value)}
+          className="w-full min-h-[42px] rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+        >
+          {TIMEZONE_OPTIONS.map((tz) => (
+            <option key={tz.value} value={tz.value}>{tz.label}</option>
+          ))}
+        </select>
+        <p className="text-[13px] text-slate-400 mt-1.5">
+          Operating days, slot times and cut-off deadlines are anchored to this timezone. Defaults to UTC.
         </p>
       </div>
 

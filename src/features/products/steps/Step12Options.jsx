@@ -568,7 +568,7 @@ export default function Step12Options() {
   const updateOption = useProductBuilderStore((s) => s.updateOption)
   const removeOption = useProductBuilderStore((s) => s.removeOption)
   const duplicateOption = useProductBuilderStore((s) => s.duplicateOption)
-  const errors = useStepErrors(12)
+  const errors = useStepErrors(13)
 
   const [editingIndex, setEditingIndex] = useState(null)
   const [showIntro, setShowIntro] = useState(true)

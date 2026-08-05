@@ -18,7 +18,7 @@ const STEP_FIELDS = {
     ],
    8: ['transportationProvided', 'pickupTransportTypes', 'crossCityTravel'],
    9: ['guideType', 'guideMaterials'],
-     10: [
+10: [
       'notSuitableFor',
       'notAllowed',
       'petFriendly',
@@ -27,9 +27,10 @@ const STEP_FIELDS = {
       'emergencyPhone',
       'voucherInfo',
     ],
-    11: ['photos', 'copyrightConfirmed'],
-   12: ['options'],
-   13: [
+    11: ['cancellationType', 'supplierCanCancelBadWeather', 'supplierCanCancelNotEnoughTravelers'],
+    12: ['photos', 'copyrightConfirmed'],
+    13: ['options'],
+    14: [
      'meetingMode',
      'meetingPoint',
      'meetingPointPicture',
@@ -48,7 +49,8 @@ const STEP_FIELDS = {
      'dropoffLocation',
      'dropoffDescription',
    ],
-    14: [
+    15: [],
+    16: [
       'pricingModel',
       'currency',
       'scheduleType',
@@ -64,9 +66,7 @@ const STEP_FIELDS = {
       'additionalPersonsEnabled',
       'additionalPersonPrice',
     ],
-   15: ['cutoffMinutes', 'lastMinuteBookings', 'perSlotCutoff'],
-   16: ['itinerary'],
-  17: ['cancellationType', 'supplierCanCancelBadWeather', 'supplierCanCancelNotEnoughTravelers'],
+    17: ['cutoffMinutes', 'lastMinuteBookings', 'perSlotCutoff'],
 }
 
 function pick(obj, keys) {

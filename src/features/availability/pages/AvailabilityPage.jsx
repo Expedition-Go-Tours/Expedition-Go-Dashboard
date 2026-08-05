@@ -3,7 +3,6 @@ import { useSearchParams } from "react-router-dom";
 import {
   ChevronLeft,
   ChevronRight,
-  X,
   RefreshCw,
   AlertCircle,
   Package,
@@ -11,11 +10,11 @@ import {
   Users,
   Calendar as CalendarIcon,
   Undo2,
-  Save,
   Ban,
   CheckCircle2,
   AlertTriangle,
   XCircle,
+  CalendarX2,
 } from "lucide-react";
 import {
   format,
@@ -50,9 +49,19 @@ const STATUS_CONFIG = {
   limited: { label: "Limited", dot: "bg-amber-500", badge: "text-amber-700 bg-amber-50 border-amber-200", bar: "bg-amber-400", icon: AlertTriangle },
   full: { label: "Full", dot: "bg-red-500", badge: "text-red-700 bg-red-50 border-red-200", bar: "bg-red-400", icon: XCircle },
   blocked: { label: "Blocked", dot: "bg-slate-300", badge: "text-slate-600 bg-slate-50 border-slate-200", bar: "bg-slate-300", icon: Ban },
+  past: { label: "Past", dot: "bg-slate-200", badge: "text-slate-500 bg-slate-50 border-slate-200", bar: "bg-slate-200", icon: CalendarX2 },
 };
 
-const STATUS_ORDER = ["available", "limited", "full", "blocked"];
+const STATUS_ORDER = ["available", "limited", "full", "blocked", "past"];
+
+const TOUR_STATUS_CONFIG = {
+  ACTIVE: { label: "Active", className: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+  DRAFT: { label: "Draft", className: "bg-slate-100 text-slate-500 border-slate-200" },
+  PENDING_APPROVAL: { label: "Pending", className: "bg-amber-50 text-amber-700 border-amber-200" },
+  REJECTED: { label: "Rejected", className: "bg-red-50 text-red-600 border-red-200" },
+  PAUSED: { label: "Paused", className: "bg-slate-50 text-slate-500 border-slate-200" },
+  ARCHIVED: { label: "Archived", className: "bg-slate-50 text-slate-400 border-slate-200" },
+};
 
 function monthRange(date) {
   return {
@@ -76,15 +85,14 @@ export default function AvailabilityPage() {
   const [panelOpen, setPanelOpen] = useState(false);
   const [panelVisible, setPanelVisible] = useState(false);
   const panelTimer = useRef(null);
-  const [editStatus, setEditStatus] = useState("");
-  const [editCapacity, setEditCapacity] = useState("");
-  const [statusFilter, setStatusFilter] = useState({ available: true, limited: true, full: true, blocked: true });
+  const [confirmingBlock, setConfirmingBlock] = useState(false);
+  const [statusFilter, setStatusFilter] = useState({ available: true, limited: true, full: true, blocked: true, past: true });
   const [dateMode, setDateMode] = useState("month");
 
   const range = useMemo(() => {
-    if (dateMode === "30days") {
+    if (dateMode === "week") {
       const today = new Date();
-      return { start: format(today, "yyyy-MM-dd"), end: format(addDays(today, 29), "yyyy-MM-dd") };
+      return { start: format(today, "yyyy-MM-dd"), end: format(addDays(today, 6), "yyyy-MM-dd") };
     }
     if (dateMode === "all") {
       return { start: format(subMonths(new Date(), 3), "yyyy-MM-dd"), end: format(addMonths(new Date(), 3), "yyyy-MM-dd") };
@@ -121,9 +129,9 @@ export default function AvailabilityPage() {
     queryKey: ["supplier-tours"],
     queryFn: async () => {
       const res = await listMyProducts({ limit: 100 });
-      return (res.data?.data?.tours || []).filter((t) => t.status !== "ARCHIVED");
+      return res.data?.data?.tours || [];
     },
-    select: (t) => t.map((x) => ({ id: x.id, title: x.title })),
+    select: (t) => t.map((x) => ({ id: x.id, title: x.title, status: x.status })),
   });
 
   const tours = toursData || [];
@@ -138,17 +146,17 @@ export default function AvailabilityPage() {
     enabled: !!tourId,
   });
 
-  const calendar = availData?.calendar || [];
+  const calendar = useMemo(() => availData?.calendar || [], [availData]);
 
   const getDay = useCallback((date) => {
     const key = format(date, "yyyy-MM-dd");
-    return calendar.find((d) => d.date === key) || { status: "available", capacity: 0, booked: 0, remaining: 0, slots: [], hasOverride: false, overrideStatus: null };
+    return calendar.find((d) => d.date === key) || { status: "available", capacity: 0, booked: 0, remaining: 0, slots: [], hasOverride: false, overrideStatus: null, capacityUnit: "people", groupsPerSlot: null, maxGroupSize: null };
   }, [calendar]);
 
   const rangeDays = useMemo(() => {
-    if (dateMode === "30days") {
+    if (dateMode === "week") {
       const today = new Date();
-      return eachDayOfInterval({ start: today, end: addDays(today, 29) });
+      return eachDayOfInterval({ start: today, end: addDays(today, 6) });
     }
     if (dateMode === "all") {
       return eachDayOfInterval({ start: subMonths(new Date(), 3), end: addMonths(new Date(), 3) });
@@ -159,22 +167,19 @@ export default function AvailabilityPage() {
   const visibleDays = useMemo(() => rangeDays.filter((d) => statusFilter[getDay(d).status]), [rangeDays, statusFilter, getDay]);
 
   const stats = useMemo(() => {
-    const s = { available: 0, limited: 0, full: 0, blocked: 0 };
+    const s = { available: 0, limited: 0, full: 0, blocked: 0, past: 0 };
     rangeDays.forEach((d) => { s[getDay(d).status]++; });
     return s;
   }, [rangeDays, getDay]);
 
   const totalDays = rangeDays.length;
 
-  const saveMut = useMutation({
-    mutationFn: ({ tourId, date, data }) => updateDateAvailability(tourId, date, data),
-    onSuccess: () => { toast.success("Availability updated"); queryClient.invalidateQueries({ queryKey: ["tour-availability", tourId] }); },
-    onError: (e) => { toast.error(e.response?.data?.message || "Failed to update"); },
-  });
-
   const blockMut = useMutation({
-    mutationFn: ({ tourId, date, status }) => updateDateAvailability(tourId, date, { status }),
-    onSuccess: () => { toast.success("Date updated"); queryClient.invalidateQueries({ queryKey: ["tour-availability", tourId] }); },
+    mutationFn: ({ tourId, date, status, unblock }) =>
+      unblock
+        ? removeDateOverride(tourId, date)
+        : updateDateAvailability(tourId, date, { status }),
+    onSuccess: (_, vars) => { toast.success(vars?.unblock ? "Date unblocked" : "Date blocked"); queryClient.invalidateQueries({ queryKey: ["tour-availability", tourId] }); },
     onError: (e) => { toast.error(e.response?.data?.message || "Failed to update"); },
   });
 
@@ -185,20 +190,12 @@ export default function AvailabilityPage() {
   });
 
   const openPanel = useCallback((date) => {
-    const d = getDay(date);
     setSelectedDate(date);
-    setEditStatus(d.status);
-    setEditCapacity(String(d.capacity));
+    setConfirmingBlock(false);
     if (panelOpen) return;
     setPanelOpen(true);
     requestAnimationFrame(() => requestAnimationFrame(() => setPanelVisible(true)));
-  }, [getDay, panelOpen]);
-
-  const handleSave = () => {
-    if (!selectedDate || !tourId) return;
-    saveMut.mutate({ tourId, date: format(selectedDate, "yyyy-MM-dd"), data: { status: editStatus.toUpperCase(), capacity: Number(editCapacity) } });
-    closePanel();
-  };
+  }, [panelOpen]);
 
   const handleRevert = () => {
     if (!selectedDate || !tourId) return;
@@ -206,16 +203,27 @@ export default function AvailabilityPage() {
     closePanel();
   };
 
-  const handleBlockToggle = () => {
+  const handleBlockAction = () => {
     if (!selectedDate || !tourId) return;
-    blockMut.mutate({ tourId, date: format(selectedDate, "yyyy-MM-dd"), status: editStatus === "blocked" ? "AVAILABLE" : "BLOCKED" });
+    if (selectedDay?.status === "blocked") {
+      // Unblocking is non-destructive — just drop the override.
+      blockMut.mutate({ tourId, date: format(selectedDate, "yyyy-MM-dd"), status: "BLOCKED", unblock: true });
+      closePanel();
+    } else {
+      setConfirmingBlock(true);
+    }
+  };
+
+  const handleBlockConfirm = () => {
+    if (!selectedDate || !tourId || !selectedDay) return;
+    blockMut.mutate({ tourId, date: format(selectedDate, "yyyy-MM-dd"), status: "BLOCKED", unblock: false });
+    setConfirmingBlock(false);
     closePanel();
   };
 
   const selectedDay = selectedDate ? getDay(selectedDate) : null;
-  const dateStr = selectedDate ? format(selectedDate, "yyyy-MM-dd") : "";
-  const cfg = selectedDay ? STATUS_CONFIG[editStatus] || STATUS_CONFIG.available : null;
-  const pending = saveMut.isPending || blockMut.isPending || revertMut.isPending;
+  const cfg = selectedDay ? STATUS_CONFIG[selectedDay.status] || STATUS_CONFIG.available : null;
+  const pending = blockMut.isPending || revertMut.isPending;
 
   const padStart = dateMode === "month" ? startOfMonth(currentDate).getDay() : 0;
 
@@ -261,12 +269,21 @@ export default function AvailabilityPage() {
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <CalendarIcon size={16} className="text-slate-400 shrink-0" />
           <Select value={tourId || ""} onValueChange={handleTourChange}>
-            <SelectTrigger className="flex-1 min-w-0 border-0 bg-transparent shadow-none px-0 text-sm font-medium text-slate-900 focus:ring-0 focus:border-0">
+            <SelectTrigger className="flex-1 min-w-0 px-3 text-sm font-medium text-slate-900">
               <SelectValue placeholder="Select a tour" />
             </SelectTrigger>
             <SelectContent>
               {tours.map((t) => (
-                <SelectItem key={t.id} value={t.id}>{t.title}</SelectItem>
+                <SelectItem key={t.id} value={t.id}>
+                  <span className="flex items-center justify-between gap-2 min-w-0">
+                    <span className="truncate">{t.title}</span>
+                    {t.status !== "ACTIVE" && (
+                      <span className={`shrink-0 rounded-full border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${TOUR_STATUS_CONFIG[t.status]?.className || "bg-slate-100 text-slate-500 border-slate-200"}`}>
+                        {TOUR_STATUS_CONFIG[t.status]?.label || t.status}
+                      </span>
+                    )}
+                  </span>
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -276,7 +293,7 @@ export default function AvailabilityPage() {
           <div className="flex items-center bg-slate-100 rounded-lg p-0.5 gap-0">
             {[
               { key: "month", label: "Month" },
-              { key: "30days", label: "30 Days" },
+              { key: "week", label: "Week" },
               { key: "all", label: "All" },
             ].map((m) => (
               <button
@@ -308,7 +325,7 @@ export default function AvailabilityPage() {
 
           {dateMode !== "month" && (
             <span className="text-xs text-slate-400 select-none">
-              {dateMode === "30days" ? format(new Date(), "MMM d") + " – " + format(addDays(new Date(), 29), "MMM d, yyyy") : format(subMonths(new Date(), 3), "MMM d") + " – " + format(addMonths(new Date(), 3), "MMM d, yyyy")}
+              {dateMode === "week" ? format(new Date(), "MMM d") + " – " + format(addDays(new Date(), 6), "MMM d, yyyy") : format(subMonths(new Date(), 3), "MMM d") + " – " + format(addMonths(new Date(), 3), "MMM d, yyyy")}
             </span>
           )}
 
@@ -320,12 +337,13 @@ export default function AvailabilityPage() {
       </div>
 
       {/* ====== STATS ====== */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-4">
         {[
           { label: "Available", value: stats.available, icon: CheckCircle2, bg: "bg-emerald-50", border: "border-emerald-200/60", color: "text-emerald-600", bar: "from-emerald-400 to-emerald-300", },
           { label: "Limited", value: stats.limited, icon: AlertTriangle, bg: "bg-amber-50", border: "border-amber-200/60", color: "text-amber-600", bar: "from-amber-400 to-amber-300", },
           { label: "Full", value: stats.full, icon: XCircle, bg: "bg-red-50", border: "border-red-200/60", color: "text-red-600", bar: "from-red-400 to-red-300", },
           { label: "Blocked", value: stats.blocked, icon: Ban, bg: "bg-slate-50", border: "border-slate-200/60", color: "text-slate-500", bar: "from-slate-400 to-slate-300", },
+          { label: "Past", value: stats.past, icon: CalendarX2, bg: "bg-slate-50", border: "border-slate-200/60", color: "text-slate-400", bar: "from-slate-300 to-slate-200", },
         ].map((s) => (
           <div key={s.label} className="relative bg-white rounded-xl border border-slate-200 p-3 sm:p-4 group hover:shadow-md hover:border-slate-300 transition-all overflow-hidden">
             <div className="flex items-start gap-2.5 sm:gap-3.5">
@@ -355,7 +373,15 @@ export default function AvailabilityPage() {
               onClick={() => setStatusFilter((prev) => ({ ...prev, [s]: !prev[s] }))}
               className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-lg border text-[11px] sm:text-xs font-medium transition-all ${
                 active
-                  ? `${s === "available" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : s === "limited" ? "border-amber-200 bg-amber-50 text-amber-700" : s === "full" ? "border-red-200 bg-red-50 text-red-700" : "border-slate-200 bg-slate-50 text-slate-600"}`
+                  ? s === "available"
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                    : s === "limited"
+                      ? "border-amber-200 bg-amber-50 text-amber-700"
+                      : s === "full"
+                        ? "border-red-200 bg-red-50 text-red-700"
+                        : s === "past"
+                          ? "border-slate-200 bg-slate-50 text-slate-500"
+                          : "border-slate-200 bg-slate-50 text-slate-600"
                   : "border-transparent text-slate-300 hover:text-slate-400"
               }`}
             >
@@ -372,6 +398,11 @@ export default function AvailabilityPage() {
       </div>
 
       {/* ====== CALENDAR ====== */}
+      {calendar[0]?.capacityUnit === "groups" && (
+        <p className="text-[11px] text-slate-400 mb-2 -mt-2">
+          Showing group slots &mdash; a booking uses one group slot regardless of party size
+        </p>
+      )}
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
         <div className="grid grid-cols-7 bg-slate-50 border-b border-slate-200">
           {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
@@ -385,7 +416,7 @@ export default function AvailabilityPage() {
           <div className="py-16 flex flex-col items-center justify-center text-center">
             <CalendarIcon size={32} className="text-slate-300 mb-2" strokeWidth={1.5} />
             <p className="text-sm text-slate-400">No dates match the current filters</p>
-            <button onClick={() => setStatusFilter({ available: true, limited: true, full: true, blocked: true })} className="mt-2 text-xs text-[#044b3b] hover:text-[#033629] underline">
+            <button onClick={() => setStatusFilter({ available: true, limited: true, full: true, blocked: true, past: true })} className="mt-2 text-xs text-[#044b3b] hover:text-[#033629] underline">
               Reset filters
             </button>
           </div>
@@ -400,27 +431,30 @@ export default function AvailabilityPage() {
               const usage = day.capacity > 0 ? (day.booked / day.capacity) * 100 : 0;
               const filteredOut = !statusFilter[day.status];
               const isBlocked = day.status === "blocked";
+              const isPast = day.status === "past";
 
               return (
                 <button
                   key={format(date, "yyyy-MM-dd")}
-                  onClick={() => !filteredOut && openPanel(date)}
-                  disabled={filteredOut}
+                  onClick={() => !filteredOut && !isPast && openPanel(date)}
+                  disabled={filteredOut || isPast}
                    className={`relative flex flex-col items-center py-2 sm:py-3 px-0.5 sm:px-1 border-b border-r border-slate-100 transition-colors min-h-[60px] sm:min-h-[80px] ${
                     filteredOut
                       ? "opacity-20 cursor-default bg-white"
-                      : isBlocked
-                        ? "bg-slate-50 hover:bg-slate-100 cursor-pointer"
-                        : day.status === "full"
-                          ? "bg-red-50 hover:bg-red-100 cursor-pointer"
-                          : "hover:bg-slate-50 active:bg-slate-100 cursor-pointer bg-white"
-                  } ${today && !isBlocked && day.status !== "full" ? "bg-emerald-50/40" : ""}`}
+                      : isPast
+                        ? "bg-slate-50 cursor-default"
+                        : isBlocked
+                          ? "bg-slate-50 hover:bg-slate-100 cursor-pointer"
+                          : day.status === "full"
+                            ? "bg-red-50 hover:bg-red-100 cursor-pointer"
+                            : "hover:bg-slate-50 active:bg-slate-100 cursor-pointer bg-white"
+                  } ${today && !isBlocked && !isPast && day.status !== "full" ? "bg-emerald-50/40" : ""}`}
                 >
-                  <span className={`text-xs sm:text-sm font-semibold leading-none mb-1 sm:mb-1.5 ${today && !isBlocked && day.status !== "full" ? "text-[#044b3b]" : isBlocked || day.status === "full" ? "text-slate-400" : "text-slate-700"}`}>
+                  <span className={`text-xs sm:text-sm font-semibold leading-none mb-1 sm:mb-1.5 ${today && !isBlocked && !isPast && day.status !== "full" ? "text-[#044b3b]" : isPast ? "text-slate-300" : isBlocked || day.status === "full" ? "text-slate-400" : "text-slate-700"}`}>
                     {format(date, "d")}
                   </span>
 
-                  {!isBlocked && (
+                  {!isBlocked && !isPast && (
                     <span className="flex items-center gap-0.5 sm:gap-1 mb-0.5 sm:mb-1">
                       {day.status === "available" && <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-emerald-400" />}
                       {day.status === "limited" && (
@@ -435,12 +469,14 @@ export default function AvailabilityPage() {
 
                   {isBlocked ? (
                     <span className="text-[8px] sm:text-[9px] font-medium text-slate-400 uppercase tracking-wider leading-none mt-0.5">Blocked</span>
+                  ) : isPast ? (
+                    <span className="text-[8px] sm:text-[9px] font-medium text-slate-300 uppercase tracking-wider leading-none mt-0.5">Past</span>
                   ) : (
                     <>
                       <div className="hidden sm:block w-8 h-1 rounded-full bg-slate-100 overflow-hidden mb-1">
                         <div className={`h-full rounded-full transition-all ${s.bar}`} style={{ width: `${Math.min(usage, 100)}%` }} />
                       </div>
-                      <span className="text-[9px] sm:text-[10px] text-slate-400 leading-none">{day.booked}/{day.capacity}</span>
+                      <span className="text-[9px] sm:text-[10px] text-slate-400 leading-none">{day.booked}/{day.capacity}{day.capacityUnit === "groups" ? "g" : ""}</span>
                     </>
                   )}
 
@@ -458,8 +494,8 @@ export default function AvailabilityPage() {
           <div className={`fixed inset-0 bg-black/20 z-[70] transition-opacity duration-250 ${panelVisible ? "opacity-100" : "opacity-0"}`} onClick={closePanel} />
           <div className={`fixed inset-y-0 right-0 w-full max-w-sm bg-white shadow-2xl z-[71] flex flex-col transition-all duration-250 ease-out ${panelVisible ? "translate-x-0" : "translate-x-full"}`}>
 
-            {/* === ACCENT BAR at top based on current status === */}
-            <div className={`h-1.5 shrink-0 transition-colors duration-300 ${editStatus === "blocked" ? "bg-slate-400" : editStatus === "limited" ? "bg-amber-400" : editStatus === "full" ? "bg-red-400" : "bg-emerald-400"}`} />
+            {/* === ACCENT BAR at top based on the day's actual status === */}
+            <div className={`h-1.5 shrink-0 transition-colors duration-300 ${selectedDay.status === "blocked" ? "bg-slate-400" : selectedDay.status === "limited" ? "bg-amber-400" : selectedDay.status === "full" ? "bg-red-400" : "bg-emerald-400"}`} />
 
             {/* === PANEL HEADER — big date === */}
             <div className="px-5 pt-5 pb-4 border-b border-slate-100">
@@ -467,7 +503,7 @@ export default function AvailabilityPage() {
                 <button onClick={closePanel} className="bg-white border border-slate-200 text-slate-600 hover:border-emerald-400 p-1.5 rounded-lg transition-colors shadow-sm">
                   <ChevronLeft size={16} />
                 </button>
-                <span className={`text-[10px] font-semibold uppercase tracking-widest ${cfg ? STATUS_CONFIG[editStatus]?.badge?.split(" ")[0] : "text-slate-400"}`}>
+                <span className={`text-[10px] font-semibold uppercase tracking-widest ${cfg ? cfg?.badge?.split(" ")[0] : "text-slate-400"}`}>
                   {cfg?.label || "Available"}
                 </span>
               </div>
@@ -486,71 +522,64 @@ export default function AvailabilityPage() {
             {/* === PANEL BODY === */}
             <div className="flex-1 overflow-y-auto px-5 py-5 space-y-6">
 
-              {/* --- Status Pickers as large cards --- */}
+              {/* --- Automatic status --- */}
               <div>
-                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-3">Set Status</p>
-                <div className="grid grid-cols-2 gap-2.5">
-                  {STATUS_ORDER.map((s) => {
-                    const c = STATUS_CONFIG[s];
-                    const active = editStatus === s;
-                    return (
-                      <button
-                        key={s}
-                        onClick={() => setEditStatus(s)}
-                        className={`relative group flex flex-col items-center gap-1.5 px-3 py-3.5 rounded-xl border-2 text-sm font-medium transition-all ${
-                          active
-                            ? `${s === "available" ? "border-emerald-400 bg-emerald-50 text-emerald-700 shadow-sm" : s === "limited" ? "border-amber-400 bg-amber-50 text-amber-700 shadow-sm" : s === "full" ? "border-red-400 bg-red-50 text-red-700 shadow-sm" : "border-slate-300 bg-slate-50 text-slate-600 shadow-sm"}`
-                            : "border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"
-                        }`}
-                      >
-                        <c.icon size={20} className={active ? "" : "text-slate-300 group-hover:text-slate-500 transition-colors"} />
-                        <span className="text-[13px] font-semibold">{c.label}</span>
-                        {active && <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-white border-2 border-current flex items-center justify-center"><span className="w-1.5 h-1.5 rounded-full bg-current" /></span>}
-                      </button>
-                    );
-                  })}
+                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-3">Status</p>
+                <div className={`flex items-center gap-2.5 px-4 py-3 rounded-xl border ${cfg?.badge}`}>
+                  <cfg.icon size={18} className="shrink-0" />
+                  <div>
+                    <p className="text-sm font-semibold leading-tight">{cfg?.label}</p>
+                    <p className="text-[11px] text-slate-400 leading-tight mt-0.5">Automatic · based on bookings vs capacity</p>
+                  </div>
                 </div>
+                <p className="text-xs text-slate-400 mt-2 leading-relaxed">
+                  Available, Limited and Full are calculated automatically. Only Blocked can be set manually.
+                </p>
               </div>
 
-              {/* --- Capacity (hidden for blocked) --- */}
-              {editStatus !== "blocked" && (
+              {/* --- Capacity (read-only, from the tour setup) --- */}
+              {selectedDay.status !== "blocked" && (
                 <div>
-                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-3">Capacity</p>
+                  <div className="flex items-center gap-1.5 mb-3">
+                    <Users size={12} className="text-slate-400" />
+                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Capacity</p>
+                  </div>
                   <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 space-y-3">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="number"
-                          value={editCapacity}
-                          onChange={(e) => setEditCapacity(e.target.value)}
-                          min="1"
-                          className="w-20 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-[#044b3b]/20 focus:border-[#044b3b] text-center"
-                        />
-                        <span className="text-xs text-slate-400">people max</span>
-                      </div>
-                      <span className="text-xs font-medium text-slate-500">
-                        <span className="text-slate-800">{selectedDay.booked}</span> booked
+                      <span className="text-lg font-bold text-slate-900">{selectedDay.capacity}</span>
+                      <span className="text-[11px] text-slate-400">
+                        {selectedDay.capacityUnit === "groups" ? "group slots · from tour setup" : "people max · from tour setup"}
                       </span>
                     </div>
-
+                    {selectedDay.capacityUnit === "groups" && selectedDay.maxGroupSize && (
+                      <p className="text-[11px] text-slate-500">
+                        Up to {selectedDay.maxGroupSize} travelers per group &middot; {selectedDay.groupsPerSlot} groups per time slot
+                      </p>
+                    )}
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-500">
+                        <span className="font-semibold text-slate-800">{selectedDay.booked}</span>
+                        {selectedDay.capacityUnit === "groups"
+                          ? ` ${selectedDay.booked === 1 ? "group" : "groups"} booked`
+                          : " booked"}
+                      </span>
+                      <span className="font-medium text-emerald-600">
+                        {Math.max(0, selectedDay.capacity - selectedDay.booked)}
+                        {selectedDay.capacityUnit === "groups" ? ` group slot${selectedDay.capacity - selectedDay.booked === 1 ? "" : "s"} remaining` : " remaining"}
+                      </span>
+                    </div>
                     <div className="h-2.5 bg-slate-200 rounded-full overflow-hidden">
                       <div
                         className={`h-full rounded-full transition-all duration-500 ${cfg?.bar || "bg-emerald-400"}`}
-                        style={{ width: `${Math.min((selectedDay.booked / (Number(editCapacity) || 1)) * 100, 100)}%` }}
+                        style={{ width: `${Math.min((selectedDay.booked / (selectedDay.capacity || 1)) * 100, 100)}%` }}
                       />
-                    </div>
-
-                    <div className="flex justify-between text-[10px] text-slate-400">
-                      <span>0</span>
-                      <span>{Math.max(0, (Number(editCapacity) || selectedDay.capacity) - selectedDay.booked)} remaining</span>
-                      <span>{editCapacity || selectedDay.capacity}</span>
                     </div>
                   </div>
                 </div>
               )}
 
               {/* --- Time Slots --- */}
-              {editStatus !== "blocked" && selectedDay.slots?.length > 0 && (
+              {selectedDay.status !== "blocked" && selectedDay.slots?.length > 0 && (
                 <div>
                   <div className="flex items-center gap-1.5 mb-3">
                     <Clock size={12} className="text-slate-400" />
@@ -564,10 +593,21 @@ export default function AvailabilityPage() {
                           <span className="text-sm font-medium text-slate-700">{slot.time}</span>
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <span className={`text-xs font-medium ${slot.booked >= slot.capacity ? "text-red-500" : "text-slate-500"}`}>
-                            {slot.booked}/{slot.capacity}
-                          </span>
-                          <span className="text-[10px] text-slate-400">booked</span>
+                          {selectedDay.capacityUnit === "groups" ? (
+                            <>
+                              <span className={`text-xs font-medium ${(slot.groupsBooked || 0) >= (selectedDay.groupsPerSlot || 0) ? "text-red-500" : "text-slate-500"}`}>
+                                {slot.groupsBooked}/{selectedDay.groupsPerSlot}
+                              </span>
+                              <span className="text-[10px] text-slate-400">groups</span>
+                            </>
+                          ) : (
+                            <>
+                              <span className={`text-xs font-medium ${slot.booked >= slot.capacity ? "text-red-500" : "text-slate-500"}`}>
+                                {slot.booked}/{slot.capacity}
+                              </span>
+                              <span className="text-[10px] text-slate-400">booked</span>
+                            </>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -576,7 +616,7 @@ export default function AvailabilityPage() {
               )}
 
               {/* --- Summary card --- */}
-              {editStatus !== "blocked" && (
+              {selectedDay.status !== "blocked" && (
                 <div className="bg-linear-to-br from-slate-50 to-white rounded-xl p-4 border border-slate-200">
                   <div className="flex items-center gap-1.5 mb-3">
                     <Users size={12} className="text-slate-400" />
@@ -584,9 +624,9 @@ export default function AvailabilityPage() {
                   </div>
                   <div className="grid grid-cols-3 gap-2">
                     {[
-                      { label: "Capacity", value: Number(editCapacity) || selectedDay.capacity, color: "text-slate-900" },
+                      { label: selectedDay.capacityUnit === "groups" ? "Group slots" : "Capacity", value: selectedDay.capacity, color: "text-slate-900" },
                       { label: "Booked", value: selectedDay.booked, color: selectedDay.booked > 0 ? "text-amber-600" : "text-slate-500" },
-                      { label: "Available", value: Math.max(0, (Number(editCapacity) || selectedDay.capacity) - selectedDay.booked), color: "text-emerald-600" },
+                      { label: "Available", value: Math.max(0, selectedDay.capacity - selectedDay.booked), color: "text-emerald-600" },
                     ].map((item) => (
                       <div key={item.label} className="bg-white rounded-lg border border-slate-100 py-2.5 text-center">
                         <p className={`text-lg font-bold ${item.color}`}>{item.value}</p>
@@ -594,53 +634,86 @@ export default function AvailabilityPage() {
                       </div>
                     ))}
                   </div>
+                  {selectedDay.capacityUnit === "groups" && selectedDay.maxGroupSize && (
+                    <p className="text-[11px] text-slate-400 mt-2">Group bookings &middot; up to {selectedDay.maxGroupSize} travelers per group</p>
+                  )}
                 </div>
               )}
 
               {/* --- Override indicator --- */}
               {selectedDay.hasOverride && (
-                <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 rounded-lg border border-amber-200 text-xs text-amber-700">
+                <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs ${selectedDay.status === "blocked" ? "bg-slate-50 border-slate-200 text-slate-600" : "bg-amber-50 border-amber-200 text-amber-700"}`}>
                   <AlertTriangle size={12} className="shrink-0" />
-                  <span>An override is active for this date</span>
+                  <span>{selectedDay.status === "blocked" ? "This date is manually blocked" : "An override is active for this date"}</span>
                 </div>
               )}
             </div>
 
             {/* === PANEL FOOTER === */}
-            <div className="border-t border-slate-100 px-5 py-4 space-y-2 bg-slate-50/50">
-              <button
-                onClick={handleSave}
-                disabled={pending}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-[#044b3b] text-white rounded-xl text-sm font-semibold hover:bg-[#033629] transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {saveMut.isPending ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
-                Save Changes
-              </button>
-
-              <div className="flex gap-2">
-                {selectedDay.hasOverride && (
+            {confirmingBlock ? (
+              <div className="border-t border-slate-100 px-5 py-4 space-y-3 bg-slate-50/50">
+                <div className="flex items-start gap-2.5 bg-red-50 rounded-xl p-3.5 border border-red-100">
+                  <AlertTriangle size={16} className="text-red-500 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-semibold text-slate-800">Block this date?</p>
+                    <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                      While blocked, travelers won't be able to book this date. Only block if you're genuinely
+                      unavailable that day. You can unblock anytime.
+                    </p>
+                    {selectedDay.booked > 0 && (
+                      <p className="text-xs font-medium text-red-600 mt-1.5">
+                        This date has {selectedDay.booked}{" "}
+                        {selectedDay.capacityUnit === "groups" ? "group booking" + (selectedDay.booked === 1 ? "" : "s") : "booking" + (selectedDay.booked === 1 ? "" : "s")}{" "}
+                        and can't be blocked.
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex gap-2">
                   <button
-                    onClick={handleRevert}
+                    onClick={() => setConfirmingBlock(false)}
                     disabled={pending}
                     className="flex-1 flex items-center justify-center gap-2 px-3 py-2 border border-slate-200 bg-white rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-colors disabled:opacity-50 shadow-sm"
                   >
-                    <Undo2 size={13} /> Revert
+                    Cancel
                   </button>
-                )}
-                <button
-                  onClick={handleBlockToggle}
-                  disabled={pending}
-                  className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-colors shadow-sm disabled:opacity-50 ${
-                    editStatus === "blocked"
-                      ? "bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100"
-                      : "bg-white border border-slate-200 text-slate-600 hover:bg-red-50 hover:border-red-200 hover:text-red-600"
-                  }`}
-                >
-                  <Ban size={13} />
-                  {editStatus === "blocked" ? "Unblock Date" : "Block Date"}
-                </button>
+                  <button
+                    onClick={handleBlockConfirm}
+                    disabled={pending || selectedDay.booked > 0}
+                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-red-600 text-white rounded-xl text-sm font-semibold hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                  >
+                    {blockMut.isPending ? <RefreshCw size={14} className="animate-spin" /> : <Ban size={14} />}
+                    Confirm Block
+                  </button>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="border-t border-slate-100 px-5 py-4 space-y-2 bg-slate-50/50">
+                <div className="flex gap-2">
+                  {selectedDay.hasOverride && selectedDay.status !== "blocked" && (
+                    <button
+                      onClick={handleRevert}
+                      disabled={pending}
+                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 border border-slate-200 bg-white rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-colors disabled:opacity-50 shadow-sm"
+                    >
+                      <Undo2 size={13} /> Revert
+                    </button>
+                  )}
+                  <button
+                    onClick={handleBlockAction}
+                    disabled={pending}
+                    className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-colors shadow-sm disabled:opacity-50 ${
+                      selectedDay.status === "blocked"
+                        ? "bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100"
+                        : "bg-white border border-slate-200 text-slate-600 hover:bg-red-50 hover:border-red-200 hover:text-red-600"
+                    }`}
+                  >
+                    <Ban size={13} />
+                    {selectedDay.status === "blocked" ? "Unblock Date" : "Block Date"}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </>
       )}

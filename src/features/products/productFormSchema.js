@@ -26,6 +26,8 @@ export const locationSchema = z.object({
   timeSpent: z.number().nullable().optional(),
   timeSpentUnit: z.enum(['minutes', 'hours']).optional(),
   admissionIncluded: z.enum(['yes', 'no', 'na']).optional(),
+  isDropoff: z.boolean().optional(),
+  isPickup: z.boolean().optional(),
 })
 
 export const locationPointSchema = z.object({
@@ -72,23 +74,6 @@ export const attractionSchema = z.object({
   admissionIncluded: z.enum(['yes', 'no', 'na']),
   lat: z.number().nullable().optional(),
   lng: z.number().nullable().optional(),
-})
-
-export const itineraryEntrySchema = z.object({
-  day: z.number().min(1, 'Day number must be 1 or greater'),
-  time: z.string().min(1, 'Start time is required'),
-  type: z.enum(['activity', 'transfer']),
-  locationName: z.string().optional(),
-  locationAddress: z.string().optional(),
-  locationLat: z.number().nullable().optional(),
-  locationLng: z.number().nullable().optional(),
-  isCustomLocation: z.boolean().optional(),
-  duration: z.number().min(0, 'Duration is required'),
-  durationUnit: z.enum(['minute', 'hour', 'day']),
-  title: z.string().optional(),
-  description: z.string().min(1, 'Description is required').max(2000),
-  isOptional: z.boolean().optional(),
-  additionalFee: z.boolean().optional(),
 })
 
 export const stepSchemas = {
@@ -166,7 +151,7 @@ export const stepSchemas = {
       .optional(),
     voucherInfo: z.string().max(VOUCHER_INFO_MAX_CHARS, `Voucher info must be ${VOUCHER_INFO_MAX_CHARS} characters or fewer`).optional(),
   }),
-  11: z.object({
+  12: z.object({
     photos: z
       .array(z.object({ id: z.string(), url: z.string() }))
       .min(4, 'Upload at least 4 photos'),
@@ -174,12 +159,12 @@ export const stepSchemas = {
       message: 'You must confirm copyright ownership',
     }),
   }),
-  12: z.object({
+  13: z.object({
     options: z
       .array(productOptionSchema)
       .min(1, 'Add at least one option'),
   }),
-  13: z.object({
+  14: z.object({
     meetingMode: z.enum(['meeting_point', 'pickup', 'none']),
     meetingPoint: locationPointSchema.nullable().optional(),
     meetingPointPicture: z.string().optional(),
@@ -200,7 +185,8 @@ export const stepSchemas = {
     dropoffLocation: locationPointSchema.nullable().optional(),
     dropoffDescription: z.string().optional(),
   }),
-   14: z.object({
+   15: z.object({}),
+   16: z.object({
     pricingModel: z.enum(['perPerson', 'perGroup'], {
       errorMap: () => ({ message: 'Select a pricing model' }),
     }),
@@ -317,17 +303,12 @@ export const stepSchemas = {
       ctx.addIssue({ code: 'custom', path: ['minParticipants'], message: 'Min must be less than or equal to max' })
     }
   }),
-  15: z.object({
+  17: z.object({
     cutoffMinutes: z.number().min(1, 'Select a cut-off time'),
     lastMinuteBookings: z.boolean().optional(),
     perSlotCutoff: z.boolean().optional(),
   }),
-  16: z.object({
-    itinerary: z
-      .array(itineraryEntrySchema)
-      .min(1, 'Add at least one itinerary entry'),
-  }),
-  17: z.object({
+  11: z.object({
     cancellationType: z.enum(['standard', 'all_sales_final'], {
       errorMap: () => ({ message: 'Select a cancellation policy' }),
     }),

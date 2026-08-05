@@ -8,7 +8,6 @@ export const FIELD_LABELS = {
   cutoffMinutes: 'Cut-off time',
   lastMinuteBookings: 'Last-minute bookings',
   perSlotCutoff: 'Per-slot cut-off',
-  visitType: 'Visit type',
   difficulty: 'Difficulty level',
   duration: 'Duration',
   durationUnit: 'Duration unit',
@@ -79,7 +78,6 @@ export const FIELD_LABELS = {
   additionalPersonsEnabled: 'Additional persons',
   additionalPersonPrice: 'Additional person price',
   maxGroupsPerTimeSlot: 'Max groups per time slot',
-  itinerary: 'Itinerary',
   cancellationType: 'Cancellation policy',
   supplierCanCancelBadWeather: 'Cancel for bad weather',
   supplierCanCancelNotEnoughTravelers: 'Cancel for not enough travelers',
@@ -94,7 +92,6 @@ const FIELD_STEP_MAP = {
   cutoffMinutes: 15,
   lastMinuteBookings: 15,
   perSlotCutoff: 15,
-  visitType: 16,
   difficulty: 2,
   duration: 2,
   durationUnit: 2,
@@ -162,7 +159,6 @@ const FIELD_STEP_MAP = {
   additionalPersonsEnabled: 13,
   additionalPersonPrice: 13,
   maxGroupsPerTimeSlot: 13,
-  itinerary: 14,
   cancellationType: 17,
   supplierCanCancelBadWeather: 17,
   supplierCanCancelNotEnoughTravelers: 17,
@@ -216,7 +212,6 @@ const SECTION_LABELS = {
   cutoffMinutes: 'Cut-off',
   lastMinuteBookings: 'Last-minute bookings',
   perSlotCutoff: 'Per-slot cut-off',
-  visitType: 'Visit type',
   difficulty: 'Difficulty',
   duration: 'Duration',
   title: 'Title',
@@ -272,7 +267,6 @@ const SECTION_LABELS = {
   minParticipants: 'Availability & Pricing',
   maxParticipants: 'Availability & Pricing',
   pricingTiers: 'Availability & Pricing',
-  itinerary: 'Itinerary',
 }
 
 export function getSectionLabel(fieldKey) {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { normalizeCategoryTiers, normalizePricingCategories } from '../tierUtils'
+import { normalizeCategoryTiers, normalizePricingCategories, rederiveTiersFrom } from '../tierUtils'
 
 describe('normalizeCategoryTiers', () => {
   const mp = 10
@@ -114,5 +114,84 @@ describe('normalizePricingCategories', () => {
   it('returns [] for non-array input', () => {
     expect(normalizePricingCategories(null, 10)).toEqual([])
     expect(normalizePricingCategories(undefined, 10)).toEqual([])
+  })
+})
+
+describe('rederiveTiersFrom', () => {
+  const base = (ranges, ids) =>
+    ranges.map(([from, to], i) => ({ id: ids ? ids[i] : `t${i}`, from, to, pricePerPerson: 100 - i }))
+  const bands = (tiers) => tiers.map((t) => `${t.from}-${t.to}`)
+
+  it('widens the base tier (1-1 -> 1-3) and re-derives the whole chain (max=10)', () => {
+    const tiers = base([[1, 1], [2, 2], [3, 3], [4, 10]])
+    const out = rederiveTiersFrom(tiers, 0, { from: 1, to: 3 }, 10)
+    expect(bands(out)).toEqual(['1-3', '4-4', '5-5', '6-10'])
+  })
+
+  it('re-derives downstream when a middle tier is widened (1-1 / 2-2 -> 2-5) (max=10)', () => {
+    const tiers = base([[1, 1], [2, 2], [3, 3], [4, 10]])
+    const out = rederiveTiersFrom(tiers, 1, { to: 5 }, 10)
+    expect(bands(out)).toEqual(['1-1', '2-5', '6-6', '7-10'])
+  })
+
+  it('extends a middle tier to near max (2-9) and drops the zero-width tail', () => {
+    const tiers = base([[1, 1], [2, 2], [3, 3], [4, 10]])
+    const out = rederiveTiersFrom(tiers, 1, { to: 9 }, 10)
+    expect(bands(out)).toEqual(['1-1', '2-9', '10-10'])
+  })
+
+  it('collapses everything below a base tier widened to max', () => {
+    const tiers = base([[1, 1], [2, 2], [3, 3], [4, 10]])
+    const out = rederiveTiersFrom(tiers, 0, { to: 10 }, 10)
+    expect(bands(out)).toEqual(['1-10'])
+  })
+
+  it('pins a shrunk last tier back to max (4-10 -> 4-10) — no top gap', () => {
+    const tiers = base([[1, 1], [2, 2], [3, 3], [4, 10]])
+    const out = rederiveTiersFrom(tiers, 3, { to: 7 }, 10)
+    expect(bands(out)).toEqual(['1-1', '2-2', '3-3', '4-10'])
+  })
+
+  it('pins a widened last tier to max (2-10 stays 2-10)', () => {
+    const tiers = base([[1, 1], [2, 10]])
+    const out = rederiveTiersFrom(tiers, 1, { to: 6 }, 10)
+    expect(bands(out)).toEqual(['1-1', '2-10'])
+  })
+
+  it('clamps an overshoot to maxParticipants silently (idx0 to=17, max=10)', () => {
+    const tiers = base([[1, 1], [2, 2], [3, 3], [4, 10]])
+    const out = rederiveTiersFrom(tiers, 0, { to: 17 }, 10)
+    expect(bands(out)).toEqual(['1-10'])
+  })
+
+  it('handles the reported edge with max=100 (edit idx0 to=17)', () => {
+    const tiers = base([[1, 1], [2, 2], [3, 15], [16, 10]])
+    const out = rederiveTiersFrom(tiers, 0, { to: 17 }, 100)
+    expect(bands(out)).toEqual(['1-17', '18-18', '19-19', '20-100'])
+  })
+
+  it('treats a cleared `to` (null) as reaching maxParticipants', () => {
+    const tiers = base([[1, 1], [2, 2], [3, 10]])
+    const out = rederiveTiersFrom(tiers, 0, { to: null }, 10)
+    expect(bands(out)).toEqual(['1-10'])
+  })
+
+  it('preserves pricePerPerson and id by slot through re-derivation', () => {
+    const ids = ['a', 'b', 'c', 'd']
+    const tiers = base([[1, 1], [2, 2], [3, 3], [4, 10]], ids)
+    const out = rederiveTiersFrom(tiers, 0, { to: 3 }, 10)
+    expect(out.map((t) => t.id)).toEqual(ids)
+    expect(out.map((t) => t.pricePerPerson)).toEqual([100, 99, 98, 97])
+  })
+
+  it('does not mutate the input tiers', () => {
+    const tiers = base([[1, 1], [2, 2], [3, 10]])
+    const before = JSON.stringify(tiers)
+    rederiveTiersFrom(tiers, 0, { to: 4 }, 10)
+    expect(JSON.stringify(tiers)).toBe(before)
+  })
+
+  it('returns [] for empty tiers', () => {
+    expect(rederiveTiersFrom([], 0, { to: 5 }, 10)).toEqual([])
   })
 })

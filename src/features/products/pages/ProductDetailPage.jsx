@@ -15,7 +15,6 @@ import { fetchTourAvailability } from "@/features/availability/api";
 import StatusBadge from "@/components/shared/StatusBadge";
 import { PRODUCT_STATUSES } from "@/lib/constants";
 import { formatCurrency, formatDate, formatTime, cn } from "@/lib/utils";
-import { normalizeItinerary } from "@/features/products/utils/normalizeItinerary";
 import { getUniqueCities, getLocationSummary } from "@/features/products/utils/getUniqueCities";
 import { transformImage, getSrcSet } from "@/lib/image";
 import DeleteModal from "@/components/ui/DeleteModal";
@@ -53,7 +52,6 @@ const SECTION_EDIT_MAP = {
   "Description": { section: "basics", step: "language-and-title" },
   "What Makes This Unique": { section: "product-content", step: "unique-selling-points" },
   "Highlights": { section: "product-content", step: "tour-details" },
-  "Itinerary": { section: "product-content", step: "tour-details" },
   "What's Included": { section: "product-content", step: "inclusions-exclusions" },
   "What to Bring": { section: "product-content", step: "info-travelers-need" },
   "What to Know": { section: "product-content", step: "info-travelers-need" },
@@ -384,7 +382,7 @@ export default function ProductDetailPage() {
   if (!tour) return null;
 
   const categorization = tour.categorization || {};
-  const content = { ...tour.productContent, itinerary: normalizeItinerary(tour.productContent?.itinerary) };
+  const content = { ...tour.productContent };
   if (content.uniqueSellingPoints && !Array.isArray(content.uniqueSellingPoints)) {
     const val = content.uniqueSellingPoints;
     content.uniqueSellingPoints = (typeof val === 'string' && val.trim()) ? [val.trim()] : [];
@@ -668,90 +666,6 @@ export default function ProductDetailPage() {
                     </li>
                   ))}
                 </ul>
-              </SectionCard>
-            )}
-
-            {/* ITINERARY */}
-            {content.itinerary?.length > 0 && Array.isArray(content.itinerary) && (
-              <SectionCard title="Itinerary" onEdit={() => handleEditSection("Itinerary")}>
-                <div className="relative">
-                  {/* Gradient timeline rail */}
-                  <div className="absolute left-[19px] top-4 bottom-4 w-0.5 bg-linear-to-b from-emerald-300 via-emerald-400 to-emerald-300 rounded-full opacity-70" />
-
-                  <div className="space-y-6">
-                    {content.itinerary.map((item, idx) => {
-                      const prevDay = idx > 0 ? content.itinerary[idx - 1].day : null;
-                      const showDayHeader = item.day && item.day !== prevDay;
-
-                      return (
-                        <motion.div
-                          key={idx}
-                          initial={{ opacity: 0, x: -12 }}
-                          whileInView={{ opacity: 1, x: 0 }}
-                          viewport={{ once: true }}
-                          transition={{ delay: idx * 0.06, duration: 0.3, ease: "easeOut" }}
-                          className="relative pl-[46px]"
-                        >
-                          {/* Timeline dot */}
-                          <div className="absolute left-[13px] top-[7px] z-10">
-                            <div className="w-[13px] h-[13px] rounded-full bg-emerald-500 ring-[3px] ring-emerald-100 shadow-sm" />
-                          </div>
-
-                          {/* Day header - full width */}
-                          {showDayHeader && (
-                            <motion.div
-                              initial={{ opacity: 0, y: -6 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              className="mb-4 -ml-[46px] pl-[46px]"
-                            >
-                              <div className="flex items-center gap-3">
-                                <div className="h-px flex-1 bg-linear-to-r from-emerald-200/60 to-transparent" />
-                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/60 shadow-sm whitespace-nowrap">
-                                  <Calendar size={11} />
-                                  {item.day}
-                                </span>
-                                <div className="h-px flex-1 bg-linear-to-l from-emerald-200/60 to-transparent" />
-                              </div>
-                            </motion.div>
-                          )}
-
-                          {/* Time badge */}
-                          {item.time && (
-                            <div className="mb-2">
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold text-emerald-600 bg-emerald-50 border border-emerald-200/60">
-                                <Clock size={10} />
-                                {item.time}
-                              </span>
-                            </div>
-                          )}
-
-                          {/* Content card */}
-                          <div className={cn(
-                            "rounded-xl border bg-white p-4 transition-all duration-200",
-                            item.title ? "border-slate-100 shadow-sm shadow-slate-900/5" : "border-transparent bg-transparent p-0"
-                          )}>
-                            {(item.title || item.description) && (
-                              <div className="relative pl-3 border-l-2 border-emerald-200/80">
-                                {item.title && (
-                                  <h3 className="text-sm font-semibold text-slate-800 leading-snug">{item.title}</h3>
-                                )}
-                                {item.description && (
-                                  <p className={cn("text-sm text-slate-600 leading-relaxed", item.title && "mt-1.5")}>{item.description}</p>
-                                )}
-                              </div>
-                            )}
-                            {!item.title && !item.description && item.time && (
-                              <span className="text-sm font-medium text-slate-600">{item.time}</span>
-                            )}
-                          </div>
-                        </motion.div>
-                      );
-                    })}
-                  </div>
-
-                  {/* Subtle bottom fade */}
-                  <div className="absolute bottom-0 left-0 right-0 h-6 bg-linear-to-t from-white to-transparent pointer-events-none" />
-                </div>
               </SectionCard>
             )}
 

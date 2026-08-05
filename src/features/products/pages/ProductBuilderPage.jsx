@@ -26,8 +26,8 @@ import Step12Options from '@/features/products/steps/Step12Options'
 import Step13MeetingPoint from '@/features/products/steps/Step13MeetingPoint'
 import Step14PricingAvailability from '@/features/products/steps/Step14PricingAvailability'
 import Step15Cutoff from '@/features/products/steps/Step15Cutoff'
-import Step16Itinerary from '@/features/products/steps/Step16Itinerary'
 import Step17CancellationPolicy from '@/features/products/steps/Step17CancellationPolicy'
+import Step05ItineraryPreview from '@/features/products/steps/Step05ItineraryPreview'
 import { safeId } from '@/lib/utils'
 
 const STEP_COMPONENTS = {
@@ -41,13 +41,13 @@ const STEP_COMPONENTS = {
   8: Step08Transportation,
   9: Step09GuideInfo,
    10: Step11ExtraInfo,
-   11: Step10Photos,
-  12: Step12Options,
-  13: Step13MeetingPoint,
-  14: Step14PricingAvailability,
-  15: Step15Cutoff,
-  16: Step16Itinerary,
-  17: Step17CancellationPolicy,
+   11: Step17CancellationPolicy,
+  12: Step10Photos,
+  13: Step12Options,
+  14: Step13MeetingPoint,
+  15: Step05ItineraryPreview,
+  16: Step14PricingAvailability,
+  17: Step15Cutoff,
 }
 
 const STEP_LABELS = {
@@ -55,19 +55,19 @@ const STEP_LABELS = {
   2: 'Title & Reference Code',
   3: 'Product Category',
   4: 'Descriptions & highlights',
-  5: 'Locations',
+  5: 'Locations & Itinerary',
   6: 'Keywords',
   7: 'Inclusions',
   8: 'Transportation',
   9: 'Guide information',
    10: 'Extra information',
-   11: 'Photos',
-  12: 'Options',
-  13: 'Meeting Point or Pickup',
-  14: 'Pricing & Availability',
-  15: 'Cut-off',
-  16: 'Itinerary',
-  17: 'Cancellation Policy',
+   11: 'Cancellation Policy',
+  12: 'Photos',
+  13: 'Options',
+  14: 'Meeting Point or Pickup',
+  15: 'Itinerary Preview',
+  16: 'Pricing & Availability',
+  17: 'Cut-off',
 }
 
 function getGygStepIndex(sectionId, stepId) {
@@ -124,6 +124,7 @@ function tourToProduct(tour) {
     cutoffMinutes: booking.cutoffMinutes ?? 20,
     lastMinuteBookings: !!booking.lastMinuteBookings,
     perSlotCutoff: !!booking.perSlotCutoff,
+    timezone: booking.timezone || avail.timezone || 'UTC',
     notSuitableFor: content.healthRestrictions || [],
     notAllowed: content.notAllowed || [],
     petFriendly: !!content.petFriendly,
@@ -181,10 +182,6 @@ function tourToProduct(tour) {
     cancellationType: booking.cancellationPolicy?.type || 'standard',
     supplierCanCancelBadWeather: !!booking.cancellationPolicy?.supplierCanCancelBadWeather,
     supplierCanCancelNotEnoughTravelers: !!booking.cancellationPolicy?.supplierCanCancelNotEnoughTravelers,
-    itinerary: Array.isArray(content.itinerary) ? content.itinerary : [],
-    itineraryOverview: content.itineraryOverview || tour.itineraryOverview || '',
-    additionalItineraryInfo: content.additionalItineraryInfo || tour.additionalItineraryInfo || '',
-    dayTitles: content.dayTitles || tour.dayTitles || {},
     pricingModel: td.pricingModel || 'perPerson',
     pricingApproach: td.pricingApproach || 'dependsOnAge',
     uniformPrice: td.uniformPrice ?? (td.pricingApproach === 'sameForEveryone'

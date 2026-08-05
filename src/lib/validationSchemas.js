@@ -161,12 +161,6 @@ export const productBookingRulesSchema = z.object({
 
 export const productContentSchema = z.object({
   content: z.object({
-    itinerary: z.array(z.object({
-      day: z.string().optional(),
-      time: z.string().optional(),
-      title: z.string().optional(),
-      description: z.string().optional(),
-    })).optional(),
     highlights: z.array(z.string()).optional(),
     included: z.array(z.string()).optional(),
     excluded: z.array(z.string()).optional(),

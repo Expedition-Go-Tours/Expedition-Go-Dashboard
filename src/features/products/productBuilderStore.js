@@ -4,6 +4,7 @@ import { safeId } from '@/lib/utils'
 import { GYG_STEPS } from './gygSteps'
 import { isStepComplete } from './stepValidation'
 import { getCountryCallingCode } from 'libphonenumber-js'
+import { rederiveTiersFrom } from './tierUtils'
 
 function getSectionStep(index) {
   const step = GYG_STEPS[index]
@@ -47,6 +48,7 @@ const INITIAL_FORM = {
   cutoffMinutes: 20,
   lastMinuteBookings: false,
   perSlotCutoff: false,
+  timezone: 'UTC',
   notSuitableFor: [],
   notAllowed: [],
   petFriendly: false,
@@ -113,10 +115,6 @@ const INITIAL_FORM = {
   additionalPersonsEnabled: false,
   additionalPersonPrice: null,
   maxGroupsPerTimeSlot: 1,
-  itinerary: [],
-  itineraryOverview: '',
-  additionalItineraryInfo: '',
-  dayTitles: {},
   cutoffHours: 0,
   cancellationType: 'standard',
   supplierCanCancelBadWeather: false,
@@ -130,6 +128,7 @@ const INITIAL_FORM = {
   shipInfoRequired: false,
   trainInfoRequired: false,
   hotelInfoRequired: false,
+  previewFocus: null,
 }
 
 export const useProductBuilderStore = create(
@@ -164,6 +163,9 @@ export const useProductBuilderStore = create(
           }
           return updates
         }),
+
+      setPreviewFocus: (focus) => set({ previewFocus: focus }),
+      clearPreviewFocus: () => set({ previewFocus: null }),
 
       addHighlight: (item) =>
         set((s) => ({ highlights: [...s.highlights, item], isDirty: true })),
@@ -358,55 +360,6 @@ export const useProductBuilderStore = create(
           return { options, isDirty: true }
         }),
 
-      pushItineraryEntry: (entry) =>
-        set((s) => ({
-          itinerary: [...s.itinerary, { ...entry }],
-          isDirty: true,
-        })),
-
-      addItineraryEntry: () =>
-        set((s) => ({
-          itinerary: [
-            ...s.itinerary,
-            { day: 1, time: '09:00', duration: 1, durationUnit: 'hour', title: '', description: '', type: 'activity', visitType: 'visit', locationName: '', locationAddress: '', locationLat: null, locationLng: null, isCustomLocation: false },
-          ],
-          isDirty: true,
-        })),
-
-      addItinerarySegment: (dayNumber) =>
-        set((s) => ({
-          itinerary: [
-            ...s.itinerary,
-            { day: dayNumber, time: '09:00', duration: 1, durationUnit: 'hour', title: '', description: '', type: 'activity', visitType: 'visit', locationName: '', locationAddress: '', locationLat: null, locationLng: null, isCustomLocation: false },
-          ],
-          isDirty: true,
-        })),
-      updateItineraryEntry: (index, updates) =>
-        set((s) => ({
-          itinerary: s.itinerary.map((entry, i) =>
-            i === index ? { ...entry, ...updates } : entry,
-          ),
-          isDirty: true,
-        })),
-      removeItineraryEntry: (index) =>
-        set((s) => ({
-          itinerary: s.itinerary.filter((_, i) => i !== index),
-          isDirty: true,
-        })),
-      reorderItineraryEntry: (from, to) =>
-        set((s) => {
-          const entries = [...s.itinerary]
-          const [removed] = entries.splice(from, 1)
-          entries.splice(to, 0, removed)
-          return { itinerary: entries, isDirty: true }
-        }),
-      insertItineraryEntry: (index, entry) =>
-        set((s) => {
-          const entries = [...s.itinerary]
-          entries.splice(index, 0, { ...entry })
-          return { itinerary: entries, isDirty: true }
-        }),
-
       addPricingCategory: (template) =>
         set((s) => ({
           pricingCategories: [...s.pricingCategories, template || { name: '', price: null, minAge: 1, maxAge: 99, notAllowed: false, ticketNotRequired: false, needsAdult: false, idRequired: false, idType: '', tiers: [] }],
@@ -504,41 +457,14 @@ export const useProductBuilderStore = create(
           const isRangeUpdate = 'from' in updates || 'to' in updates
           
           if (isRangeUpdate) {
+            const maxP = s.maxParticipants ?? 10
             return {
               pricingCategories: s.pricingCategories.map((c) => {
                 const catTiers = c.tiers || []
+                if (!catTiers[tierIndex]) return c
                 return {
                   ...c,
-                  tiers: catTiers.map((t, j) => {
-                    if (j === tierIndex) {
-                      // Update the current tier's range
-                      return {
-                        ...t,
-                        from: merged.from,
-                        to: merged.to,
-                      }
-                    }
-                    
-                    // Cascade: If next tier exists, update its "from" to be current tier's "to" + 1
-                    // (GetYourGuide behavior: maintain sequential continuity)
-                    if (j === tierIndex + 1 && 'to' in updates && merged.to != null) {
-                      return {
-                        ...t,
-                        from: merged.to + 1,
-                      }
-                    }
-                    
-                    // Cascade backwards: If previous tier exists and we're updating "from",
-                    // update previous tier's "to" to be current tier's "from" - 1
-                    if (j === tierIndex - 1 && 'from' in updates && merged.from > 1) {
-                      return {
-                        ...t,
-                        to: merged.from - 1,
-                      }
-                    }
-                    
-                    return t
-                  })
+                  tiers: rederiveTiersFrom(catTiers, tierIndex, updates, maxP),
                 }
               }),
               isDirty: true,
@@ -969,9 +895,16 @@ export const useProductBuilderStore = create(
     }),
     {
       name: 'product-builder-draft',
-      version: 2,
+      version: 3,
       migrate: (persistedState, version) => {
         let state = persistedState
+        if (version < 3) {
+          delete state.itinerary
+          delete state.itineraryOverview
+          delete state.additionalItineraryInfo
+          delete state.dayTitles
+          state = { ...state, currentStep: 0, currentSectionId: 'getting-started', currentStepId: 'language' }
+        }
         if (version < 1) {
           state = {
             ...state,
@@ -1024,6 +957,7 @@ export const useProductBuilderStore = create(
         delete rest._pendingFiles
         delete rest._uploadedUrls
         delete rest.stepErrors
+        delete rest.previewFocus
         return rest
       },
       onRehydrateStorage: () => (state) => {

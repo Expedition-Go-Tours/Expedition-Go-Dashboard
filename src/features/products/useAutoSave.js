@@ -68,6 +68,7 @@ function buildSchedulesAndPricing(state) {
       daysOfWeek: activeDays,
       startDate: schedules.length > 0 ? (schedules[0].startDate || '') : '',
       endDate: schedules.length > 0 && schedules[0].hasEndDate ? (schedules[0].endDate || null) : null,
+      timezone: state.timezone || 'UTC',
     },
   }
 }
@@ -85,13 +86,6 @@ export function buildPayload(state) {
     meetingPoint: normalizeLocationPoint(state.meetingPoint),
     dropoffLocation: normalizeLocationPoint(state.dropoffLocation),
     options: (state.options || []),
-    itinerary: (state.itinerary || [])
-      .map((e) => ({
-        ...e,
-        type: ['activity', 'transfer'].includes(e.type) ? e.type : 'activity',
-        duration: typeof e.duration === 'number' ? e.duration : 1,
-        durationUnit: ['minute', 'hour', 'day'].includes(e.durationUnit) ? e.durationUnit : 'hour',
-      })),
     schedulesAndPricing: buildSchedulesAndPricing(state),
   }
 
@@ -102,7 +96,9 @@ export function buildPayload(state) {
     'hasHydrated', 'lastSaved', 'availableTimeSlots',
     'currentScheduleStep', 'editingScheduleIndex',
     'stepErrors', 'savedProductId',
+    'previewFocus',
     'showAdvancedCategorySettings',
+    'itinerary', 'itineraryOverview', 'additionalItineraryInfo', 'dayTitles',
   ]
   for (const key of omit) delete payload[key]
   if (!payload.copyrightConfirmed) delete payload.copyrightConfirmed

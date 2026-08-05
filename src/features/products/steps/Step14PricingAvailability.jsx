@@ -986,19 +986,10 @@ function PerPersonPriceStep({ errors = {} }) {
                       className="h-9 w-14 rounded-lg border border-slate-200 bg-slate-100 px-2 text-sm text-center text-slate-500 cursor-not-allowed"
                     />
                     <span className="text-xs text-slate-500">to</span>
-                    <input
-                      type="number"
-                      value={tier0.to != null ? tier0.to : (maxParticipants ?? '')}
+                    <DraftNumberInput
                       min={1}
-                      onChange={(e) => {
-                        const raw = e.target.value
-                        if (!raw) {
-                          updateCategoryTier(i, 0, { to: null })
-                        } else {
-                          const newTo = parseInt(raw, 10)
-                          if (!isNaN(newTo)) updateCategoryTier(i, 0, { to: newTo })
-                        }
-                      }}
+                      value={tier0.to != null ? tier0.to : maxParticipants}
+                      onCommit={(v) => updateCategoryTier(i, 0, { to: v })}
                       className="h-9 w-14 rounded-lg border border-slate-200 px-2 text-sm text-center focus:outline-none focus:border-emerald-500"
                     />
                   </div>
@@ -1056,18 +1047,11 @@ function PerPersonPriceStep({ errors = {} }) {
                       className="h-9 w-14 rounded-lg border border-slate-200 bg-slate-100 px-2 text-sm text-center text-slate-500 cursor-not-allowed"
                     />
                     <span className="text-xs text-slate-500">to</span>
-                    <input
-                      type="number"
-                      value={tier.to ?? ''}
-                      onChange={(e) => {
-                        const raw = e.target.value
-                        if (!raw) { updateCategoryTier(i, j, { to: null }); return }
-                        const newTo = parseInt(raw)
-                        if (isNaN(newTo)) return
-                        updateCategoryTier(i, j, { to: newTo })
-                      }}
-                      className="h-9 w-14 rounded-lg border border-slate-200 px-2 text-sm text-center focus:outline-none focus:border-emerald-500"
+                    <DraftNumberInput
                       min={tier.from}
+                      value={tier.to}
+                      onCommit={(v) => updateCategoryTier(i, j, { to: v })}
+                      className="h-9 w-14 rounded-lg border border-slate-200 px-2 text-sm text-center focus:outline-none focus:border-emerald-500"
                     />
                   </div>
                   
@@ -1370,7 +1354,7 @@ export default function Step14PricingAvailability() {
     scheduleType, pricingModel, schedules, groupSizes, pricingCategories, uniformPrice,
     setField, resetScheduleForm,
   } = useProductBuilderStore()
-  const errors = useStepErrors(14)
+  const errors = useStepErrors(16)
   const [showWizard, setShowWizard] = useState(false)
   const [, setEditingIndex] = useState(null)
   const [pricingModelConfirm, setPricingModelConfirm] = useState(null)

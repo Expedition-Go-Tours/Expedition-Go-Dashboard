@@ -105,9 +105,21 @@ function MeetingPointSection({ errors }) {
     meetingPointDescription,
     arrivalTimeType,
     setField,
+    previewFocus,
+    clearPreviewFocus,
   } = useProductBuilderStore()
   const fileInputRef = useRef(null)
   const [showAddressModal, setShowAddressModal] = useState(false)
+
+  useEffect(() => {
+    if (previewFocus?.step === 'meeting-point' && previewFocus.section === 'meeting') {
+      const t = setTimeout(() => {
+        setShowAddressModal(true)
+        clearPreviewFocus()
+      }, 250)
+      return () => clearTimeout(t)
+    }
+  }, [previewFocus, clearPreviewFocus])
 
   const handlePhotoUpload = (e) => {
     const file = e.target.files?.[0]
@@ -257,12 +269,28 @@ function PickupSection({ errors }) {
     addPickupLocation,
     updatePickupLocation,
     removePickupLocation,
+    previewFocus,
+    clearPreviewFocus,
   } = useProductBuilderStore()
 
   const [showAddModal, setShowAddModal] = useState(false)
   const [editingIdx, setEditingIdx] = useState(null)
   const [showAreaMapModal, setShowAreaMapModal] = useState(false)
   const [editingAreaIdx, setEditingAreaIdx] = useState(null)
+
+  useEffect(() => {
+    if (previewFocus?.step === 'meeting-point' && previewFocus.section === 'pickup') {
+      const t = setTimeout(() => {
+        if (pickupType === 'area') {
+          setShowAreaMapModal(true)
+        } else {
+          setShowAddModal(true)
+        }
+        clearPreviewFocus()
+      }, 250)
+      return () => clearTimeout(t)
+    }
+  }, [previewFocus, clearPreviewFocus, pickupType])
 
   const handleAreaSaveLocation = (loc) => {
     if (editingAreaIdx !== null) {
@@ -685,8 +713,20 @@ function DropoffSection({ errors }) {
     dropoffOption,
     dropoffLocation,
     setField,
+    previewFocus,
+    clearPreviewFocus,
   } = useProductBuilderStore()
   const [showDropoffModal, setShowDropoffModal] = useState(false)
+
+  useEffect(() => {
+    if (previewFocus?.step === 'meeting-point' && previewFocus.section === 'dropoff') {
+      const t = setTimeout(() => {
+        setShowDropoffModal(true)
+        clearPreviewFocus()
+      }, 250)
+      return () => clearTimeout(t)
+    }
+  }, [previewFocus, clearPreviewFocus])
 
   const samePlaceLabel = meetingMode === 'pickup'
     ? 'At the same place you picked them up'
@@ -865,7 +905,7 @@ function TransportationSection() {
 
 export default function Step13MeetingPoint() {
   const { meetingMode, setField } = useProductBuilderStore()
-  const errors = useStepErrors(13)
+  const errors = useStepErrors(14)
 
   return (
     <div className="max-w-[720px] space-y-8">
