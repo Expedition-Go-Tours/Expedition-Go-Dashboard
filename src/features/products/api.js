@@ -104,10 +104,13 @@ export const hasVerifiedPayoutMethod = async () => {
 /**
  * Submit a product/tour for admin review (replaces direct publishing)
  * Sets status to PENDING_APPROVAL and notifies the admins.
+ * The full submitted payload is passed so the server persists + validates
+ * exactly what the supplier submitted (no stale stored draft).
  * @param {string} id - Product ID
+ * @param {object} [payload] - Current builder state (buildPayload output)
  * @returns {Promise} Axios response
  */
-export const submitProductForReview = (id) => api.post(`/tours/${id}/submit-for-review`);
+export const submitProductForReview = (id, payload) => api.post(`/tours/${id}/submit-for-review`, payload);
 
 /**
  * Request a new keyword to be added to the pre-approved list

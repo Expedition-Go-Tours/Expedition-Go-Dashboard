@@ -429,10 +429,10 @@ export default function ProductBuilderPage() {
 
   useAutoSave()
 
-  async function handleSave() {
+  async function handleSave({ force = false, skipNavigate = false } = {}) {
     const state = useProductBuilderStore.getState()
 
-    if (!state.isDirty) return
+    if (!force && !state.isDirty) return null
 
     const payload = buildPayload(state)
 
@@ -446,13 +446,15 @@ export default function ProductBuilderPage() {
       if (newId) setStoreSavedProductId(newId)
       state.markSaved()
       state.clearUploadedUrls()
-      if (gygStepNumber === GYG_STEPS.length) {
-        useProductBuilderStore.getState().completeStep(GYG_STEPS[gygStepNumber - 1]?.stepId)
-        navigate('/products')
-      } else if (!savedProductId && newId) {
-        const section = GYG_STEPS[0]?.sectionId
-        const step = GYG_STEPS[0]?.stepId
-        navigate(`/products/build/${newId}?section=${section}&step=${step}`, { replace: true })
+      if (!skipNavigate) {
+        if (gygStepNumber === GYG_STEPS.length) {
+          useProductBuilderStore.getState().completeStep(GYG_STEPS[gygStepNumber - 1]?.stepId)
+          navigate('/products')
+        } else if (!savedProductId && newId) {
+          const section = GYG_STEPS[0]?.sectionId
+          const step = GYG_STEPS[0]?.stepId
+          navigate(`/products/build/${newId}?section=${section}&step=${step}`, { replace: true })
+        }
       }
        return res
     } finally {
@@ -462,17 +464,17 @@ export default function ProductBuilderPage() {
   }
 
   const handleSubmitForReview = async () => {
-    const state = useProductBuilderStore.getState()
-    if (!state.isDirty) {
-      // ensure persisted
-    } else {
-      await handleSave()
-    }
+    // Always persist the CURRENT state before submitting — never skip based on
+    // isDirty (a silently-failed autosave can leave isDirty false while the
+    // stored draft is stale). The submitted payload is passed to the server so
+    // it persists + validates exactly what the supplier sees.
+    await handleSave({ force: true, skipNavigate: true })
     const currentId = useProductBuilderStore.getState().savedProductId
     if (!currentId) {
       throw new Error('Failed to obtain product ID')
     }
-    await submitProductForReview(currentId)
+    const payload = buildPayload(useProductBuilderStore.getState())
+    await submitProductForReview(currentId, payload)
     toast.success('Submit for review successful')
     navigate('/products')
   }

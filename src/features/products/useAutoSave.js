@@ -93,7 +93,7 @@ export function buildPayload(state) {
     '_pendingFiles', '_hasHydrated', '_version', '_uploadedUrls',
     'currentStep', 'currentSectionId', 'currentStepId',
     'completedStepIds', 'isDirty', 'isSaving', 'isSubmitting',
-    'hasHydrated', 'lastSaved', 'availableTimeSlots',
+    'hasHydrated', 'lastSaved', 'autosaveError', 'availableTimeSlots',
     'currentScheduleStep', 'editingScheduleIndex',
     'stepErrors', 'savedProductId',
     'previewFocus',
@@ -137,11 +137,14 @@ export function useAutoSave() {
           const newId = id || res.data?.data?.tour?.id
           if (newId) s.setSavedProductId(newId)
           s.markSaved()
+          s.setAutosaveError(null)
         } catch (err) {
           const status = err?.response?.status
+          const message = err?.response?.data?.message || err?.message || 'Autosave failed'
           if (status >= 400 && status < 500) {
             useProductBuilderStore.getState().markSaved()
           }
+          useProductBuilderStore.getState().setAutosaveError(message)
         } finally {
           savingRef.current = false
           const current = useProductBuilderStore.getState()

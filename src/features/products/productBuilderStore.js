@@ -146,6 +146,7 @@ export const useProductBuilderStore = create(
       isSaving: false,
       isSubmitting: false,
       lastSaved: null,
+      autosaveError: null,
       hasHydrated: false,
       savedProductId: null,
 
@@ -153,7 +154,7 @@ export const useProductBuilderStore = create(
 
       setField: (key, value) =>
         set((s) => {
-          const updates = { [key]: value, isDirty: true }
+          const updates = { [key]: value, isDirty: true, autosaveError: null }
           if (key === 'maxParticipants') {
             updates.pricingCategories = s.pricingCategories.map((c) => {
               const t = c.tiers || []
@@ -828,8 +829,9 @@ export const useProductBuilderStore = create(
       setSaving: (val) => set({ isSaving: val }),
       setSubmitting: (val) => set({ isSubmitting: val }),
       setSavedProductId: (id) => set({ savedProductId: id }),
+      setAutosaveError: (message) => set({ autosaveError: message }),
 
-      markSaved: () => set({ isDirty: false, lastSaved: new Date().toISOString() }),
+      markSaved: () => set({ isDirty: false, lastSaved: new Date().toISOString(), autosaveError: null }),
       completeStep: (stepId) =>
         set((s) => ({
           completedStepIds: [...new Set([...s.completedStepIds, stepId])],
@@ -861,6 +863,7 @@ export const useProductBuilderStore = create(
           dateExceptions: [],
           stepErrors: {},
           isDirty: false,
+          autosaveError: null,
         })
       },
 
@@ -887,6 +890,7 @@ export const useProductBuilderStore = create(
           stepErrors: {},
           isDirty: false,
           isSaving: false,
+          autosaveError: null,
           isSubmitting: false,
           lastSaved: null,
           savedProductId: null,

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Loader2 } from 'lucide-react'
 import { validateStep } from './stepValidation'
 import { useProductBuilderStore } from './productBuilderStore'
 import { scrollToField, getFieldLabel } from './fieldLabels'
@@ -13,6 +14,7 @@ export default function WizardNavFooter({ currentStep, totalSteps, onBack, onNex
   const stepErrors = useProductBuilderStore((s) => s.stepErrors)
   const isSaving = useProductBuilderStore((s) => s.isSaving)
   const lastSaved = useProductBuilderStore((s) => s.lastSaved)
+  const autosaveError = useProductBuilderStore((s) => s.autosaveError)
   const [savedText, setSavedText] = useState('')
 
   useEffect(() => {
@@ -136,7 +138,10 @@ export default function WizardNavFooter({ currentStep, totalSteps, onBack, onNex
             </p>
           </div>
         )}
-        {!saving && !hasDisplayErrors && savedText && (
+        {!saving && !hasDisplayErrors && autosaveError && (
+          <span className="text-xs text-red-600 font-semibold max-w-[420px] text-center">{autosaveError}</span>
+        )}
+        {!saving && !hasDisplayErrors && !autosaveError && savedText && (
           <span className="text-xs text-emerald-600 font-semibold animate-[fadeIn_0.2s_ease]">{savedText}</span>
         )}
       </div>
