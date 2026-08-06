@@ -34,8 +34,8 @@ function reorderPhotos(tour) {
   return [coverPhoto, ...rest];
 }
 
-const getCloudinaryUrl = (url, w = 400, h = 300) => transformImage(url, { width: w, height: h, crop: 'fill' });
-const getCloudinaryHero = (url) => transformImage(url, { width: 2400, height: 1200, crop: 'fill' });
+const getCloudinaryUrl = (url) => transformImage(url);
+const getCloudinaryHero = (url) => transformImage(url);
 
 function formatDuration(duration) {
   const parts = [];

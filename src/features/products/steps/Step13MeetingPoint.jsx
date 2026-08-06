@@ -143,7 +143,18 @@ function MeetingPointSection({ errors }) {
           Add address
         </button>
         {meetingPoint?.address && (
-          <p className="text-sm text-slate-600 mt-2">{meetingPoint.address}</p>
+          <div className="flex items-center justify-between gap-3 mt-2 p-3 rounded-lg border border-slate-200 bg-white">
+            <p className="text-sm text-slate-600 flex-1">{meetingPoint.address}</p>
+            <button
+              type="button"
+              onClick={() => setField('meetingPoint', null)}
+              className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+              title="Remove meeting point address"
+              aria-label="Remove meeting point address"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         )}
         {errors.meetingPoint && <span className="text-[13px] text-red-600 font-medium mt-1 block">{errors.meetingPoint[0]}</span>}
       </div>
@@ -782,7 +793,18 @@ function DropoffSection({ errors }) {
             Add address
           </button>
           {dropoffLocation?.address && (
-            <p className="text-sm text-slate-600 mt-2">{dropoffLocation.address}</p>
+            <div className="flex items-center justify-between gap-3 mt-2 p-3 rounded-lg border border-slate-200 bg-white">
+              <p className="text-sm text-slate-600 flex-1">{dropoffLocation.address}</p>
+              <button
+                type="button"
+                onClick={() => setField('dropoffLocation', null)}
+                className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                title="Remove drop-off address"
+                aria-label="Remove drop-off address"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
           )}
           {errors.dropoffLocation && <span className="text-[13px] text-red-600 font-medium mt-1">{errors.dropoffLocation[0]}</span>}
         </div>

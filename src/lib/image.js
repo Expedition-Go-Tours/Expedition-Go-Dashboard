@@ -1,5 +1,5 @@
-export function optimizeImage(urlOrObj, displaySize = 40) {
-  return transformImage(urlOrObj, { width: displaySize * 2 });
+export function optimizeImage(urlOrObj) {
+  return transformImage(urlOrObj);
 }
 
 export function transformImage(urlOrObj, opts = {}) {

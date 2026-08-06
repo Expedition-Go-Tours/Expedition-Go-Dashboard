@@ -190,7 +190,7 @@ export default function ProductsListPage() {
   const getPhotoSrc = useCallback((product) => {
     const url = product.coverPhoto || product.photos?.find((p) => p);
     if (!url) return null;
-    return transformImage(url, { width: 560, height: 420, crop: 'fill' });
+    return transformImage(url);
   }, []);
 
   const stats = useMemo(() => {

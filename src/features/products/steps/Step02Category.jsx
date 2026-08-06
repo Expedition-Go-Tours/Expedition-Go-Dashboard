@@ -322,7 +322,7 @@ export default function Step02Category() {
           Difficulty level
         </label>
         <div className="flex gap-2">
-          {['easy', 'moderate', 'hard', 'challenging'].map((level) => (
+          {['easy', 'moderate', 'challenging', 'extreme'].map((level) => (
             <button
               key={level}
               type="button"
