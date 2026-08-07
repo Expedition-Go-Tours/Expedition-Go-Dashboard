@@ -1,15 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Info, X, Clock } from 'lucide-react'
 import { useProductBuilderStore } from '@/features/products/productBuilderStore'
 import { useStepErrors } from '@/features/products/useStepErrors'
-
-// Matches GetYourGuide's cut-off options: every 5 minutes for the first hour,
-// then fixed hours up to 10. 90 is kept for legacy tours that saved it before
-// the grid was tightened.
-const CUTOFF_OPTIONS = [
-  { group: 'Minutes', items: [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 90] },
-  { group: 'Hours', items: [120, 180, 240, 300, 360, 420, 480, 540, 600] },
-]
+import { formatCutoffLabel, cutoffInstant } from '@/features/products/cutoffOptions'
+import { CutoffSelect } from '@/features/products/CutoffSelect'
+import OptionPicker from '@/features/products/OptionPicker'
 
 const TIMEZONE_OPTIONS = [
   { value: 'UTC', label: 'UTC (Coordinated Universal Time)' },
@@ -57,50 +52,8 @@ const TIMEZONE_OPTIONS = [
   { value: 'Pacific/Auckland', label: 'New Zealand (UTC+12/+13)' },
 ]
 
-function formatCutoffLabel(minutes) {
-  if (minutes % 60 === 0) {
-    const h = minutes / 60
-    return `${h} ${h === 1 ? 'Hour' : 'Hours'}`
-  }
-  const h = Math.floor(minutes / 60)
-  const m = minutes % 60
-  if (h === 0) return `${m} Minutes`
-  return `${h} ${h === 1 ? 'Hour' : 'Hours'} ${m} Minutes`
-}
-
 function slotTimeKey(startTime) {
   return typeof startTime === 'string' ? startTime : ''
-}
-
-// When does a slot stop accepting bookings? GYG's built-in guidance shows the
-// wall-clock instant: slot start minus the cut-off. Cut-offs can't exceed 10h,
-// so a wrap only ever lands on the previous day.
-function cutoffInstant(startTime, cutoffMinutes) {
-  const [hh, mm] = (startTime || '00:00').split(':').map(Number)
-  if (!Number.isFinite(hh) || !Number.isFinite(mm)) return ''
-  const total = hh * 60 + mm - Number(cutoffMinutes)
-  const wrapped = ((total % 1440) + 1440) % 1440
-  const h = String(Math.floor(wrapped / 60)).padStart(2, '0')
-  const m = String(wrapped % 60).padStart(2, '0')
-  return `${h}:${m}${total < 0 ? ' (previous day)' : ''}`
-}
-
-function CutoffSelect({ value, onChange }) {
-  return (
-    <select
-      value={value}
-      onChange={(e) => onChange(Number(e.target.value))}
-      className="w-full min-h-[42px] rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
-    >
-      {CUTOFF_OPTIONS.map((group) => (
-        <optgroup key={group.group} label={group.group}>
-          {group.items.map((mins) => (
-            <option key={mins} value={mins}>{formatCutoffLabel(mins)}</option>
-          ))}
-        </optgroup>
-      ))}
-    </select>
-  )
 }
 
 export default function Step15Cutoff() {
@@ -110,11 +63,20 @@ export default function Step15Cutoff() {
   const perSlotCutoffs = useProductBuilderStore((s) => s.perSlotCutoffs)
   const timeSlots = useProductBuilderStore((s) => s.timeSlots)
   const scheduleType = useProductBuilderStore((s) => s.scheduleType)
+  const operatingHoursEnd = useProductBuilderStore((s) => s.operatingHoursEnd)
   const timezone = useProductBuilderStore((s) => s.timezone)
   const setField = useProductBuilderStore((s) => s.setField)
   const errors = useStepErrors(17)
 
   const [showBanner, setShowBanner] = useState(true)
+
+  useEffect(() => {
+    const s = useProductBuilderStore.getState()
+    if (Array.isArray(s.options) && s.options.length > 0 &&
+        !s.options.some((o) => o.id === s.selectedOptionId)) {
+      s.selectOption(s.options[0].id)
+    }
+  }, [])
 
   const isFixedTimeSlot = scheduleType === 'fixedTimeSlot'
   const hasTimeSlots = Array.isArray(timeSlots) && timeSlots.length > 0
@@ -136,6 +98,12 @@ export default function Step15Cutoff() {
           <a href="#" className="text-blue-600 hover:underline font-medium">Learn more</a>
         </p>
       </div>
+
+      {/* Active option */}
+      <OptionPicker
+        label="Which option are you configuring?"
+        helpText="Cut-off times are set per option. Switching options keeps each option's settings separate."
+      />
 
       {/* Tour timezone */}
       <div data-field="timezone">
@@ -162,9 +130,20 @@ export default function Step15Cutoff() {
           How far in advance do you stop accepting new bookings? This is your default cut-off time.
         </label>
         <CutoffSelect value={cutoffMinutes} onChange={(v) => setField('cutoffMinutes', v)} />
-        <p className="text-[13px] text-slate-400 mt-1.5">
-          Example: When the activity start time is 10:00, bookings will be stopped at {formatCutoffLabel(cutoffMinutes).toLowerCase()} before.
-        </p>
+        {isFixedTimeSlot ? (
+          <p className="text-[13px] text-slate-400 mt-1.5">
+            Example: When the activity start time is 10:00, bookings will be stopped{' '}
+            {formatCutoffLabel(cutoffMinutes).toLowerCase()} before — at{' '}
+            <span className="font-medium text-slate-600">{cutoffInstant('10:00', cutoffMinutes)}</span>.
+          </p>
+        ) : (
+          <p className="text-[13px] text-slate-400 mt-1.5">
+            Example: When your operating hours end at <span className="font-medium text-slate-600">{operatingHoursEnd || '17:00'}</span>,
+            bookings will be stopped {formatCutoffLabel(cutoffMinutes).toLowerCase()} before — at{' '}
+            <span className="font-medium text-slate-600">{cutoffInstant(operatingHoursEnd || '17:00', cutoffMinutes)}</span>. The
+            cut-off is measured from the <span className="font-medium text-slate-600">end</span> of your operating window.
+          </p>
+        )}
         {errors.cutoffMinutes && <span className="text-[13px] text-red-600 font-medium mt-1">{errors.cutoffMinutes[0]}</span>}
       </div>
 

@@ -188,8 +188,16 @@ export default function Step02Category() {
   const difficulty = useProductBuilderStore((s) => s.difficulty)
   const duration = useProductBuilderStore((s) => s.duration)
   const durationUnit = useProductBuilderStore((s) => s.durationUnit)
+  const accommodationIncluded = useProductBuilderStore((s) => s.accommodationIncluded)
   const setField = useProductBuilderStore((s) => s.setField)
-  const errors = useStepErrors(2)
+  const clearStepErrors = useProductBuilderStore((s) => s.clearStepErrors)
+  const errors = useStepErrors(3)
+
+  // Determine if accommodation field should show (duration >= 24 hours)
+  const durationInHours = durationUnit === 'days' ? (duration || 0) * 24
+    : durationUnit === 'hours' ? (duration || 0)
+    : (duration || 0) / 60
+  const showAccommodation = durationInHours >= 24
 
   function addActivity(item) {
     setField('activitiesIncluded', [...activitiesIncluded, item])
@@ -374,6 +382,40 @@ export default function Step02Category() {
           </div>
         </div>
       </div>
+
+      {/* Accommodation Included - show when duration >= 24 hours */}
+      {showAccommodation && (
+        <div className="mb-5" data-field="accommodationIncluded">
+          <label className="block text-sm font-semibold mb-2 text-slate-800">
+            Is accommodation included? <span className="text-red-500">*</span>
+          </label>
+          <div className="flex bg-slate-100 rounded-lg p-0.5 w-fit">
+            <button
+              type="button"
+              onClick={() => { setField('accommodationIncluded', false); clearStepErrors(3); }}
+              className={`px-5 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer border-0 ${
+                !accommodationIncluded
+                  ? 'bg-white text-slate-800 shadow-sm'
+                  : 'bg-transparent text-slate-400 hover:text-slate-600'
+              }`}
+            >
+              No
+            </button>
+            <button
+              type="button"
+              onClick={() => { setField('accommodationIncluded', true); clearStepErrors(3); }}
+              className={`px-5 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer border-0 ${
+                accommodationIncluded
+                  ? 'bg-white text-slate-800 shadow-sm'
+                  : 'bg-transparent text-slate-400 hover:text-slate-600'
+              }`}
+            >
+              Yes
+            </button>
+          </div>
+          {errors.accommodationIncluded && <span className="text-[13px] text-red-600 font-medium mt-1">{errors.accommodationIncluded[0]}</span>}
+        </div>
+      )}
     </div>
   )
 }

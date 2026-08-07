@@ -110,7 +110,9 @@ export const hasVerifiedPayoutMethod = async () => {
  * @param {object} [payload] - Current builder state (buildPayload output)
  * @returns {Promise} Axios response
  */
-export const submitProductForReview = (id, payload) => api.post(`/tours/${id}/submit-for-review`, payload);
+export const submitProductForReview = (id, payload) => {
+  return api.post(`/tours/${id}/submit-for-review`, payload);
+};
 
 /**
  * Withdraw a pending submission so the supplier can edit again.

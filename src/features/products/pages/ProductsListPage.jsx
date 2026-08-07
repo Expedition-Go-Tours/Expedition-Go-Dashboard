@@ -320,7 +320,7 @@ export default function ProductsListPage() {
               </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Statuses</SelectItem>
-              {["ACTIVE", "DRAFT", "PENDING_APPROVAL", "REJECTED", "INACTIVE", "PAUSED", "ARCHIVED"].map((s) => (
+              {["ACTIVE", "DRAFT", "PENDING_APPROVAL", "REJECTED", "FLAGGED", "INACTIVE", "PAUSED", "ARCHIVED"].map((s) => (
                 <SelectItem key={s} value={s}>{s.replace(/_/g, " ")}</SelectItem>
               ))}
             </SelectContent>

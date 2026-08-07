@@ -609,7 +609,7 @@ export default function ProductDetailPage() {
             </div>
           </div>
 
-          {tour.status === "REJECTED" && (
+          {(tour.status === "REJECTED" || tour.status === "FLAGGED" || (tour.status === "ACTIVE" && tour.draftStatus === "REJECTED")) && (
             <div className="mt-5 flex items-start gap-3 bg-rose-50 border border-rose-200 rounded-xl px-4 py-3.5">
               <AlertCircle size={17} className="text-rose-500 mt-0.5 shrink-0" />
               <div className="flex-1">

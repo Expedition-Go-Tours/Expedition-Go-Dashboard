@@ -36,6 +36,8 @@ import {
   removeDateOverride,
 } from "@/features/availability/api";
 import LoadingSpinner from "@/components/shared/LoadingSpinner";
+import { CutoffSelect } from "@/features/products/CutoffSelect";
+import { cutoffInstant, formatCutoffLabel } from "@/features/products/cutoffOptions";
 import {
   Select,
   SelectTrigger,
@@ -87,8 +89,11 @@ export default function AvailabilityPage() {
   const panelTimer = useRef(null);
   const [confirmingBlock, setConfirmingBlock] = useState(false);
   const [capacityDraft, setCapacityDraft] = useState("");
+  const [slotCutoffDrafts, setSlotCutoffDrafts] = useState({});
+  const [defaultCutoffDraft, setDefaultCutoffDraft] = useState(20);
   const [statusFilter, setStatusFilter] = useState({ available: true, limited: true, full: true, blocked: true, past: true });
   const [dateMode, setDateMode] = useState("month");
+  const [selectedOption, setSelectedOption] = useState("");
 
   const range = useMemo(() => {
     if (dateMode === "week") {
@@ -116,6 +121,7 @@ export default function AvailabilityPage() {
 
   const handleTourChange = (val) => {
     setSelectedTour(val);
+    setSelectedOption("");
     syncUrl(val, currentDate);
     closePanel();
   };
@@ -132,7 +138,12 @@ export default function AvailabilityPage() {
       const res = await listMyProducts({ limit: 100 });
       return res.data?.data?.tours || [];
     },
-    select: (t) => t.map((x) => ({ id: x.id, title: x.title, status: x.status })),
+    select: (t) => t.map((x) => ({
+      id: x.id,
+      title: x.title,
+      status: x.status,
+      options: x.productContent?.options || x.options || [],
+    })),
   });
 
   const tours = toursData || [];
@@ -141,9 +152,14 @@ export default function AvailabilityPage() {
   // so resolve to the selected tour only when it actually exists in the list.
   const tourId = validSelected ? selectedTour : (tours.length > 0 ? tours[0].id : null);
 
+  const activeTour = tours.find((t) => t.id === tourId) || null;
+  const tourOptions = Array.isArray(activeTour?.options) ? activeTour.options : [];
+  const showOptionPicker = tourOptions.length > 1;
+  const optionId = showOptionPicker && selectedOption ? selectedOption : "";
+
   const { data: availData, isLoading: availLoading, isError: availError, refetch: refetchAvail } = useQuery({
-    queryKey: ["tour-availability", tourId, range.start, range.end],
-    queryFn: () => fetchTourAvailability(tourId, range.start, range.end),
+    queryKey: ["tour-availability", tourId, range.start, range.end, optionId],
+    queryFn: () => fetchTourAvailability(tourId, range.start, range.end, optionId || undefined),
     enabled: !!tourId,
   });
 
@@ -201,15 +217,50 @@ export default function AvailabilityPage() {
     onError: (e) => { toast.error(e.response?.data?.message || "Failed to update day limit"); },
   });
 
+  const slotCutoffMut = useMutation({
+    mutationFn: ({ tourId, date, slotCutoffs, cutoffMinutes }) =>
+      updateDateAvailability(tourId, date, { slotCutoffs, cutoffMinutes }),
+    onSuccess: (_, vars) => {
+      toast.success(vars.slotCutoffs && Object.keys(vars.slotCutoffs).length > 0 ? "Cut-off times updated" : "Default cut-off updated");
+      queryClient.invalidateQueries({ queryKey: ["tour-availability", tourId] });
+    },
+    onError: (e) => { toast.error(e.response?.data?.message || "Failed to update cut-off times"); },
+  });
+
   const openPanel = useCallback((date) => {
     setSelectedDate(date);
     setConfirmingBlock(false);
     const day = getDay(date);
     setCapacityDraft(String(day.overrideCapacity ?? day.capacity ?? ""));
+    const base = day.cutoffMinutes ?? 20;
+    const drafts = {};
+    (day.slots || []).forEach((s) => { drafts[s.time] = s.cutoffMinutes ?? base; });
+    setDefaultCutoffDraft(base);
+    setSlotCutoffDrafts(drafts);
     if (panelOpen) return;
     setPanelOpen(true);
     requestAnimationFrame(() => requestAnimationFrame(() => setPanelVisible(true)));
   }, [panelOpen, getDay]);
+
+  const handleSlotCutoffChange = (time, minutes) =>
+    setSlotCutoffDrafts((prev) => ({ ...prev, [time]: minutes }));
+
+  const handleApplyDefaultToAllSlots = () =>
+    setSlotCutoffDrafts((prev) => {
+      const next = {};
+      Object.keys(prev).forEach((t) => { next[t] = defaultCutoffDraft; });
+      return next;
+    });
+
+  const handleSaveSlotCutoffs = () => {
+    if (!selectedDate || !tourId) return;
+    slotCutoffMut.mutate({
+      tourId,
+      date: format(selectedDate, "yyyy-MM-dd"),
+      slotCutoffs: slotCutoffDrafts,
+      cutoffMinutes: defaultCutoffDraft,
+    });
+  };
 
   const handleRevert = () => {
     if (!selectedDate || !tourId) return;
@@ -265,6 +316,13 @@ export default function AvailabilityPage() {
 
   const effectiveCapacity = selectedDay ? (selectedDay.overrideCapacity ?? selectedDay.capacity) : 0;
   const capacityDirty = !!selectedDay && String(capacityDraft).trim() !== "" && Number(capacityDraft) !== effectiveCapacity;
+
+  const slotCutoffsDirty = useMemo(() => {
+    if (!selectedDay || !selectedDay.slots?.length) return false;
+    const base = selectedDay.cutoffMinutes ?? 20;
+    if (defaultCutoffDraft !== base) return true;
+    return selectedDay.slots.some((s) => (slotCutoffDrafts[s.time] ?? base) !== (s.cutoffMinutes ?? base));
+  }, [selectedDay, slotCutoffDrafts, defaultCutoffDraft]);
 
   const padStart = dateMode === "month" ? startOfMonth(currentDate).getDay() : 0;
 
@@ -329,6 +387,24 @@ export default function AvailabilityPage() {
             </SelectContent>
           </Select>
         </div>
+
+        {showOptionPicker && (
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <Select value={optionId || "all"} onValueChange={(v) => setSelectedOption(v === "all" ? "" : v)}>
+              <SelectTrigger className="flex-1 min-w-0 px-3 text-sm text-slate-700">
+                <SelectValue placeholder="All options" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All options</SelectItem>
+                {tourOptions.map((o, i) => (
+                  <SelectItem key={o.id || i} value={o.id}>
+                    {o.title || `Option ${i + 1}`}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         <div className="flex items-center gap-2 flex-wrap">
           <div className="flex items-center bg-slate-100 rounded-lg p-0.5 gap-0">
@@ -670,6 +746,61 @@ export default function AvailabilityPage() {
                         </div>
                       </div>
                     ))}
+                  </div>
+                </div>
+              )}
+
+              {/* --- Cut-off times (per-slot overrides) --- */}
+              {selectedDay.status !== "blocked" && selectedDay.slots?.length > 0 && (
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-1.5">
+                      <Clock size={12} className="text-slate-400" />
+                      <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Cut-off times</p>
+                    </div>
+                    {slotCutoffsDirty && (
+                      <button
+                        onClick={handleSaveSlotCutoffs}
+                        disabled={slotCutoffMut.isPending}
+                        className="shrink-0 px-2.5 py-1 text-[11px] font-semibold text-white bg-[#044b3b] rounded-md hover:bg-[#033629] disabled:opacity-40 transition-colors"
+                      >
+                        {slotCutoffMut.isPending ? "Saving…" : "Save"}
+                      </button>
+                    )}
+                  </div>
+                  <div className="bg-slate-50 rounded-xl border border-slate-200 p-3.5 space-y-3">
+                    {selectedDay.slots.map((slot) => {
+                      const value = slotCutoffDrafts[slot.time] ?? defaultCutoffDraft;
+                      return (
+                        <div key={slot.time} className="flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-xs font-semibold text-slate-700">{slot.time}</p>
+                            <p className="text-[11px] text-slate-400 mt-0.5">
+                              {formatCutoffLabel(value)} &middot; bookings close at {cutoffInstant(slot.time, value)}
+                            </p>
+                          </div>
+                          <div className="w-32 shrink-0">
+                            <CutoffSelect value={value} onChange={(v) => handleSlotCutoffChange(slot.time, v)} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                    <div className="flex items-center justify-between gap-3 pt-3 border-t border-slate-200">
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-slate-700">Default for this day</p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">Used by any slot without its own cut-off</p>
+                      </div>
+                      <div className="w-32 shrink-0">
+                        <CutoffSelect value={defaultCutoffDraft} onChange={setDefaultCutoffDraft} />
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleApplyDefaultToAllSlots}
+                      className="text-xs font-medium text-emerald-700 hover:text-emerald-800 transition-colors"
+                    >
+                      Apply default to all slots
+                    </button>
                   </div>
                 </div>
               )}

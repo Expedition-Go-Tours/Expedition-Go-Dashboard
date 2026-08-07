@@ -8,6 +8,7 @@ import { getMyProduct, getTourDraft, createProduct, updateProduct, submitProduct
 import { buildPayload, useAutoSave } from '@/features/products/useAutoSave'
 import { GYG_STEPS } from '@/features/products/gygSteps'
 import { normalizePricingCategories } from '@/features/products/tierUtils'
+import { hasAnyWeeklyHours } from '@/features/products/utils/pricingValidation'
 import ErrorBoundary from '@/components/shared/ErrorBoundary'
 import WizardSidebar from '@/features/products/WizardSidebar'
 import WizardNavFooter from '@/features/products/WizardNavFooter'
@@ -200,36 +201,45 @@ function tourToProduct(tour) {
     additionalPersonPrice: td.additionalPersonPrice ?? null,
     maxGroupsPerTimeSlot: td.maxGroupsPerTimeSlot ?? 1,
     currency: ps.currency || 'USD',
-    scheduleType: avail.scheduleType || 'fixedTimeSlot',
-    weeklySchedule: avail.weeklySchedule || { Monday: [], Tuesday: [], Wednesday: [], Thursday: [], Friday: [], Saturday: [], Sunday: [] },
-    scheduleName: schedule.name || '',
-    scheduleStartDate: schedule.startDate || '',
-    scheduleHasEndDate: !!schedule.hasEndDate,
-    scheduleEndDate: schedule.hasEndDate ? (schedule.endDate || '') : '',
-    timeSlots: Array.isArray(schedule.timeSlots) ? schedule.timeSlots : [],
+     scheduleType: avail.scheduleType || 'fixedTimeSlot',
+     weeklySchedule: hasAnyWeeklyHours(avail.weeklySchedule)
+       ? avail.weeklySchedule
+       : (hasAnyWeeklyHours(schedule.weeklySchedule) ? schedule.weeklySchedule : (avail.weeklySchedule || { Monday: [], Tuesday: [], Wednesday: [], Thursday: [], Friday: [], Saturday: [], Sunday: [] })),
+     scheduleName: schedule.name || '',
+     scheduleStartDate: schedule.startDate || '',
+     scheduleHasEndDate: !!schedule.hasEndDate,
+     scheduleEndDate: schedule.hasEndDate ? (schedule.endDate || '') : '',
+     timeSlots: (Array.isArray(schedule.timeSlots) && schedule.timeSlots.length > 0)
+       ? schedule.timeSlots
+       : (Array.isArray(avail.timeSlots) && avail.timeSlots.length > 0 ? avail.timeSlots : []),
     operatingHoursStart: avail.operatingHoursStart || '09:00',
     operatingHoursEnd: avail.operatingHoursEnd || '17:00',
     dateExceptions: Array.isArray(schedule.dateExceptions) ? schedule.dateExceptions : [],
     schedules: (Array.isArray(ps.schedules) && ps.schedules.length > 0)
       ? ps.schedules.map((sched) => ({
           name: sched.name || '',
-          type: avail.scheduleType || 'fixedTimeSlot',
+          type: sched.type || avail.scheduleType || 'fixedTimeSlot',
           startDate: sched.startDate || '',
           hasEndDate: !!sched.hasEndDate,
           endDate: sched.hasEndDate ? (sched.endDate || '') : '',
-          weeklySchedule: avail.weeklySchedule || { Monday: [], Tuesday: [], Wednesday: [], Thursday: [], Friday: [], Saturday: [], Sunday: [] },
+          weeklySchedule: sched.weeklySchedule || avail.weeklySchedule || { Monday: [], Tuesday: [], Wednesday: [], Thursday: [], Friday: [], Saturday: [], Sunday: [] },
           dateExceptions: Array.isArray(sched.dateExceptions) ? sched.dateExceptions : [],
-          pricingModel: td.pricingModel || 'perPerson',
-          currency: ps.currency || 'USD',
-          pricingApproach: td.pricingApproach || 'dependsOnAge',
-          uniformPrice: td.uniformPrice ?? null,
-          pricingCategories: (Array.isArray(td.pricingCategories) && td.pricingCategories.length > 0)
-            ? normalizePricingCategories(td.pricingCategories, td.maxParticipants ?? 10)
-            : (Array.isArray(td.ageGroups) && td.ageGroups.length > 0)
-              ? normalizePricingCategories(td.ageGroups, td.maxParticipants ?? 10)
-              : [{ name: 'Adult', price: null, minAge: 13, maxAge: 99, notAllowed: false, ticketNotRequired: false, needsAdult: false, idRequired: false, idType: '', tiers: [] }],
-          minParticipants: td.minParticipants ?? 1,
-          maxParticipants: td.maxParticipants ?? 10,
+          timeSlots: Array.isArray(sched.timeSlots)
+            ? sched.timeSlots.map((t) => (typeof t === 'string' ? { id: safeId(), startTime: t } : t))
+            : [],
+          pricingModel: sched.pricingModel || td.pricingModel || 'perPerson',
+          currency: sched.currency || ps.currency || 'USD',
+          pricingApproach: sched.pricingApproach || td.pricingApproach || 'dependsOnAge',
+          uniformPrice: sched.uniformPrice ?? td.uniformPrice ?? null,
+          pricingCategories: (Array.isArray(sched.pricingCategories) && sched.pricingCategories.length > 0)
+            ? normalizePricingCategories(sched.pricingCategories, sched.maxParticipants ?? td.maxParticipants ?? 10)
+            : (Array.isArray(td.pricingCategories) && td.pricingCategories.length > 0)
+              ? normalizePricingCategories(td.pricingCategories, td.maxParticipants ?? 10)
+              : (Array.isArray(td.ageGroups) && td.ageGroups.length > 0)
+                ? normalizePricingCategories(td.ageGroups, td.maxParticipants ?? 10)
+                : [{ name: 'Adult', price: null, minAge: 13, maxAge: 99, notAllowed: false, ticketNotRequired: false, needsAdult: false, idRequired: false, idType: '', tiers: [] }],
+          minParticipants: sched.minParticipants ?? td.minParticipants ?? 1,
+          maxParticipants: sched.maxParticipants ?? td.maxParticipants ?? 10,
         }))
       : [],
     contactPhone: content.contactPhone || null,
@@ -406,7 +416,10 @@ export default function ProductBuilderPage() {
         if (cancelled || usedDraft) return
         // No pending draft — a NEW tour awaiting approval has status
         // PENDING_APPROVAL (no draft row), which must still lock editing.
-        const effectiveDraftStatus = tour.draftStatus || (tour.status === 'PENDING_APPROVAL' ? 'PENDING_APPROVAL' : null)
+        // A FLAGGED tour (no draft row) is editable and shows the review note.
+        const effectiveDraftStatus = tour.draftStatus
+          || (tour.status === 'PENDING_APPROVAL' ? 'PENDING_APPROVAL' : null)
+          || (tour.status === 'FLAGGED' ? 'REJECTED' : null)
         if (effectiveDraftStatus) {
           setDraftInfo({
             draftStatus: effectiveDraftStatus,
@@ -487,7 +500,12 @@ export default function ProductBuilderPage() {
     if (!currentId) {
       throw new Error('Failed to obtain product ID')
     }
-    const payload = buildPayload(useProductBuilderStore.getState())
+    const state = useProductBuilderStore.getState()
+    const payload = buildPayload(state)
+    // Ensure duration/durationUnit are explicitly in payload for submit-for-review
+    // (defensive: buildPayload spreads state but this guarantees they're present)
+    payload.duration = state.duration
+    payload.durationUnit = state.durationUnit
     await submitProductForReview(currentId, payload)
     toast.success('Submit for review successful')
     navigate('/products')

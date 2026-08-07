@@ -14,21 +14,25 @@ export function mapCalendarDay(day) {
     capacityUnit: day.capacityUnit === "groups" ? "groups" : "people",
     groupsPerSlot: day.groupsPerSlot ?? null,
     maxGroupSize: day.maxGroupSize ?? null,
+    cutoffMinutes: day.cutoffMinutes ?? null,
     slots: (day.timeSlots || []).map((s) => ({
       time: s.time,
       capacity: s.capacity,
       booked: s.booked || 0,
       groupsBooked: s.groupsBooked ?? 0,
       groupsRemaining: s.groupsRemaining ?? null,
+      cutoffMinutes: s.cutoffMinutes ?? null,
     })),
     hasOverride: day.hasOverride,
     overrideStatus: day.overrideStatus ? day.overrideStatus.toLowerCase() : null,
   };
 }
 
-export async function fetchTourAvailability(tourId, startDate, endDate) {
+export async function fetchTourAvailability(tourId, startDate, endDate, optionId) {
+  const params = { startDate, endDate };
+  if (optionId) params.optionId = optionId;
   const response = await api.get(`/tours/${tourId}/availability`, {
-    params: { startDate, endDate },
+    params,
     skipGlobalErrorHandler: true,
   });
 

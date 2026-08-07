@@ -97,6 +97,21 @@ export const stepSchemas = {
       difficulty: z.string().min(1, 'Select a difficulty level'),
       duration: z.number({ invalid_type_error: 'Duration is required' }).min(0.5, 'Duration must be at least 0.5').nullable().optional(),
       durationUnit: z.enum(['minutes', 'hours', 'days']).optional(),
+      accommodationIncluded: z.boolean().optional(),
+    }).superRefine((data, ctx) => {
+      // Conditional validation: require accommodationIncluded when duration >= 24 hours
+      if (data.duration != null && data.durationUnit) {
+        const durationInHours = data.durationUnit === 'days' ? data.duration * 24
+          : data.durationUnit === 'hours' ? data.duration
+          : data.duration / 60;
+        if (durationInHours >= 24 && data.accommodationIncluded === undefined) {
+          ctx.addIssue({
+            code: 'custom',
+            path: ['accommodationIncluded'],
+            message: 'Accommodation inclusion is required for tours 24 hours or longer',
+          });
+        }
+      }
     }),
   4: z.object({
     shortDescription: z
@@ -231,7 +246,7 @@ export const stepSchemas = {
     validateCapacity(data).forEach(add)
   }),
   17: z.object({
-    cutoffMinutes: z.number().min(1, 'Select a cut-off time'),
+    cutoffMinutes: z.number().min(0, 'Select a cut-off time'),
     lastMinuteBookings: z.boolean().optional(),
     perSlotCutoff: z.boolean().optional(),
     perSlotCutoffs: z.record(z.string(), z.number().min(0).max(600)).optional(),

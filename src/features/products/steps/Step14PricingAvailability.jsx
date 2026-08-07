@@ -17,6 +17,7 @@ import {
   validateCapacity,
 } from '@/features/products/utils/pricingValidation'
 import DraftNumberInput from '@/components/ui/DraftNumberInput'
+import OptionPicker from '@/features/products/OptionPicker'
 
 const CATEGORY_TEMPLATES = [
   { name: 'Child', minAge: 0, maxAge: 17 },
@@ -1186,7 +1187,7 @@ function PriceStep({ errors = {} }) {
 
 
 function ScheduleWizard({ onBack }) {
-  const { currentScheduleStep, setField, saveSchedule, resetScheduleForm } = useProductBuilderStore()
+  const { currentScheduleStep, setField, saveSchedule, resetScheduleForm, clearStepErrors } = useProductBuilderStore()
   const [direction, setDirection] = useState(1)
   const { wizardErrors, setWizardErrors, touch, touchAll } = useLiveWizardErrors(currentScheduleStep)
 
@@ -1202,6 +1203,7 @@ function ScheduleWizard({ onBack }) {
         return
       }
       setWizardErrors({})
+      clearStepErrors(16)
       setField('currentScheduleStep', currentScheduleStep + 1)
       return
     }
@@ -1221,6 +1223,7 @@ function ScheduleWizard({ onBack }) {
     }
 
     setWizardErrors({})
+    clearStepErrors(16)
     saveSchedule()
     onBack()
   }
@@ -1408,12 +1411,20 @@ function ScheduleCard({ schedule, index, onEdit }) {
 export default function Step14PricingAvailability() {
   const {
     scheduleType, pricingModel, schedules, groupSizes, pricingCategories, uniformPrice,
-    setField, resetScheduleForm,
+    setField, resetScheduleForm, clearStepErrors,
   } = useProductBuilderStore()
   const errors = useStepErrors(16)
   const [showWizard, setShowWizard] = useState(false)
   const [, setEditingIndex] = useState(null)
   const [pricingModelConfirm, setPricingModelConfirm] = useState(null)
+
+  useEffect(() => {
+    const s = useProductBuilderStore.getState()
+    if (Array.isArray(s.options) && s.options.length > 0 &&
+        !s.options.some((o) => o.id === s.selectedOptionId)) {
+      s.selectOption(s.options[0].id)
+    }
+  }, [])
 
   function hasPricingData() {
     if (schedules.length > 0) return true
@@ -1455,6 +1466,7 @@ export default function Step14PricingAvailability() {
     resetScheduleForm()
     setEditingIndex(null)
     setShowWizard(true)
+    clearStepErrors(16)
   }
 
   const handleEditSchedule = (index) => {
@@ -1462,6 +1474,7 @@ export default function Step14PricingAvailability() {
     editSchedule(index)
     setEditingIndex(index)
     setShowWizard(true)
+    clearStepErrors(16)
   }
 
   const handleWizardBack = () => {
@@ -1506,6 +1519,12 @@ export default function Step14PricingAvailability() {
         </div>
         <p className="text-sm text-slate-500">This will apply to all the schedules added to this option.</p>
       </div>
+
+      {/* Active option */}
+      <OptionPicker
+        label="Which option are you configuring?"
+        helpText="Availability, prices and capacity are set per option. Switching options keeps each option's settings separate."
+      />
 
       {/* Availability type */}
       <div data-field="scheduleType">

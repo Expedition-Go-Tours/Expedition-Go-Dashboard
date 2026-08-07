@@ -5,11 +5,57 @@ import { GYG_STEPS } from './gygSteps'
 import { isStepComplete } from './stepValidation'
 import { getCountryCallingCode } from 'libphonenumber-js'
 import { rederiveTiersFrom } from './tierUtils'
+import {
+  pricingFromBuffers,
+  availabilityFromBuffers,
+  cutoffFromBuffers,
+  pricingBuffersFrom,
+  availabilityBuffersFrom,
+  cutoffBuffersFrom,
+  deepClone,
+} from './optionData'
 
 function getSectionStep(index) {
   const step = GYG_STEPS[index]
   if (!step) return { sectionId: 'getting-started', stepId: 'language' }
   return { sectionId: step.sectionId, stepId: step.stepId }
+}
+
+const SCHEDULE_WIZARD_RESET = {
+  currentScheduleStep: 1,
+  editingScheduleIndex: null,
+  scheduleName: '',
+  scheduleStartDate: '',
+  scheduleHasEndDate: false,
+  scheduleEndDate: '',
+  timeSlots: [],
+  weeklySchedule: { Monday: [], Tuesday: [], Wednesday: [], Thursday: [], Friday: [], Saturday: [], Sunday: [] },
+  dateExceptions: [],
+}
+
+// Project a materialized { pricing, availability, cutoff } object onto the
+// editor's top-level fields, resetting the schedule wizard in the process.
+//
+// `fresh` (used by addOption) starts the schedule wizard from a blank slate:
+// empty weeklySchedule / timeSlots / dateExceptions so the user builds a brand
+// new option from scratch.
+//
+// When loading existing option data (setHydratedProduct, selectOption,
+// removeOption) we only reset the wizard POSITION (currentScheduleStep,
+// editingScheduleIndex) and KEEP the loaded schedule data in the top-level
+// buffers. Previously SCHEDULE_WIZARD_RESET wiped weeklySchedule/timeSlots here
+// too — so re-opening a tour (or switching options) blanked the schedule in
+// the editor, and the next autosave wrote an empty availability.aggregate,
+// producing the spurious "availability.daysOfWeek" diffs.
+function buffersFromData(s, { pricing, availability, cutoff }, { fresh = false } = {}) {
+  return {
+    ...pricingBuffersFrom(pricing),
+    ...availabilityBuffersFrom(availability),
+    ...cutoffBuffersFrom(cutoff),
+    ...(fresh
+      ? SCHEDULE_WIZARD_RESET
+      : { currentScheduleStep: 1, editingScheduleIndex: null }),
+  }
 }
 
 const INITIAL_FORM = {
@@ -54,6 +100,7 @@ const INITIAL_FORM = {
   notAllowed: [],
   petFriendly: false,
   wifiIncluded: false,
+  accommodationIncluded: false,
   mandatoryItems: [],
   knowBeforeYouGo: '',
   emergencyPhone: '',
@@ -151,6 +198,13 @@ export const useProductBuilderStore = create(
       hasHydrated: false,
       savedProductId: null,
       draftStatus: null,
+
+      // The option currently open in the Pricing / Cut-off steps. Its live
+      // editor buffers are projected into the option on switch/navigation.
+      selectedOptionId: null,
+      pricingTemplate: null,
+      availabilityTemplate: null,
+      cutoffTemplate: null,
 
       setHasHydrated: (val) => set({ hasHydrated: val }),
 
@@ -304,32 +358,52 @@ export const useProductBuilderStore = create(
       clearUploadedUrls: () => set({ _uploadedUrls: [] }),
 
       addOption: () =>
-        set((s) => ({
-          options: [
-            ...s.options,
-            {
-              id: safeId(),
-              title: '',
-              refCode: 'default',
-              description: '',
-              isPrivate: false,
-              skipTheLine: 'none',
-              wheelchairAccessible: false,
-              audioGuide: false,
-              infoBooklet: false,
-              maxGroupSize: null,
-              duration: null,
-              durationUnit: null,
-              validityEnabled: false,
-              validityType: 'date_picked',
-              validity: null,
-              validityUnit: null,
-              validityStartDate: '',
-              validityEndDate: '',
-            },
-          ],
-          isDirty: true,
-        })),
+        set((s) => {
+          const options = s.options.map((o) =>
+            o.id === s.selectedOptionId
+              ? {
+                  ...o,
+                  pricing: pricingFromBuffers(s),
+                  availability: availabilityFromBuffers(s),
+                  cutoff: cutoffFromBuffers(s),
+                }
+              : o
+          )
+          const template = {
+            pricing: s.pricingTemplate || pricingFromBuffers(s),
+            availability: s.availabilityTemplate || availabilityFromBuffers(s),
+            cutoff: s.cutoffTemplate || cutoffFromBuffers(s),
+          }
+          const newOption = {
+            id: safeId(),
+            title: '',
+            refCode: 'default',
+            description: '',
+            isPrivate: false,
+            skipTheLine: 'none',
+            wheelchairAccessible: false,
+            audioGuide: false,
+            infoBooklet: false,
+            maxGroupSize: null,
+            duration: null,
+            durationUnit: null,
+            validityEnabled: false,
+            validityType: 'date_picked',
+            validity: null,
+            validityUnit: null,
+            validityStartDate: '',
+            validityEndDate: '',
+            pricing: deepClone(template.pricing),
+            availability: deepClone(template.availability),
+            cutoff: deepClone(template.cutoff),
+          }
+          return {
+            options: [...options, newOption],
+            selectedOptionId: newOption.id,
+            ...buffersFromData(s, template, { fresh: true }),
+            isDirty: true,
+          }
+        }),
       updateOption: (index, updates) =>
         set((s) => ({
           options: s.options.map((opt, i) =>
@@ -338,10 +412,34 @@ export const useProductBuilderStore = create(
           isDirty: true,
         })),
       removeOption: (index) =>
-        set((s) => ({
-          options: s.options.filter((_, i) => i !== index),
-          isDirty: true,
-        })),
+        set((s) => {
+          const removed = s.options[index]
+          const remaining = s.options.filter((_, i) => i !== index)
+          let selectedOptionId = s.selectedOptionId
+          let buffers = null
+          if (removed && removed.id === s.selectedOptionId) {
+            selectedOptionId = remaining.length > 0 ? remaining[Math.min(index, remaining.length - 1)].id : null
+            const next = selectedOptionId ? remaining.find((o) => o.id === selectedOptionId) : null
+            const data = next
+              ? {
+                  pricing: next.pricing || s.pricingTemplate || pricingFromBuffers(s),
+                  availability: next.availability || s.availabilityTemplate || availabilityFromBuffers(s),
+                  cutoff: next.cutoff || s.cutoffTemplate || cutoffFromBuffers(s),
+                }
+              : {
+                  pricing: s.pricingTemplate || pricingFromBuffers(s),
+                  availability: s.availabilityTemplate || availabilityFromBuffers(s),
+                  cutoff: s.cutoffTemplate || cutoffFromBuffers(s),
+                }
+            buffers = buffersFromData(s, data)
+          }
+          return {
+            options: remaining,
+            selectedOptionId,
+            ...(buffers || {}),
+            isDirty: true,
+          }
+        }),
       reorderOption: (from, to) =>
         set((s) => {
           const options = [...s.options]
@@ -357,11 +455,73 @@ export const useProductBuilderStore = create(
             ...original,
             id: safeId(),
             title: original.title ? `${original.title} (copy)` : '',
+            pricing: deepClone(original.pricing),
+            availability: deepClone(original.availability),
+            cutoff: deepClone(original.cutoff),
           }
           const options = [...s.options]
           options.splice(index + 1, 0, clone)
           return { options, isDirty: true }
         }),
+
+      // Flush the selected option's live editor buffers into its stored data.
+      // Safe to call anywhere: it is a no-op when no option is selected.
+      syncSelectedOption: () =>
+        set((s) => {
+          if (!s.selectedOptionId) return s
+          const options = s.options.map((o) =>
+            o.id === s.selectedOptionId
+              ? {
+                  ...o,
+                  pricing: pricingFromBuffers(s),
+                  availability: availabilityFromBuffers(s),
+                  cutoff: cutoffFromBuffers(s),
+                }
+              : o
+          )
+          return { options }
+        }),
+
+      // Switch the active option in the Pricing / Cut-off steps. The previous
+      // selection's buffers are flushed first, then the target option's own
+      // data (or the product template) is loaded into the editor buffers.
+      selectOption: (optionId) =>
+        set((s) => {
+          const target = s.options.find((o) => o.id === optionId)
+          if (!target) return s
+          const options = s.options.map((o) =>
+            o.id === s.selectedOptionId
+              ? {
+                  ...o,
+                  pricing: pricingFromBuffers(s),
+                  availability: availabilityFromBuffers(s),
+                  cutoff: cutoffFromBuffers(s),
+                }
+              : o
+          )
+          const data = {
+            pricing: target.pricing || s.pricingTemplate || pricingFromBuffers(s),
+            availability: target.availability || s.availabilityTemplate || availabilityFromBuffers(s),
+            cutoff: target.cutoff || s.cutoffTemplate || cutoffFromBuffers(s),
+          }
+          return {
+            options,
+            selectedOptionId: optionId,
+            ...buffersFromData(s, data),
+            isDirty: true,
+          }
+        }),
+
+      // Reset the editor buffers back to the product-level template. Used when
+      // there is no selected option to represent.
+      resetBuffersFromTemplate: () =>
+        set((s) => ({
+          ...buffersFromData(s, {
+            pricing: s.pricingTemplate || pricingFromBuffers(s),
+            availability: s.availabilityTemplate || availabilityFromBuffers(s),
+            cutoff: s.cutoffTemplate || cutoffFromBuffers(s),
+          }),
+        })),
 
       addPricingCategory: (template) =>
         set((s) => ({
@@ -809,6 +969,7 @@ export const useProductBuilderStore = create(
         }),
 
       nextStep: () => {
+        get().syncSelectedOption()
         const { currentStep, completedStepIds } = get()
         const mapping = getSectionStep(currentStep)
         const newCompleted = [...new Set([...completedStepIds, mapping.stepId])]
@@ -825,18 +986,21 @@ export const useProductBuilderStore = create(
       },
 
       prevStep: () => {
+        get().syncSelectedOption()
         const prev = Math.max(get().currentStep - 1, 0)
         const mapping = getSectionStep(prev)
         set({ currentStep: prev, currentSectionId: mapping.sectionId, currentStepId: mapping.stepId })
       },
 
       goToStep: (step) => {
+        get().syncSelectedOption()
         const idx = Math.max(0, Math.min(step, GYG_STEPS.length - 1))
         const mapping = getSectionStep(idx)
         set({ currentStep: idx, currentSectionId: mapping.sectionId, currentStepId: mapping.stepId })
       },
 
       navigateTo: (sectionId, stepId) => {
+        get().syncSelectedOption()
         const idx = GYG_STEPS.findIndex(
           (s) => s.sectionId === sectionId && s.stepId === stepId,
         )
@@ -871,21 +1035,33 @@ export const useProductBuilderStore = create(
         const computedCompleted = GYG_STEPS
           .filter((s) => isStepComplete(s.id, state))
           .map((s) => s.stepId)
+
+        // Product-level templates are the fallback for options without their
+        // own pricing/availability/cut-off data (legacy products).
+        const pricingTemplate = pricingFromBuffers(state)
+        const availabilityTemplate = availabilityFromBuffers(state)
+        const cutoffTemplate = cutoffFromBuffers(state)
+
+        const options = Array.isArray(state.options) ? state.options : []
+        const firstOption = options[0] || null
+        const selectedOptionId = firstOption ? firstOption.id : null
+        const bufferData = {
+          pricing: firstOption?.pricing || pricingTemplate,
+          availability: firstOption?.availability || availabilityTemplate,
+          cutoff: firstOption?.cutoff || cutoffTemplate,
+        }
+
         set({
           ...state,
+          selectedOptionId,
+          pricingTemplate,
+          availabilityTemplate,
+          cutoffTemplate,
+          ...buffersFromData(state, bufferData),
           currentStep: 0,
           currentSectionId: 'getting-started',
           currentStepId: 'language',
           completedStepIds: computedCompleted,
-          currentScheduleStep: 1,
-          editingScheduleIndex: null,
-          scheduleName: '',
-          scheduleStartDate: '',
-          scheduleHasEndDate: false,
-          scheduleEndDate: '',
-          timeSlots: [],
-          weeklySchedule: { Monday: [], Tuesday: [], Wednesday: [], Thursday: [], Friday: [], Saturday: [], Sunday: [] },
-          dateExceptions: [],
           stepErrors: {},
           isDirty: false,
           autosaveError: null,
@@ -909,6 +1085,10 @@ export const useProductBuilderStore = create(
         const mapping = getSectionStep(0)
         set({
           ...INITIAL_FORM,
+          selectedOptionId: null,
+          pricingTemplate: pricingFromBuffers(INITIAL_FORM),
+          availabilityTemplate: availabilityFromBuffers(INITIAL_FORM),
+          cutoffTemplate: cutoffFromBuffers(INITIAL_FORM),
           currentStep: 0,
           currentSectionId: mapping.sectionId,
           currentStepId: mapping.stepId,
@@ -926,9 +1106,18 @@ export const useProductBuilderStore = create(
     }),
     {
       name: 'product-builder-draft',
-      version: 3,
+      version: 4,
       migrate: (persistedState, version) => {
         let state = persistedState
+        if (version < 4) {
+          state = {
+            ...state,
+            selectedOptionId: null,
+            pricingTemplate: null,
+            availabilityTemplate: null,
+            cutoffTemplate: null,
+          }
+        }
         if (version < 3) {
           delete state.itinerary
           delete state.itineraryOverview
@@ -989,6 +1178,9 @@ export const useProductBuilderStore = create(
         delete rest._uploadedUrls
         delete rest.stepErrors
         delete rest.previewFocus
+        delete rest.pricingTemplate
+        delete rest.availabilityTemplate
+        delete rest.cutoffTemplate
         return rest
       },
       onRehydrateStorage: () => (state) => {
@@ -1001,6 +1193,18 @@ export const useProductBuilderStore = create(
             if (state[key] === undefined) {
               state[key] = INITIAL_FORM[key]
             }
+          }
+          if (!state.pricingTemplate || !state.availabilityTemplate || !state.cutoffTemplate) {
+            state.pricingTemplate = pricingFromBuffers(state)
+            state.availabilityTemplate = availabilityFromBuffers(state)
+            state.cutoffTemplate = cutoffFromBuffers(state)
+          }
+          const rehydratedOptions = Array.isArray(state.options) ? state.options : []
+          if (
+            state.selectedOptionId == null ||
+            !rehydratedOptions.some((o) => o.id === state.selectedOptionId)
+          ) {
+            state.selectedOptionId = rehydratedOptions.length > 0 ? rehydratedOptions[0].id : null
           }
           for (const cat of state.pricingCategories || []) {
             const tiers = cat.tiers || []
