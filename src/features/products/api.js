@@ -113,6 +113,14 @@ export const hasVerifiedPayoutMethod = async () => {
 export const submitProductForReview = (id, payload) => api.post(`/tours/${id}/submit-for-review`, payload);
 
 /**
+ * Withdraw a pending submission so the supplier can edit again.
+ * Only allowed while the tour/draft is PENDING_APPROVAL.
+ * @param {string} id - Product ID
+ * @returns {Promise} Axios response
+ */
+export const withdrawProductForReview = (id) => api.post(`/tours/${id}/withdraw-review`);
+
+/**
  * Request a new keyword to be added to the pre-approved list
  * @param {string} keyword
  * @returns {Promise} Axios response

@@ -66,7 +66,7 @@ const STEP_FIELDS = {
       'additionalPersonsEnabled',
       'additionalPersonPrice',
     ],
-    17: ['cutoffMinutes', 'lastMinuteBookings', 'perSlotCutoff'],
+    17: ['cutoffMinutes', 'lastMinuteBookings', 'perSlotCutoff', 'perSlotCutoffs'],
 }
 
 function pick(obj, keys) {

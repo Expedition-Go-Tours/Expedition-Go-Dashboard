@@ -4,7 +4,7 @@ import { Loader2, AlertCircle, X } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
 import { useProductBuilderStore } from '@/features/products/productBuilderStore'
-import { getMyProduct, getTourDraft, createProduct, updateProduct, submitProductForReview, cleanupMediaUrls } from '@/features/products/api'
+import { getMyProduct, getTourDraft, createProduct, updateProduct, submitProductForReview, withdrawProductForReview, cleanupMediaUrls } from '@/features/products/api'
 import { buildPayload, useAutoSave } from '@/features/products/useAutoSave'
 import { GYG_STEPS } from '@/features/products/gygSteps'
 import { normalizePricingCategories } from '@/features/products/tierUtils'
@@ -124,6 +124,7 @@ function tourToProduct(tour) {
     cutoffMinutes: booking.cutoffMinutes ?? 20,
     lastMinuteBookings: !!booking.lastMinuteBookings,
     perSlotCutoff: !!booking.perSlotCutoff,
+    perSlotCutoffs: booking.perSlotCutoffs || {},
     timezone: booking.timezone || avail.timezone || 'UTC',
     notSuitableFor: content.healthRestrictions || [],
     notAllowed: content.notAllowed || [],
@@ -376,6 +377,7 @@ export default function ProductBuilderPage() {
             draftReviewNote: data.draftReviewNote || null,
             changesSummary: data.changesSummary || null,
           })
+          useProductBuilderStore.getState().setDraftStatus(data.draftStatus || null)
           // Hydrate the builder from the merged draft snapshot so suppliers can
           // continue editing exactly what an admin will review. The live tour
           // keeps selling until the draft is approved.
@@ -402,6 +404,18 @@ export default function ProductBuilderPage() {
         }
         const usedDraft = await hydrateFromDraft(tour)
         if (cancelled || usedDraft) return
+        // No pending draft — a NEW tour awaiting approval has status
+        // PENDING_APPROVAL (no draft row), which must still lock editing.
+        const effectiveDraftStatus = tour.draftStatus || (tour.status === 'PENDING_APPROVAL' ? 'PENDING_APPROVAL' : null)
+        if (effectiveDraftStatus) {
+          setDraftInfo({
+            draftStatus: effectiveDraftStatus,
+            draftSubmittedAt: tour.submittedAt || null,
+            draftReviewNote: tour.reviewNote || null,
+            changesSummary: null,
+          })
+          useProductBuilderStore.getState().setDraftStatus(effectiveDraftStatus)
+        }
         const product = tourToProduct(tour)
         loadDraft(product)
         setStoreSavedProductId(id)
@@ -477,6 +491,25 @@ export default function ProductBuilderPage() {
     await submitProductForReview(currentId, payload)
     toast.success('Submit for review successful')
     navigate('/products')
+  }
+
+  const [withdrawing, setWithdrawing] = useState(false)
+
+  const handleWithdraw = async () => {
+    const currentId = useProductBuilderStore.getState().savedProductId
+    if (!currentId) return
+    setWithdrawing(true)
+    try {
+      await withdrawProductForReview(currentId)
+      useProductBuilderStore.getState().setDraftStatus(null)
+      setDraftInfo(null)
+      toast.success('Submission withdrawn. You can now edit this product.')
+      navigate(`/products/build/${currentId}?section=${GYG_STEPS[0]?.sectionId}&step=${GYG_STEPS[0]?.stepId}`, { replace: true })
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Failed to withdraw submission')
+    } finally {
+      setWithdrawing(false)
+    }
   }
 
   function handleNext() {
@@ -586,12 +619,22 @@ export default function ProductBuilderPage() {
               <AlertCircle size={16} className="shrink-0 mt-0.5" />
               <div>
                 {draftInfo.draftStatus === 'PENDING_APPROVAL' && (
-                  <p>
-                    Your updates are pending admin review.{' '}
-                    <span className="opacity-80">
-                      The live version keeps selling until the draft is approved. Making changes below will withdraw the draft from review and require resubmission.
-                    </span>
-                  </p>
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="flex-1">
+                      This product is pending admin review.{' '}
+                      <span className="opacity-80">
+                        Editing is locked while an admin reviews your submission. Withdraw it to make changes and resubmit.
+                      </span>
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleWithdraw}
+                      disabled={withdrawing}
+                      className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-100 text-amber-800 border border-amber-300 text-xs font-semibold hover:bg-amber-200 disabled:opacity-60 transition-colors"
+                    >
+                      {withdrawing ? 'Withdrawing…' : 'Withdraw'}
+                    </button>
+                  </div>
                 )}
                 {draftInfo.draftStatus === 'REJECTED' && (
                   <p>

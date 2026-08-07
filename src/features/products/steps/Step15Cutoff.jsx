@@ -1,10 +1,14 @@
 import { useState } from 'react'
-import { Info, X } from 'lucide-react'
+import { Info, X, Clock } from 'lucide-react'
 import { useProductBuilderStore } from '@/features/products/productBuilderStore'
 import { useStepErrors } from '@/features/products/useStepErrors'
 
+// Matches GetYourGuide's cut-off options: every 5 minutes for the first hour,
+// then fixed hours up to 10. 90 is kept for legacy tours that saved it before
+// the grid was tightened.
 const CUTOFF_OPTIONS = [
-  { group: 'Minutes', items: [5, 10, 15, 20, 30, 45, 60, 90, 120] },
+  { group: 'Minutes', items: [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 90] },
+  { group: 'Hours', items: [120, 180, 240, 300, 360, 420, 480, 540, 600] },
 ]
 
 const TIMEZONE_OPTIONS = [
@@ -54,20 +58,74 @@ const TIMEZONE_OPTIONS = [
 ]
 
 function formatCutoffLabel(minutes) {
-  if (minutes < 60) return `${minutes} Minutes`
-  const h = minutes / 60
-  return `${h} ${h === 1 ? 'Hour' : 'Hours'}`
+  if (minutes % 60 === 0) {
+    const h = minutes / 60
+    return `${h} ${h === 1 ? 'Hour' : 'Hours'}`
+  }
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  if (h === 0) return `${m} Minutes`
+  return `${h} ${h === 1 ? 'Hour' : 'Hours'} ${m} Minutes`
+}
+
+function slotTimeKey(startTime) {
+  return typeof startTime === 'string' ? startTime : ''
+}
+
+// When does a slot stop accepting bookings? GYG's built-in guidance shows the
+// wall-clock instant: slot start minus the cut-off. Cut-offs can't exceed 10h,
+// so a wrap only ever lands on the previous day.
+function cutoffInstant(startTime, cutoffMinutes) {
+  const [hh, mm] = (startTime || '00:00').split(':').map(Number)
+  if (!Number.isFinite(hh) || !Number.isFinite(mm)) return ''
+  const total = hh * 60 + mm - Number(cutoffMinutes)
+  const wrapped = ((total % 1440) + 1440) % 1440
+  const h = String(Math.floor(wrapped / 60)).padStart(2, '0')
+  const m = String(wrapped % 60).padStart(2, '0')
+  return `${h}:${m}${total < 0 ? ' (previous day)' : ''}`
+}
+
+function CutoffSelect({ value, onChange }) {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(Number(e.target.value))}
+      className="w-full min-h-[42px] rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+    >
+      {CUTOFF_OPTIONS.map((group) => (
+        <optgroup key={group.group} label={group.group}>
+          {group.items.map((mins) => (
+            <option key={mins} value={mins}>{formatCutoffLabel(mins)}</option>
+          ))}
+        </optgroup>
+      ))}
+    </select>
+  )
 }
 
 export default function Step15Cutoff() {
   const cutoffMinutes = useProductBuilderStore((s) => s.cutoffMinutes)
   const lastMinuteBookings = useProductBuilderStore((s) => s.lastMinuteBookings)
   const perSlotCutoff = useProductBuilderStore((s) => s.perSlotCutoff)
+  const perSlotCutoffs = useProductBuilderStore((s) => s.perSlotCutoffs)
+  const timeSlots = useProductBuilderStore((s) => s.timeSlots)
+  const scheduleType = useProductBuilderStore((s) => s.scheduleType)
   const timezone = useProductBuilderStore((s) => s.timezone)
   const setField = useProductBuilderStore((s) => s.setField)
   const errors = useStepErrors(17)
 
   const [showBanner, setShowBanner] = useState(true)
+
+  const isFixedTimeSlot = scheduleType === 'fixedTimeSlot'
+  const hasTimeSlots = Array.isArray(timeSlots) && timeSlots.length > 0
+
+  const setSlotCutoff = (startTime, minutes) => {
+    const key = slotTimeKey(startTime)
+    if (!key) return
+    setField('perSlotCutoffs', { ...(perSlotCutoffs || {}), [key]: minutes })
+  }
+
+  const resetAllToDefault = () => setField('perSlotCutoffs', {})
 
   return (
     <div className="max-w-[720px] space-y-6">
@@ -103,19 +161,7 @@ export default function Step15Cutoff() {
         <label className="block text-sm font-semibold text-slate-800 mb-1.5">
           How far in advance do you stop accepting new bookings? This is your default cut-off time.
         </label>
-        <select
-          value={cutoffMinutes}
-          onChange={(e) => setField('cutoffMinutes', Number(e.target.value))}
-          className="w-full min-h-[42px] rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
-        >
-          {CUTOFF_OPTIONS.map((group) => (
-            <optgroup key={group.group} label={group.group}>
-              {group.items.map((mins) => (
-                <option key={mins} value={mins}>{formatCutoffLabel(mins)}</option>
-              ))}
-            </optgroup>
-          ))}
-        </select>
+        <CutoffSelect value={cutoffMinutes} onChange={(v) => setField('cutoffMinutes', v)} />
         <p className="text-[13px] text-slate-400 mt-1.5">
           Example: When the activity start time is 10:00, bookings will be stopped at {formatCutoffLabel(cutoffMinutes).toLowerCase()} before.
         </p>
@@ -177,7 +223,7 @@ export default function Step15Cutoff() {
           Do you want your time slots to have different cut-off times?
         </label>
         <p className="text-[13px] text-slate-500 mb-3">
-          You can override the default cut-off time with a different value for each time slot.
+          You can override the default cut-off time with a different value for each time slot. Slots without an override keep the default.
         </p>
         <div className="space-y-2">
           <label className="flex items-center gap-3 cursor-pointer group">
@@ -190,19 +236,87 @@ export default function Step15Cutoff() {
             />
             <span className="text-sm text-slate-700 group-hover:text-slate-900">No</span>
           </label>
-          <label className="flex items-center gap-3 cursor-pointer group">
+          <label className={`flex items-center gap-3 ${isFixedTimeSlot ? 'cursor-pointer group' : 'cursor-not-allowed opacity-50'}`}>
             <input
               type="radio"
               name="perSlotCutoff"
+              disabled={!isFixedTimeSlot}
               checked={perSlotCutoff === true}
               onChange={() => setField('perSlotCutoff', true)}
-              className="w-4 h-4 text-emerald-600 border-slate-300 focus:ring-emerald-500"
+              className="w-4 h-4 text-emerald-600 border-slate-300 focus:ring-emerald-500 disabled:cursor-not-allowed"
             />
-            <span className="text-sm text-slate-700 group-hover:text-slate-900">Yes</span>
+            <span className="text-sm text-slate-700">Yes</span>
           </label>
         </div>
+        {!isFixedTimeSlot && (
+          <p className="text-[13px] text-amber-600 mt-2 flex items-center gap-1.5">
+            <Info size={14} className="shrink-0" />
+            Per-slot cut-off times apply only to products with fixed time slots. Add time slots in the Pricing &amp; Availability step to enable this.
+          </p>
+        )}
         {errors.perSlotCutoff && <span className="text-[13px] text-red-600 font-medium mt-1">{errors.perSlotCutoff[0]}</span>}
       </div>
+
+      {/* Per-slot list */}
+      {perSlotCutoff && isFixedTimeSlot && (
+        <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-bold text-slate-900">Per-slot cut-off times</h3>
+              <p className="text-[13px] text-slate-500 mt-0.5">
+                Set a different cut-off for each start time. We show when bookings will be received for every slot.
+              </p>
+            </div>
+            {hasTimeSlots && (
+              <button
+                type="button"
+                onClick={resetAllToDefault}
+                className="text-sm text-emerald-600 hover:text-emerald-700 font-medium shrink-0"
+              >
+                Reset all to default
+              </button>
+            )}
+          </div>
+
+          {hasTimeSlots ? (
+            <div className="space-y-3">
+              {timeSlots.map((slot) => {
+                const startTime = slotTimeKey(slot.startTime)
+                const value = perSlotCutoffs?.[startTime] ?? cutoffMinutes
+                const isCustom = perSlotCutoffs?.[startTime] != null && perSlotCutoffs[startTime] !== cutoffMinutes
+                const until = cutoffInstant(startTime, value)
+                return (
+                  <div key={slot.id || startTime} className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white px-4 py-3">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-slate-800">{startTime || '—'}</span>
+                        {isCustom && (
+                          <span className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">
+                            Custom
+                          </span>
+                        )}
+                      </div>
+                      {until && (
+                        <p className="text-[13px] text-slate-400 mt-0.5 flex items-center gap-1.5">
+                          <Clock size={12} className="shrink-0" />
+                          Bookings will be received until {until}
+                        </p>
+                      )}
+                    </div>
+                    <div className="w-44 shrink-0">
+                      <CutoffSelect value={value} onChange={(v) => setSlotCutoff(startTime, v)} />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <p className="text-sm text-slate-500">
+              You haven't added any time slots yet. Add start times in the Pricing &amp; Availability step, then come back to set per-slot cut-off times. The default cut-off applies to all slots for now.
+            </p>
+          )}
+        </div>
+      )}
     </div>
   )
 }

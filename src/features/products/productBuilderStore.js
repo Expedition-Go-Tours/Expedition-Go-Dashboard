@@ -48,6 +48,7 @@ const INITIAL_FORM = {
   cutoffMinutes: 20,
   lastMinuteBookings: false,
   perSlotCutoff: false,
+  perSlotCutoffs: {},
   timezone: 'UTC',
   notSuitableFor: [],
   notAllowed: [],
@@ -107,7 +108,7 @@ const INITIAL_FORM = {
   operatingHoursEnd: '17:00',
   pricingApproach: 'dependsOnAge',
   uniformPrice: null,
-  pricingCategories: [{ name: 'Child', price: null, minAge: 0, maxAge: 17, notAllowed: false, ticketNotRequired: false, needsAdult: false, idRequired: false, idType: '', tiers: [] }, { name: 'Adult', price: null, minAge: 18, maxAge: 99, notAllowed: false, ticketNotRequired: false, needsAdult: false, idRequired: false, idType: '', tiers: [] }],
+          pricingCategories: [{ name: 'Child', price: null, minAge: 0, maxAge: 17, notAllowed: false, ticketNotRequired: false, needsAdult: false, idRequired: false, idType: '', tiers: [] }, { name: 'Adult', price: null, minAge: 18, maxAge: 59, notAllowed: false, ticketNotRequired: false, needsAdult: false, idRequired: false, idType: '', tiers: [] }],
   showAdvancedCategorySettings: false,
   minParticipants: 1,
   maxParticipants: 10,
@@ -149,6 +150,7 @@ export const useProductBuilderStore = create(
       autosaveError: null,
       hasHydrated: false,
       savedProductId: null,
+      draftStatus: null,
 
       setHasHydrated: (val) => set({ hasHydrated: val }),
 
@@ -631,15 +633,37 @@ export const useProductBuilderStore = create(
           isDirty: true,
         })),
       updateTimeSlot: (index, updates) =>
-        set((s) => ({
-          timeSlots: s.timeSlots.map((t, i) => (i === index ? { ...t, ...updates } : t)),
-          isDirty: true,
-        })),
+        set((s) => {
+          const slot = s.timeSlots[index]
+          let perSlotCutoffs = s.perSlotCutoffs
+          if (
+            slot &&
+            updates.startTime &&
+            updates.startTime !== slot.startTime &&
+            perSlotCutoffs[slot.startTime] != null
+          ) {
+            perSlotCutoffs = { ...s.perSlotCutoffs }
+            perSlotCutoffs[updates.startTime] = perSlotCutoffs[slot.startTime]
+            delete perSlotCutoffs[slot.startTime]
+          }
+          return {
+            timeSlots: s.timeSlots.map((t, i) => (i === index ? { ...t, ...updates } : t)),
+            ...(perSlotCutoffs !== s.perSlotCutoffs ? { perSlotCutoffs } : {}),
+            isDirty: true,
+          }
+        }),
       removeTimeSlot: (index) =>
-        set((s) => ({
-          timeSlots: s.timeSlots.filter((_, i) => i !== index),
-          isDirty: true,
-        })),
+        set((s) => {
+          const slot = s.timeSlots[index]
+          const perSlotCutoffs = slot && s.perSlotCutoffs[slot.startTime] != null
+            ? (() => { const next = { ...s.perSlotCutoffs }; delete next[slot.startTime]; return next })()
+            : s.perSlotCutoffs
+          return {
+            timeSlots: s.timeSlots.filter((_, i) => i !== index),
+            ...(perSlotCutoffs !== s.perSlotCutoffs ? { perSlotCutoffs } : {}),
+            isDirty: true,
+          }
+        }),
       copyWeeklyHoursFromException: (exceptionIndex, day) =>
         set((s) => {
           const exception = s.dateExceptions[exceptionIndex]
@@ -736,7 +760,7 @@ export const useProductBuilderStore = create(
           timeSlots: [],
           pricingApproach: 'dependsOnAge',
           uniformPrice: null,
-          pricingCategories: [{ name: 'Child', price: null, minAge: 0, maxAge: 17, notAllowed: false, ticketNotRequired: false, needsAdult: false, idRequired: false, idType: '', tiers: [] }, { name: 'Adult', price: null, minAge: 18, maxAge: 99, notAllowed: false, ticketNotRequired: false, needsAdult: false, idRequired: false, idType: '', tiers: [] }],
+  pricingCategories: [{ name: 'Child', price: null, minAge: 0, maxAge: 17, notAllowed: false, ticketNotRequired: false, needsAdult: false, idRequired: false, idType: '', tiers: [] }, { name: 'Adult', price: null, minAge: 18, maxAge: 59, notAllowed: false, ticketNotRequired: false, needsAdult: false, idRequired: false, idType: '', tiers: [] }],
           minParticipants: 1,
           maxParticipants: 10,
           maxGroupsPerTimeSlot: 1,
@@ -830,6 +854,7 @@ export const useProductBuilderStore = create(
       setSubmitting: (val) => set({ isSubmitting: val }),
       setSavedProductId: (id) => set({ savedProductId: id }),
       setAutosaveError: (message) => set({ autosaveError: message }),
+      setDraftStatus: (status) => set({ draftStatus: status || null }),
 
       markSaved: () => set({ isDirty: false, lastSaved: new Date().toISOString(), autosaveError: null }),
       completeStep: (stepId) =>
@@ -864,6 +889,7 @@ export const useProductBuilderStore = create(
           stepErrors: {},
           isDirty: false,
           autosaveError: null,
+          draftStatus: null,
         })
       },
 
@@ -894,6 +920,7 @@ export const useProductBuilderStore = create(
           isSubmitting: false,
           lastSaved: null,
           savedProductId: null,
+          draftStatus: null,
         })
       },
     }),

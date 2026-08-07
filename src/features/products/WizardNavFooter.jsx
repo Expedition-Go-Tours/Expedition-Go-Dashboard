@@ -28,12 +28,15 @@ export default function WizardNavFooter({ currentStep, totalSteps, onBack, onNex
   const isFirstStep = currentStep === 1
   const isLastStep = currentStep === totalSteps
 
+  const isPendingReview = formData.draftStatus === 'PENDING_APPROVAL'
+
   const displayErrors = stepErrors[currentStep] || {}
   const hasDisplayErrors = Object.keys(displayErrors).length > 0
   const errorEntries = Object.entries(displayErrors)
 
   async function handleSaveAndContinue(e) {
     e.preventDefault()
+    if (isPendingReview) return
     const errors = validateStep(currentStep, formData)
     if (Object.keys(errors).length > 0) {
       setStepErrors(currentStep, errors)
@@ -47,6 +50,7 @@ export default function WizardNavFooter({ currentStep, totalSteps, onBack, onNex
 
   async function handleSubmit(e) {
     e.preventDefault()
+    if (isPendingReview) return
     const errors = validateStep(currentStep, formData)
     if (Object.keys(errors).length > 0) {
       setStepErrors(currentStep, errors)
@@ -72,6 +76,7 @@ export default function WizardNavFooter({ currentStep, totalSteps, onBack, onNex
 
   async function handleSubmitForReview(e) {
     e.preventDefault()
+    if (isPendingReview) return
     const errors = validateStep(currentStep, formData)
     if (Object.keys(errors).length > 0) {
       setStepErrors(currentStep, errors)
@@ -141,6 +146,11 @@ export default function WizardNavFooter({ currentStep, totalSteps, onBack, onNex
         {!saving && !hasDisplayErrors && autosaveError && (
           <span className="text-xs text-red-600 font-semibold max-w-[420px] text-center">{autosaveError}</span>
         )}
+        {isPendingReview && (
+          <span className="text-xs text-amber-700 font-semibold max-w-[420px] text-center">
+            This product is locked while pending review — withdraw it above to make changes.
+          </span>
+        )}
         {!saving && !hasDisplayErrors && !autosaveError && savedText && (
           <span className="text-xs text-emerald-600 font-semibold animate-[fadeIn_0.2s_ease]">{savedText}</span>
         )}
@@ -151,25 +161,27 @@ export default function WizardNavFooter({ currentStep, totalSteps, onBack, onNex
           <button
             className="px-5 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-medium hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={handleSaveAndContinue}
-            disabled={saving}
+            disabled={saving || isPendingReview}
             type="button"
           >
-            {saving ? 'Saving...' : 'Save & Continue'}
+            {isPendingReview ? 'Locked' : saving ? 'Saving...' : 'Save & Continue'}
           </button>
         ) : (
           <button
             className="px-5 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-medium hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={onSubmitForReview ? handleFinalClick : handleSubmit}
-            disabled={saving}
+            disabled={saving || isPendingReview}
             type="button"
           >
             {saving
               ? (onSubmitForReview ? 'Submitting...' : 'Saving...')
-              : onSubmitForReview
-                ? 'Submit for Review'
-                : isEditing
-                  ? 'Update'
-                  : 'Save'}
+              : isPendingReview
+                ? 'Locked'
+                : onSubmitForReview
+                  ? 'Submit for Review'
+                  : isEditing
+                    ? 'Update'
+                    : 'Save'}
           </button>
         )}
       </div>

@@ -1,4 +1,9 @@
 import { z } from 'zod'
+import {
+  validatePricingCategories,
+  validateGroupSizes,
+  validateCapacity,
+} from './utils/pricingValidation'
 
 export const TITLE_MAX_CHARS = 60
 export const REFERENCE_CODE_MAX_CHARS = 20
@@ -201,112 +206,35 @@ export const stepSchemas = {
     minParticipants: z.any().optional(),
     maxParticipants: z.any().optional(),
   }).superRefine((data, ctx) => {
+    const add = (issue) => {
+      ctx.addIssue({ code: 'custom', path: issue.path, message: issue.message })
+    }
+
     if (data.pricingModel === 'perPerson') {
       if (data.pricingApproach === 'sameForEveryone') {
         if (data.uniformPrice == null || data.uniformPrice <= 0) {
-          ctx.addIssue({ code: 'custom', path: ['uniformPrice'], message: 'Enter a price per person' })
+          add({ path: ['uniformPrice'], message: 'Enter a price per person' })
         }
       }
       if (data.pricingApproach === 'dependsOnAge') {
-        const cats = data.pricingCategories
-        if (!cats || cats.length === 0) {
-          ctx.addIssue({ code: 'custom', path: ['pricingCategories'], message: 'Add at least one pricing category' })
-        }
-        if (Array.isArray(cats)) {
-          const seen = []
-          cats.forEach((g, i) => {
-            if (g.maxAge <= g.minAge) {
-              ctx.addIssue({ code: 'custom', path: [`pricingCategories.${i}.maxAge`], message: 'Max age must be greater than min age' })
-            }
-            for (const existing of seen) {
-              if (g.minAge <= existing.maxAge && existing.minAge <= g.maxAge) {
-                ctx.addIssue({ code: 'custom', path: [`pricingCategories.${i}.name`], message: `Age range overlaps with "${existing.name}" (${existing.minAge}-${existing.maxAge})` })
-                break
-              }
-            }
-            seen.push({ name: g.name, minAge: g.minAge, maxAge: g.maxAge })
-            const isFree = g.ticketNotRequired === true
-            if (g.price == null && !isFree) {
-              ctx.addIssue({ code: 'custom', path: [`pricingCategories.${i}.price`], message: 'Enter a price for this category' })
-            } else if (typeof g.price === 'number' && g.price < 0) {
-              ctx.addIssue({ code: 'custom', path: [`pricingCategories.${i}.price`], message: 'Price must be 0 or greater' })
-            }
-            if (Array.isArray(g.tiers) && g.tiers.length > 0) {
-              // Validate each tier
-              g.tiers.forEach((tier, ti) => {
-                // Base tier (Tier 1) must always have an explicit upper bound.
-                // Its `from` is fixed at 1; `to` is editable, so require a value.
-                if (ti === 0 && (tier.from == null || tier.to == null)) {
-                  ctx.addIssue({ code: 'custom', path: [`pricingCategories.${i}.tiers.${ti}.to`], message: 'Set the maximum group size for the first people group (e.g. 1)' })
-                }
-                if (tier.from === null || tier.to === null || tier.pricePerPerson === null) return
-                
-                // Tier range validation
-                if (tier.to < tier.from) {
-                  ctx.addIssue({ code: 'custom', path: [`pricingCategories.${i}.tiers.${ti}.to`], message: 'Max must be greater than or equal to min' })
-                }
-                
-                // First tier must start at 1 (GetYourGuide standard)
-                if (ti === 0 && tier.from !== 1) {
-                  ctx.addIssue({ code: 'custom', path: [`pricingCategories.${i}.tiers.${ti}.from`], message: 'First tier must start at 1' })
-                }
-                
-                // Subsequent tiers must be sequential (no gaps)
-                if (ti > 0) {
-                  const prevTier = g.tiers[ti - 1]
-                  if (prevTier && prevTier.to !== null && tier.from !== prevTier.to + 1) {
-                    ctx.addIssue({ code: 'custom', path: [`pricingCategories.${i}.tiers.${ti}.from`], message: 'Tiers must be sequential without gaps' })
-                  }
-                }
-              })
-              
-              // Check for missing tier prices
-              const anyMissingTierPrice = g.tiers.some((tier) => tier.from !== null && tier.pricePerPerson == null)
-              if (anyMissingTierPrice) {
-                ctx.addIssue({ code: 'custom', path: [`pricingCategories.${i}.tiers`], message: 'Enter a price for each tier' })
-              }
-            }
-          })
-        }
+        validatePricingCategories(data.pricingCategories).forEach(add)
       }
     }
     if (data.pricingModel === 'perGroup') {
-      const sizes = data.groupSizes
-      if (!sizes || sizes.length < 1) {
-        ctx.addIssue({ code: 'custom', path: ['groupSizes'], message: 'Add at least one group size' })
-      } else {
-        sizes.forEach((gs, i) => {
-          if (gs.price == null || gs.price <= 0) {
-            ctx.addIssue({ code: 'custom', path: [`groupSizes.${i}.price`], message: 'Enter a price for this group size' })
-          }
-          if (gs.from > gs.to) {
-            ctx.addIssue({ code: 'custom', path: [`groupSizes.${i}.to`], message: 'Max must be greater than or equal to min' })
-          }
-        })
-        const sorted = [...sizes].sort((a, b) => a.from - b.from)
-        if (sorted.length > 0 && sorted[0].from !== 1) {
-          ctx.addIssue({ code: 'custom', path: [`groupSizes.${sizes.indexOf(sorted[0])}.from`], message: 'First group size must start at 1' })
-        }
-        for (let i = 1; i < sorted.length; i++) {
-          if (sorted[i].from <= sorted[i - 1].to) {
-            ctx.addIssue({ code: 'custom', path: [`groupSizes.${i}.from`], message: `Group sizes must not overlap ("${sorted[i-1].from}-${sorted[i-1].to}" → "${sorted[i].from}")` })
-          }
-        }
-      }
+      validateGroupSizes(data.groupSizes).forEach(add)
     }
     if (data.scheduleType === 'fixedTimeSlot') {
       if (!Array.isArray(data.timeSlots) || data.timeSlots.length === 0) {
-        ctx.addIssue({ code: 'custom', path: ['timeSlots'], message: 'Add at least one time slot' })
+        add({ path: ['timeSlots'], message: 'Add at least one time slot' })
       }
     }
-    if (data.minParticipants != null && data.maxParticipants != null && data.minParticipants > data.maxParticipants) {
-      ctx.addIssue({ code: 'custom', path: ['minParticipants'], message: 'Min must be less than or equal to max' })
-    }
+    validateCapacity(data).forEach(add)
   }),
   17: z.object({
     cutoffMinutes: z.number().min(1, 'Select a cut-off time'),
     lastMinuteBookings: z.boolean().optional(),
     perSlotCutoff: z.boolean().optional(),
+    perSlotCutoffs: z.record(z.string(), z.number().min(0).max(600)).optional(),
   }),
   11: z.object({
     cancellationType: z.enum(['standard', 'all_sales_final'], {

@@ -113,6 +113,7 @@ export function useAutoSave() {
   useEffect(() => {
     const unsub = useProductBuilderStore.subscribe((state) => {
       if (!state.hasHydrated) return
+      if (state.draftStatus === 'PENDING_APPROVAL') return
       if (savingRef.current) return
       if (!state.isDirty) return
       if (state.isSaving || state.isSubmitting) return
@@ -141,10 +142,16 @@ export function useAutoSave() {
         } catch (err) {
           const status = err?.response?.status
           const message = err?.response?.data?.message || err?.message || 'Autosave failed'
-          if (status >= 400 && status < 500) {
+          if (status === 409) {
+            const store = useProductBuilderStore.getState()
+            store.setDraftStatus('PENDING_APPROVAL')
+            store.setAutosaveError(message)
+          } else if (status >= 400 && status < 500) {
             useProductBuilderStore.getState().markSaved()
+            useProductBuilderStore.getState().setAutosaveError(message)
+          } else {
+            useProductBuilderStore.getState().setAutosaveError(message)
           }
-          useProductBuilderStore.getState().setAutosaveError(message)
         } finally {
           savingRef.current = false
           const current = useProductBuilderStore.getState()

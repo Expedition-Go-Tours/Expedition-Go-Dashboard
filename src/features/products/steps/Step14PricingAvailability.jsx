@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Select,
@@ -10,11 +10,17 @@ import {
 import { HelpCircle, Info, Plus, X, ChevronDown, ChevronUp, Check, Copy } from 'lucide-react'
 import { useProductBuilderStore } from '@/features/products/productBuilderStore'
 import { useStepErrors } from '@/features/products/useStepErrors'
+import {
+  validateScheduleBasics,
+  validatePricingCategories,
+  validateGroupSizes,
+  validateCapacity,
+} from '@/features/products/utils/pricingValidation'
 import DraftNumberInput from '@/components/ui/DraftNumberInput'
 
 const CATEGORY_TEMPLATES = [
   { name: 'Child', minAge: 0, maxAge: 17 },
-  { name: 'Adult', minAge: 18, maxAge: 99 },
+  { name: 'Adult', minAge: 18, maxAge: 59 },
   { name: 'Senior', minAge: 60, maxAge: 99 },
   { name: 'Student', minAge: 18, maxAge: 25, idRequired: true },
 ]
@@ -25,92 +31,89 @@ const MINUTES = ['00', '15', '30', '45']
 
 const WIZARD_STEPS = ['Schedule', 'Pricing Categories', 'Capacity', 'Price']
 
-function hasAnyWeeklyHours(weeklySchedule) {
-  return Object.values(weeklySchedule || {}).some((hours) => Array.isArray(hours) && hours.length > 0)
-}
-
 function validateScheduleStep(step, state) {
-  const errors = {}
+  const issues = []
   if (step === 1) {
-    if (!state.scheduleName || !state.scheduleName.trim()) {
-      errors.scheduleName = 'Name your schedule'
-    }
-    if (!state.scheduleStartDate) {
-      errors.scheduleStartDate = 'Select a starting date'
-    }
-    if (state.scheduleHasEndDate && !state.scheduleEndDate) {
-      errors.scheduleEndDate = 'Select an end date'
-    }
-    if (state.scheduleHasEndDate && state.scheduleStartDate && state.scheduleEndDate &&
-        new Date(state.scheduleEndDate) < new Date(state.scheduleStartDate)) {
-      errors.scheduleEndDate = 'End date must be on or after the starting date'
-    }
-    if (state.scheduleType === 'fixedTimeSlot') {
-      if (!Array.isArray(state.timeSlots) || state.timeSlots.length === 0) {
-        errors.timeSlots = 'Add at least one time slot'
-      }
-    } else if (!hasAnyWeeklyHours(state.weeklySchedule)) {
-      errors.weeklySchedule = 'Add at least one opening hours entry'
-    }
+    issues.push(...validateScheduleBasics(state))
   }
   if (step === 2) {
     if (state.pricingModel !== 'perGroup') {
       if (!state.pricingApproach) {
-        errors.pricingApproach = 'Select a pricing approach'
+        issues.push({ path: ['pricingApproach'], message: 'Select a pricing approach' })
       }
       if (state.pricingApproach === 'dependsOnAge') {
-        const cats = Array.isArray(state.pricingCategories) ? state.pricingCategories : []
-        if (cats.length === 0) {
-          errors.pricingCategories = 'Add at least one pricing category'
-        } else {
-          cats.forEach((cat, i) => {
-            if (!cat.name || !cat.name.trim()) {
-              errors[`pricingCategories.${i}.name`] = 'Enter a category name'
-            }
-          })
-        }
+        issues.push(...validatePricingCategories(state.pricingCategories, { withPrices: false }))
       }
     }
   }
   if (step === 3) {
-    if (!state.minParticipants || state.minParticipants < 1) {
-      errors.minParticipants = 'Enter a minimum number'
-    }
-    if (!state.maxParticipants || state.maxParticipants < 1) {
-      errors.maxParticipants = 'Enter a maximum number'
-    }
-    if (state.minParticipants && state.maxParticipants && state.minParticipants > state.maxParticipants) {
-      errors.minParticipants = 'Min must be less than or equal to max'
-    }
-    if (state.pricingModel === 'perGroup' && (!state.maxGroupsPerTimeSlot || state.maxGroupsPerTimeSlot < 1)) {
-      errors.maxGroupsPerTimeSlot = 'Enter a maximum number of groups'
-    }
+    issues.push(...validateCapacity(state))
   }
   if (step === 4) {
     if (state.pricingModel === 'perGroup') {
-      const sizes = Array.isArray(state.groupSizes) ? state.groupSizes : []
-      sizes.forEach((gs, i) => {
-        if (gs.price == null || gs.price < 0) {
-          errors[`groupSizes.${i}.price`] = 'Enter a price for this group size'
-        }
-      })
+      issues.push(...validateGroupSizes(state.groupSizes))
     } else if (state.pricingApproach === 'sameForEveryone') {
-      if (state.uniformPrice == null || state.uniformPrice < 0) {
-        errors.uniformPrice = 'Enter a price per person'
+      if (state.uniformPrice == null || state.uniformPrice <= 0) {
+        issues.push({ path: ['uniformPrice'], message: 'Enter a price per person' })
       }
     } else if (state.pricingApproach === 'dependsOnAge') {
-      const cats = Array.isArray(state.pricingCategories) ? state.pricingCategories : []
-      cats.forEach((cat, i) => {
-        const isFree = cat.ticketNotRequired === true
-        if (cat.price == null && !isFree) {
-          errors[`pricingCategories.${i}.price`] = 'Enter a price for this category'
-        } else if (typeof cat.price === 'number' && cat.price < 0) {
-          errors[`pricingCategories.${i}.price`] = 'Price must be 0 or greater'
-        }
-      })
+      issues.push(...validatePricingCategories(state.pricingCategories))
     }
   }
+  const errors = {}
+  for (const iss of issues) {
+    const key = iss.path.join('.')
+    if (!errors[key]) errors[key] = iss.message
+  }
   return errors
+}
+
+function useLiveWizardErrors(step) {
+  const [wizardErrors, setWizardErrors] = useState({})
+  const touchedRef = useRef(new Set())
+  const timerRef = useRef(null)
+
+  const runValidation = useCallback(() => {
+    const state = useProductBuilderStore.getState()
+    const all = validateScheduleStep(step, state)
+    const visible = {}
+    for (const key of Object.keys(all)) {
+      if (touchedRef.current.has(key)) visible[key] = all[key]
+    }
+    setWizardErrors(visible)
+  }, [step])
+
+  useEffect(() => {
+    // Each wizard step starts with a clean slate: errors from a previous step
+    // must not follow the user, and live errors only appear for fields they
+    // actually interact with on this step. runValidation (below) clears any
+    // leftover wizardErrors since nothing is touched on the fresh step.
+    touchedRef.current = new Set()
+    clearTimeout(timerRef.current)
+    timerRef.current = setTimeout(runValidation, 0)
+    const unsubscribe = useProductBuilderStore.subscribe(() => {
+      clearTimeout(timerRef.current)
+      timerRef.current = setTimeout(runValidation, 250)
+    })
+    return () => {
+      clearTimeout(timerRef.current)
+      unsubscribe()
+    }
+  }, [runValidation])
+
+  const touch = useCallback((key) => {
+    touchedRef.current.add(key)
+    clearTimeout(timerRef.current)
+    timerRef.current = setTimeout(runValidation, 0)
+  }, [runValidation])
+
+  const touchAll = useCallback((keys) => {
+    for (const k of keys) touchedRef.current.add(k)
+    clearTimeout(timerRef.current)
+    timerRef.current = setTimeout(runValidation, 0)
+  }, [runValidation])
+
+  return { wizardErrors, setWizardErrors, touch, touchAll }
 }
 
 function TimeSelect({ value, onChange }) {
@@ -169,7 +172,7 @@ function WizardStepper({ currentStep }) {
   )
 }
 
-function ScheduleStep({ errors = {} }) {
+function ScheduleStep({ errors = {}, onTouch }) {
   const {
     scheduleType, scheduleName, scheduleStartDate, scheduleHasEndDate, scheduleEndDate,
     weeklySchedule, dateExceptions, timeSlots,
@@ -190,9 +193,15 @@ function ScheduleStep({ errors = {} }) {
           type="text"
           value={scheduleName}
           onChange={(e) => setField('scheduleName', e.target.value)}
+          onBlur={() => onTouch?.('scheduleName')}
           data-field="scheduleName"
           placeholder="E.g. Summer, Weekends price..."
-          className="w-full h-11 rounded-lg border border-slate-200 px-3.5 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+          aria-invalid={!!errors.scheduleName}
+          className={`w-full h-11 rounded-lg border px-3.5 text-sm focus:outline-none focus:ring-1 ${
+            errors.scheduleName
+              ? 'border-red-300 bg-red-50/30 focus:border-red-500 focus:ring-red-500'
+              : 'border-slate-200 focus:border-emerald-500 focus:ring-emerald-500'
+          }`}
         />
         {errors.scheduleName && <span className="text-[13px] text-red-600 font-medium mt-1 block">{errors.scheduleName}</span>}
       </div>
@@ -204,8 +213,14 @@ function ScheduleStep({ errors = {} }) {
             type="date"
             value={scheduleStartDate}
             onChange={(e) => setField('scheduleStartDate', e.target.value)}
+            onBlur={() => onTouch?.('scheduleStartDate')}
             data-field="scheduleStartDate"
-            className="h-11 rounded-lg border border-slate-200 px-3.5 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+            aria-invalid={!!errors.scheduleStartDate}
+            className={`h-11 rounded-lg border px-3.5 text-sm focus:outline-none focus:ring-1 ${
+              errors.scheduleStartDate
+                ? 'border-red-300 bg-red-50/30 focus:border-red-500 focus:ring-red-500'
+                : 'border-slate-200 focus:border-emerald-500 focus:ring-emerald-500'
+            }`}
           />
           {scheduleHasEndDate && (
             <>
@@ -214,8 +229,14 @@ function ScheduleStep({ errors = {} }) {
                 type="date"
                 value={scheduleEndDate}
                 onChange={(e) => setField('scheduleEndDate', e.target.value)}
+                onBlur={() => onTouch?.('scheduleEndDate')}
                 data-field="scheduleEndDate"
-                className="h-11 rounded-lg border border-slate-200 px-3.5 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                aria-invalid={!!errors.scheduleEndDate}
+                className={`h-11 rounded-lg border px-3.5 text-sm focus:outline-none focus:ring-1 ${
+                  errors.scheduleEndDate
+                    ? 'border-red-300 bg-red-50/30 focus:border-red-500 focus:ring-red-500'
+                    : 'border-slate-200 focus:border-emerald-500 focus:ring-emerald-500'
+                }`}
               />
             </>
           )}
@@ -413,7 +434,7 @@ function ScheduleStep({ errors = {} }) {
   )
 }
 
-function GroupSizeStep({ errors = {} }) {
+function GroupSizeStep({ errors = {}, onTouch }) {
   const {
     groupSizes,
     additionalPersonsEnabled, additionalPersonPrice,
@@ -444,14 +465,14 @@ function GroupSizeStep({ errors = {} }) {
                 <DraftNumberInput
                   min={1}
                   value={gs.from}
-                  onCommit={(v) => updateGroupSize(i, { from: v == null ? 1 : v })}
+                  onCommit={(v) => { updateGroupSize(i, { from: v == null ? 1 : v }); onTouch?.(`groupSizes.${i}.from`) }}
                   className="h-11 w-20 rounded-lg border border-slate-200 px-3 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
                 />
                 <span className="text-sm text-slate-400">to</span>
                 <DraftNumberInput
                   min={1}
                   value={gs.to}
-                  onCommit={(v) => updateGroupSize(i, { to: v == null ? 1 : v })}
+                  onCommit={(v) => { updateGroupSize(i, { to: v == null ? 1 : v }); onTouch?.(`groupSizes.${i}.to`) }}
                   className="h-11 w-20 rounded-lg border border-slate-200 px-3 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
                 />
                 <button
@@ -511,7 +532,7 @@ function GroupSizeStep({ errors = {} }) {
   )
 }
 
-function PricingCategoriesStep({ errors = {} }) {
+function PricingCategoriesStep({ errors = {}, onTouch }) {
   const {
     pricingModel, pricingApproach, pricingCategories, showAdvancedCategorySettings,
     setField, addPricingCategory, updatePricingCategory, removePricingCategory,
@@ -559,7 +580,7 @@ function PricingCategoriesStep({ errors = {} }) {
   }
 
   if (pricingModel === 'perGroup') {
-    return <GroupSizeStep errors={errors} />
+    return <GroupSizeStep errors={errors} onTouch={onTouch} />
   }
 
   return (
@@ -572,7 +593,7 @@ function PricingCategoriesStep({ errors = {} }) {
               type="radio"
               name="pricingApproach"
               checked={pricingApproach === 'sameForEveryone'}
-              onChange={() => setField('pricingApproach', 'sameForEveryone')}
+              onChange={() => { setField('pricingApproach', 'sameForEveryone'); onTouch?.('pricingApproach') }}
               data-field="pricingApproach"
               className="mt-0.5 w-4 h-4 text-emerald-600 border-slate-300 focus:ring-emerald-500"
             />
@@ -583,7 +604,7 @@ function PricingCategoriesStep({ errors = {} }) {
               type="radio"
               name="pricingApproach"
               checked={pricingApproach === 'dependsOnAge'}
-              onChange={() => setField('pricingApproach', 'dependsOnAge')}
+              onChange={() => { setField('pricingApproach', 'dependsOnAge'); onTouch?.('pricingApproach') }}
               data-field="pricingApproach"
               className="mt-0.5 w-4 h-4 text-emerald-600 border-slate-300 focus:ring-emerald-500"
             />
@@ -775,7 +796,7 @@ function PricingCategoriesStep({ errors = {} }) {
   )
 }
 
-function CapacityStep({ errors = {} }) {
+function CapacityStep({ errors = {}, onTouch }) {
   const { pricingModel, minParticipants, maxParticipants, maxGroupsPerTimeSlot, setField } = useProductBuilderStore()
 
   if (pricingModel === 'perGroup') {
@@ -789,8 +810,14 @@ function CapacityStep({ errors = {} }) {
               type="number"
               value={maxGroupsPerTimeSlot}
               onChange={(e) => setField('maxGroupsPerTimeSlot', parseInt(e.target.value) || 1)}
+              onBlur={() => onTouch?.('maxGroupsPerTimeSlot')}
               min={1}
-              className="h-11 w-32 rounded-lg border border-slate-200 px-3.5 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+              aria-invalid={!!errors.maxGroupsPerTimeSlot}
+              className={`h-11 w-32 rounded-lg border px-3.5 text-sm focus:outline-none focus:ring-1 ${
+                errors.maxGroupsPerTimeSlot
+                  ? 'border-red-300 bg-red-50/30 focus:border-red-500 focus:ring-red-500'
+                  : 'border-slate-200 focus:border-emerald-500 focus:ring-emerald-500'
+              }`}
             />
           </div>
           {errors.maxGroupsPerTimeSlot && <span className="text-[13px] text-red-600 font-medium mt-1 block">{errors.maxGroupsPerTimeSlot}</span>}
@@ -815,9 +842,15 @@ function CapacityStep({ errors = {} }) {
               type="number"
               value={minParticipants}
               onChange={(e) => setField('minParticipants', parseInt(e.target.value) || 1)}
+              onBlur={() => onTouch?.('minParticipants')}
               min={1}
               data-field="minParticipants"
-              className="h-11 w-32 rounded-lg border border-slate-200 px-3.5 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+              aria-invalid={!!errors.minParticipants}
+              className={`h-11 w-32 rounded-lg border px-3.5 text-sm focus:outline-none focus:ring-1 ${
+                errors.minParticipants
+                  ? 'border-red-300 bg-red-50/30 focus:border-red-500 focus:ring-red-500'
+                  : 'border-slate-200 focus:border-emerald-500 focus:ring-emerald-500'
+              }`}
             />
           </div>
           {errors.minParticipants && <span className="text-[13px] text-red-600 font-medium mt-1 block ml-[140px]">{errors.minParticipants}</span>}
@@ -827,9 +860,15 @@ function CapacityStep({ errors = {} }) {
               type="number"
               value={maxParticipants}
               onChange={(e) => setField('maxParticipants', parseInt(e.target.value) || 1)}
+              onBlur={() => onTouch?.('maxParticipants')}
               min={1}
               data-field="maxParticipants"
-              className="h-11 w-32 rounded-lg border border-slate-200 px-3.5 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+              aria-invalid={!!errors.maxParticipants}
+              className={`h-11 w-32 rounded-lg border px-3.5 text-sm focus:outline-none focus:ring-1 ${
+                errors.maxParticipants
+                  ? 'border-red-300 bg-red-50/30 focus:border-red-500 focus:ring-red-500'
+                  : 'border-slate-200 focus:border-emerald-500 focus:ring-emerald-500'
+              }`}
             />
           </div>
           {errors.maxParticipants && <span className="text-[13px] text-red-600 font-medium mt-1 block ml-[140px]">{errors.maxParticipants}</span>}
@@ -839,7 +878,7 @@ function CapacityStep({ errors = {} }) {
   )
 }
 
-function PerGroupPriceStep({ errors = {} }) {
+function PerGroupPriceStep({ errors = {}, onTouch }) {
   const {
     groupSizes,
     updateGroupSize, removeGroupSize,
@@ -874,9 +913,14 @@ function PerGroupPriceStep({ errors = {} }) {
                 <input
                   type="number"
                   value={bandPrice ?? ''}
-                  onChange={(e) => updateGroupSize(i, { price: e.target.value ? parseFloat(e.target.value) : null })}
+                  onChange={(e) => { updateGroupSize(i, { price: e.target.value ? parseFloat(e.target.value) : null }); onTouch?.(`groupSizes.${i}.price`) }}
                   placeholder="USD"
-                  className="h-10 w-full max-w-[120px] rounded-lg border border-slate-200 px-3 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                  aria-invalid={!!errors[`groupSizes.${i}.price`]}
+                  className={`h-10 w-full max-w-[120px] rounded-lg border px-3 text-sm focus:outline-none focus:ring-1 ${
+                    errors[`groupSizes.${i}.price`]
+                      ? 'border-red-300 bg-red-50/30 focus:border-red-500 focus:ring-red-500'
+                      : 'border-slate-200 focus:border-emerald-500 focus:ring-emerald-500'
+                  }`}
                 />
                 {errors[`groupSizes.${i}.price`] && (
                   <span className="block text-[13px] text-red-600 font-medium mt-1">{errors[`groupSizes.${i}.price`]}</span>
@@ -914,7 +958,7 @@ function PerGroupPriceStep({ errors = {} }) {
   )
 }
 
-function PerPersonPriceStep({ errors = {} }) {
+function PerPersonPriceStep({ errors = {}, onTouch }) {
   const {
     pricingApproach, pricingCategories, uniformPrice,
     minParticipants, maxParticipants,
@@ -989,7 +1033,7 @@ function PerPersonPriceStep({ errors = {} }) {
                     <DraftNumberInput
                       min={1}
                       value={tier0.to != null ? tier0.to : maxParticipants}
-                      onCommit={(v) => updateCategoryTier(i, 0, { to: v })}
+                      onCommit={(v) => { updateCategoryTier(i, 0, { to: v }); onTouch?.(`pricingCategories.${i}.tiers.0.to`) }}
                       className="h-9 w-14 rounded-lg border border-slate-200 px-2 text-sm text-center focus:outline-none focus:border-emerald-500"
                     />
                   </div>
@@ -1005,9 +1049,14 @@ function PerPersonPriceStep({ errors = {} }) {
                   <input
                     type="number"
                     value={catPrice}
-                    onChange={(e) => handlePriceChange(i, e.target.value)}
+                    onChange={(e) => { handlePriceChange(i, e.target.value); onTouch?.(isSameForEveryone ? 'uniformPrice' : `pricingCategories.${i}.price`) }}
                     placeholder="USD"
-                    className="h-11 w-full rounded-lg border border-slate-200 px-3 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                    aria-invalid={!!errors[isSameForEveryone ? 'uniformPrice' : `pricingCategories.${i}.price`]}
+                    className={`h-11 w-full rounded-lg border px-3 text-sm focus:outline-none focus:ring-1 ${
+                      errors[isSameForEveryone ? 'uniformPrice' : `pricingCategories.${i}.price`]
+                        ? 'border-red-300 bg-red-50/30 focus:border-red-500 focus:ring-red-500'
+                        : 'border-slate-200 focus:border-emerald-500 focus:ring-emerald-500'
+                    }`}
                   />
                 </div>
                 {errors[isSameForEveryone ? 'uniformPrice' : `pricingCategories.${i}.price`] && (
@@ -1050,7 +1099,7 @@ function PerPersonPriceStep({ errors = {} }) {
                     <DraftNumberInput
                       min={tier.from}
                       value={tier.to}
-                      onCommit={(v) => updateCategoryTier(i, j, { to: v })}
+                      onCommit={(v) => { updateCategoryTier(i, j, { to: v }); onTouch?.(`pricingCategories.${i}.tiers.${j}.to`) }}
                       className="h-9 w-14 rounded-lg border border-slate-200 px-2 text-sm text-center focus:outline-none focus:border-emerald-500"
                     />
                   </div>
@@ -1061,9 +1110,14 @@ function PerPersonPriceStep({ errors = {} }) {
                     <input
                       type="number"
                       value={tier.pricePerPerson ?? ''}
-                      onChange={(e) => updateCategoryTier(i, j, { pricePerPerson: e.target.value ? parseFloat(e.target.value) : null })}
+                      onChange={(e) => { updateCategoryTier(i, j, { pricePerPerson: e.target.value ? parseFloat(e.target.value) : null }); onTouch?.(`pricingCategories.${i}.tiers.${j}.pricePerPerson`) }}
                       placeholder="USD"
-                      className="h-11 w-full rounded-lg border border-slate-200 px-3 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                      aria-invalid={!!errors[`pricingCategories.${i}.tiers.${j}.pricePerPerson`]}
+                      className={`h-11 w-full rounded-lg border px-3 text-sm focus:outline-none focus:ring-1 ${
+                        errors[`pricingCategories.${i}.tiers.${j}.pricePerPerson`]
+                          ? 'border-red-300 bg-red-50/30 focus:border-red-500 focus:ring-red-500'
+                          : 'border-slate-200 focus:border-emerald-500 focus:ring-emerald-500'
+                      }`}
                     />
                   </div>
                   
@@ -1134,7 +1188,7 @@ function PriceStep({ errors = {} }) {
 function ScheduleWizard({ onBack }) {
   const { currentScheduleStep, setField, saveSchedule, resetScheduleForm } = useProductBuilderStore()
   const [direction, setDirection] = useState(1)
-  const [wizardErrors, setWizardErrors] = useState({})
+  const { wizardErrors, setWizardErrors, touch, touchAll } = useLiveWizardErrors(currentScheduleStep)
 
   const handleNext = () => {
     setDirection(1)
@@ -1144,6 +1198,7 @@ function ScheduleWizard({ onBack }) {
       const errors = validateScheduleStep(currentScheduleStep, state)
       if (Object.keys(errors).length > 0) {
         setWizardErrors(errors)
+        touchAll(Object.keys(errors))
         return
       }
       setWizardErrors({})
@@ -1160,6 +1215,7 @@ function ScheduleWizard({ onBack }) {
     }
     if (Object.keys(allErrors).length > 0) {
       setWizardErrors(allErrors)
+      touchAll(Object.keys(allErrors))
       if (firstStep !== null) setField('currentScheduleStep', firstStep)
       return
     }
@@ -1214,10 +1270,10 @@ function ScheduleWizard({ onBack }) {
             exit="exit"
             transition={{ duration: 0.2, ease: 'easeInOut' }}
           >
-            {currentScheduleStep === 1 && <ScheduleStep errors={wizardErrors} />}
-            {currentScheduleStep === 2 && <PricingCategoriesStep errors={wizardErrors} />}
-            {currentScheduleStep === 3 && <CapacityStep errors={wizardErrors} />}
-            {currentScheduleStep === 4 && <PriceStep errors={wizardErrors} />}
+            {currentScheduleStep === 1 && <ScheduleStep errors={wizardErrors} onTouch={touch} />}
+            {currentScheduleStep === 2 && <PricingCategoriesStep errors={wizardErrors} onTouch={touch} />}
+            {currentScheduleStep === 3 && <CapacityStep errors={wizardErrors} onTouch={touch} />}
+            {currentScheduleStep === 4 && <PriceStep errors={wizardErrors} onTouch={touch} />}
           </motion.div>
         </AnimatePresence>
       </div>
