@@ -49,15 +49,6 @@ function buildSchedulesAndPricing(state) {
             const cat = Array.isArray(s.pricingCategories) && s.pricingCategories.length > 0
               ? s.pricingCategories
               : topCats
-            // The top-level `weeklySchedule` buffer is the primary schedule's
-            // source of truth (the wizard edits it). For single-schedule tours
-            // the primary schedule mirrors the aggregate; mirror `weekly` into
-            // schedule[0] so aggregate and schedules[0] can never drift (e.g. a
-            // deliberate "clear all hours" propagates instead of being
-            // resurrected from a stale per-schedule buffer on next load).
-            // For multi-schedule tours where a non-primary schedule has its own
-            // hours, keep each schedule's own data and only fall back to the
-            // aggregate when the schedule's data is absent.
             const scheduleHasHours = hasAnyWeeklyHours(s.weeklySchedule)
             const aggregateHasHours = hasAnyWeeklyHours(weekly)
             const weeklySchedule = idx === 0 && (schedules.length === 1 || !scheduleHasHours)
@@ -111,9 +102,6 @@ export function buildPayload(state) {
     return { ...o, pricing, availability, cutoff }
   })
 
-  // The first option is the product's primary / default option, so the legacy
-  // top-level pricing & availability fields mirror its effective data. This
-  // keeps the flat shape consistent with schedulesAndPricing below.
   const primary = primaryOptionData(state)
   const topLevelOverrides = options.length > 0
     ? {
@@ -136,6 +124,89 @@ export function buildPayload(state) {
     options: optionPayload,
     schedulesAndPricing: buildSchedulesAndPricing(state),
   }
+
+  // --- BEGIN: flatten nested blobs into flat builder keys backend expects ---
+  // Categorization
+  if (payload.categorization && typeof payload.categorization === 'object') {
+    const c = payload.categorization
+    payload.category = c.category ?? payload.category
+    payload.subcategory = c.subcategory ?? payload.subcategory
+    payload.activityType = c.activityType ?? payload.activityType
+    payload.difficulty = c.difficulty ?? payload.difficulty
+    if (c.duration && typeof c.duration === 'object') {
+      payload.duration = c.duration.value ?? payload.duration
+      payload.durationUnit = c.duration.unit ?? payload.durationUnit
+    }
+    payload.transportMode = c.transportMode ?? payload.transportMode
+    payload.transportModes = Array.isArray(c.transportModes) ? c.transportModes : payload.transportModes
+    payload.transportServices = Array.isArray(c.transportServices) ? c.transportServices : payload.transportServices
+    payload.accommodationIncluded = c.accommodationIncluded ?? payload.accommodationIncluded
+  }
+
+  // Theme
+  if (payload.theme && typeof payload.theme === 'object') {
+    const t = payload.theme
+    payload.primaryTheme = t.primaryTheme ?? payload.primaryTheme
+    payload.secondaryThemes = Array.isArray(t.secondary) ? t.secondary : payload.secondaryThemes
+  }
+
+  // Product content
+  if (payload.productContent && typeof payload.productContent === 'object') {
+    const p = payload.productContent
+    payload.language = p.writingLanguage ?? payload.language
+    payload.shortDescription = p.shortSummary ?? payload.shortDescription
+    payload.highlights = Array.isArray(p.highlights) ? p.highlights : payload.highlights
+    payload.locations = Array.isArray(p.locations) ? p.locations : payload.locations
+    payload.attractions = Array.isArray(p.attractions) ? p.attractions : payload.attractions
+    payload.meals = Array.isArray(p.meals) ? p.meals : payload.meals
+    payload.mealType = p.mealType ?? payload.mealType
+    payload.meetingPoint = p.meetingPoint ?? payload.meetingPoint
+    payload.meetingPointPicture = p.meetingPointPicture ?? payload.meetingPointPicture
+    payload.arrivalTime = p.arrivalTime ?? payload.arrivalTime
+    payload.whatsIncluded = Array.isArray(p.included) ? p.included : payload.whatsIncluded
+    payload.whatsNotIncluded = Array.isArray(p.excluded) ? p.excluded : payload.whatsNotIncluded
+    payload.guideType = p.guideType ?? payload.guideType
+    payload.guideMaterials = p.guideMaterials ?? payload.guideMaterials
+    payload.pickupType = p.pickupType ?? payload.pickupType
+    payload.pickupProvided = p.pickupProvided ?? payload.pickupProvided
+    payload.dropoffOption = p.dropoffOption ?? payload.dropoffOption
+  }
+
+  // Booking & tickets
+  if (payload.bookingAndTickets && typeof payload.bookingAndTickets === 'object') {
+    const b = payload.bookingAndTickets
+    payload.pickupType = b.pickupType ?? payload.pickupType
+    payload.pickupProvided = b.pickupProvided ?? payload.pickupProvided
+    payload.pickupAreas = Array.isArray(b.pickupAreas) ? b.pickupAreas : payload.pickupAreas
+    payload.dropoffOption = b.dropoffOption ?? payload.dropoffOption
+    payload.instantBooking = b.instantBooking ?? payload.instantBooking
+    payload.instantConfirmation = b.instantConfirmation ?? payload.instantConfirmation
+    payload.bookingWindow = b.bookingWindow ?? payload.bookingWindow
+    payload.cutoffMinutes = b.cutoffMinutes ?? payload.cutoffMinutes
+  }
+
+  // Schedules & pricing
+  if (payload.schedulesAndPricing && typeof payload.schedulesAndPricing === 'object') {
+    const s = payload.schedulesAndPricing
+    payload.weeklySchedule = s.availability?.weeklySchedule ?? payload.weeklySchedule
+    payload.timeSlots = Array.isArray(s.availability?.timeSlots) ? s.availability.timeSlots : payload.timeSlots
+    payload.pricingCategories = s.travelerDetails?.pricingCategories ?? payload.pricingCategories
+    payload.pricingModel = s.travelerDetails?.pricingModel ?? payload.pricingModel
+    payload.pricingApproach = s.travelerDetails?.pricingApproach ?? payload.pricingApproach
+    payload.currency = s.pricingSchedules?.currency ?? payload.currency
+    const primarySched = Array.isArray(s.pricingSchedules?.schedules) ? s.pricingSchedules.schedules[0] : null
+    if (primarySched) {
+      payload.scheduleName = primarySched.name ?? payload.scheduleName
+      payload.scheduleStartDate = primarySched.startDate ?? payload.scheduleStartDate
+      payload.scheduleHasEndDate = primarySched.hasEndDate ?? payload.scheduleHasEndDate
+      payload.scheduleEndDate = primarySched.endDate ?? payload.scheduleEndDate
+    }
+  }
+
+  // General top-level guards
+  payload.tags = Array.isArray(payload.tags) ? payload.tags : (Array.isArray(payload.keywords) ? payload.keywords : payload.tags)
+  payload.photos = Array.isArray(payload.photos) ? payload.photos : (Array.isArray(payload.existingPhotos) ? payload.existingPhotos : payload.photos)
+  // --- END flattening ---
 
   const omit = [
     '_pendingFiles', '_hasHydrated', '_version', '_uploadedUrls',
