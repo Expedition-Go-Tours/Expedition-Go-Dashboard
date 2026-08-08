@@ -143,13 +143,6 @@ export function buildPayload(state) {
     payload.accommodationIncluded = c.accommodationIncluded ?? payload.accommodationIncluded
   }
 
-  // Theme
-  if (payload.theme && typeof payload.theme === 'object') {
-    const t = payload.theme
-    payload.primaryTheme = t.primaryTheme ?? payload.primaryTheme
-    payload.secondaryThemes = Array.isArray(t.secondary) ? t.secondary : payload.secondaryThemes
-  }
-
   // Product content
   if (payload.productContent && typeof payload.productContent === 'object') {
     const p = payload.productContent
