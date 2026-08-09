@@ -212,11 +212,33 @@ export function buildPayload(state) {
     'showAdvancedCategorySettings',
     'selectedOptionId', 'pricingTemplate', 'availabilityTemplate', 'cutoffTemplate',
     'itinerary', 'itineraryOverview', 'additionalItineraryInfo', 'dayTitles',
+    'submissionMeta',
   ]
   for (const key of omit) delete payload[key]
   if (!payload.copyrightConfirmed) delete payload.copyrightConfirmed
 
   return payload
+}
+
+// Deterministic canonical serialization: key order, undefined and array order
+// are normalized so equal builder states always produce equal signatures.
+// Store action functions (spread into buildPayload) are normalized to null,
+// mirroring how JSON serialization drops them during HTTP transport.
+function stableStringify(value) {
+  if (value === null || value === undefined || typeof value === 'function' || typeof value !== 'object') {
+    return JSON.stringify(value === null || value === undefined || typeof value === 'function' ? null : value)
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map(stableStringify).join(',')}]`
+  }
+  const keys = Object.keys(value).sort()
+  return `{${keys.map((k) => `${JSON.stringify(k)}:${stableStringify(value[k])}`).join(',')}}`
+}
+
+// Content signature of the builder state — used to detect "no changes since
+// the last submission" so suppliers cannot re-queue an identical product.
+export function builderSignature(state) {
+  return stableStringify(buildPayload(state))
 }
 
 export function useAutoSave() {

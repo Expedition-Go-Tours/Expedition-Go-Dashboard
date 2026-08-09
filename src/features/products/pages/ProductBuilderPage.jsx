@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
 import { useProductBuilderStore } from '@/features/products/productBuilderStore'
 import { getMyProduct, getTourDraft, createProduct, updateProduct, submitProductForReview, withdrawProductForReview, cleanupMediaUrls } from '@/features/products/api'
-import { buildPayload, useAutoSave } from '@/features/products/useAutoSave'
+import { buildPayload, builderSignature, useAutoSave } from '@/features/products/useAutoSave'
 import { GYG_STEPS } from '@/features/products/gygSteps'
 import { normalizePricingCategories } from '@/features/products/tierUtils'
 import { hasAnyWeeklyHours } from '@/features/products/utils/pricingValidation'
@@ -375,6 +375,17 @@ export default function ProductBuilderPage() {
       setDraftInfo(null)
     })
 
+    const persistSubmissionMeta = (submittedAt) => {
+      const store = useProductBuilderStore.getState()
+      if (!submittedAt) {
+        store.clearSubmissionMeta(id)
+        return
+      }
+      const existing = store.submissionMeta?.[id]
+      if (existing?.submittedAt && existing?.signature) return
+      store.setSubmissionMeta(id, { submittedAt, signature: builderSignature(store) })
+    }
+
     const hydrateFromDraft = async (tour) => {
       try {
         const res = await getTourDraft(id)
@@ -394,6 +405,7 @@ export default function ProductBuilderPage() {
           const product = tourToProduct({ ...tour, ...data.draft })
           loadDraft(product)
           setStoreSavedProductId(id)
+          persistSubmissionMeta(data.draftSubmittedAt || tour.submittedAt || null)
           return true
         }
       } catch {
@@ -432,6 +444,7 @@ export default function ProductBuilderPage() {
         const product = tourToProduct(tour)
         loadDraft(product)
         setStoreSavedProductId(id)
+        persistSubmissionMeta(tour.draftSubmittedAt || tour.submittedAt || null)
       })
       .catch((err) => {
         if (cancelled) return
@@ -506,8 +519,20 @@ export default function ProductBuilderPage() {
     // (defensive: buildPayload spreads state but this guarantees they're present)
     payload.duration = state.duration
     payload.durationUnit = state.durationUnit
-    await submitProductForReview(currentId, payload)
-    toast.success('Submit for review successful')
+    const res = await submitProductForReview(currentId, payload)
+    const noChanges = res?.data?.data?.noChanges === true
+    if (noChanges) {
+      toast.info('No changes to submit — the submission was already current')
+    } else {
+      toast.success('Submit for review successful')
+    }
+    // Record the submission + content signature so the footer can gate the
+    // button until the supplier actually changes something again.
+    const store = useProductBuilderStore.getState()
+    store.setSubmissionMeta(currentId, {
+      submittedAt: new Date().toISOString(),
+      signature: builderSignature(store),
+    })
     navigate('/products')
   }
 
@@ -520,6 +545,7 @@ export default function ProductBuilderPage() {
     try {
       await withdrawProductForReview(currentId)
       useProductBuilderStore.getState().setDraftStatus(null)
+      useProductBuilderStore.getState().clearSubmissionMeta(currentId)
       setDraftInfo(null)
       toast.success('Submission withdrawn. You can now edit this product.')
       navigate(`/products/build/${currentId}?section=${GYG_STEPS[0]?.sectionId}&step=${GYG_STEPS[0]?.stepId}`, { replace: true })
