@@ -610,7 +610,7 @@ export default function ProductDetailPage() {
               <div className="flex-1">
                 <p className="text-sm font-semibold text-rose-700">Tour was flagged for changes</p>
                 <p className="text-sm text-rose-600 mt-0.5 leading-relaxed">
-                  {tour.reviewNote || "An admin flagged this tour for review. Make the requested changes and resubmit it for approval."}
+                  {tour.draftReviewNote || tour.reviewNote || "An admin flagged this tour for review. Make the requested changes and resubmit it for approval."}
                 </p>
               </div>
               <button
