@@ -67,6 +67,22 @@ export function getErrorMessage(error) {
   return responseMessage || errorMessages[errorType];
 }
 
+// Error toasts must never stack: an outage (paused DB, gateway 5xx, dropped
+// connection) fails every background refetch, and each failure would otherwise
+// pop its own toast. Same-message toasts are suppressed within the window, so
+// the user sees one notice per problem, not a wall of identical ones.
+const ERROR_TOAST_DEDUPE_MS = 20000;
+let lastErrorToast = { message: null, at: 0 };
+
+function shouldShowErrorToast(message) {
+  const now = Date.now();
+  if (lastErrorToast.message === message && now - lastErrorToast.at < ERROR_TOAST_DEDUPE_MS) {
+    return false;
+  }
+  lastErrorToast = { message, at: now };
+  return true;
+}
+
 /**
  * Handle API Error
  * Shows toast notification and logs error
@@ -85,8 +101,9 @@ export function handleApiError(error, customMessage) {
     });
   }
 
-  // Show toast notification (skip for network errors)
-  if (errorType !== ErrorType.NETWORK) {
+  // Show toast notification (skip for network errors, dedupe the rest so an
+  // outage never floods the screen with identical toasts)
+  if (errorType !== ErrorType.NETWORK && shouldShowErrorToast(message)) {
     toast.error(message, {
       duration: 5000,
     });
