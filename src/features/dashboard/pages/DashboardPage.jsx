@@ -12,7 +12,10 @@ import { fetchSupplierDashboard } from "../api";
 import { fetchCancellationSummary } from "@/features/cancellation/api";
 import { getAuthToken, useAuthStore } from "@/stores/authStore";
 import { fetchSupplierBookings } from "@/features/bookings/api";
-import { fetchNotifications, markAllNotificationsAsRead } from "@/features/notifications/api";
+import {
+  useNotifications,
+  useMarkAllNotificationsRead,
+} from "@/features/notifications/hooks/useNotifications";
 
 const NOTIFICATION_ICONS = {
   new_booking: { icon: ShoppingBag, color: "text-emerald-600", bg: "bg-emerald-50" },
@@ -68,10 +71,14 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [recentBookings, setRecentBookings] = useState([]);
-  const [notifications, setNotifications] = useState([]);
   const [cancellationSummary, setCancellationSummary] = useState(null);
-  const [unreadCount, setUnreadCount] = useState(0);
   const user = useAuthStore((s) => s.user);
+
+  const { data: notificationsData, refetch: refetchNotifications } =
+    useNotifications({ limit: 5 });
+  const markAllRead = useMarkAllNotificationsRead();
+  const notifications = notificationsData?.notifications ?? [];
+  const unreadCount = notificationsData?.unreadCount ?? 0;
 
   const fetchDashboard = () => {
     if (!getAuthToken()) { setLoading(false); return; }
@@ -79,13 +86,11 @@ export default function DashboardPage() {
     Promise.all([
       fetchSupplierDashboard(),
       fetchSupplierBookings({ page: 1, limit: 4 }).then(r => r.bookings).catch(() => []),
-      fetchNotifications({ limit: 5 }).then(r => { setUnreadCount(r.unreadCount || 0); return r.notifications || []; }).catch(() => []),
       fetchCancellationSummary().catch(() => null),
     ])
-      .then(([data, bookings, notifs, cancellationData]) => {
+      .then(([data, bookings, cancellationData]) => {
         setDashboardData(data);
         setRecentBookings(bookings);
-        setNotifications(notifs);
         setCancellationSummary(cancellationData);
       })
       .catch((err) => {
@@ -106,9 +111,7 @@ export default function DashboardPage() {
 
   const handleMarkAllRead = async () => {
     try {
-      await markAllNotificationsAsRead();
-      setUnreadCount(0);
-      setNotifications((prev) => prev.map((n) => ({ ...n, readAt: n.readAt || new Date().toISOString() })));
+      await markAllRead.mutateAsync();
     } catch {
       // silent fail — non-critical
     }
@@ -156,7 +159,7 @@ export default function DashboardPage() {
               : 'All caught up — no pending requests.'}
           </p>
         </div>
-        <button onClick={fetchDashboard} disabled={loading}
+        <button onClick={() => { refetchNotifications(); fetchDashboard(); }} disabled={loading}
           className="flex items-center gap-1.5 px-3.5 py-2 bg-white border border-emerald-200/60 rounded-xl text-xs font-medium text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300 transition-all disabled:opacity-40 shadow-sm"
         >
           {loading ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
@@ -168,7 +171,7 @@ export default function DashboardPage() {
       {error && !loading && (
         <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs font-medium text-red-700 flex items-center gap-2">
           <AlertTriangle size={12} /> {error}
-          <button onClick={fetchDashboard} className="ml-auto underline">Retry</button>
+          <button onClick={() => { refetchNotifications(); fetchDashboard(); }} className="ml-auto underline">Retry</button>
         </div>
       )}
 

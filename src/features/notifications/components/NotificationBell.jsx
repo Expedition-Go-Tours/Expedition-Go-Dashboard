@@ -53,7 +53,7 @@ export default function NotificationBell() {
   const panelRef = useRef(null);
   const [open, setOpen] = useState(false);
 
-  const { data, isLoading, isError } = useNotifications({ limit: 8 });
+  const { data, isLoading, isError, refetch } = useNotifications({ limit: 8 });
   const markAsRead = useMarkNotificationRead();
   const markAllAsRead = useMarkAllNotificationsRead();
 
@@ -62,7 +62,13 @@ export default function NotificationBell() {
   const grouped = groupByDate(notifications);
 
   const closePanel = () => setOpen(false);
-  const togglePanel = () => setOpen((v) => !v);
+  const togglePanel = () => {
+    setOpen((v) => {
+      const next = !v;
+      if (next) refetch();
+      return next;
+    });
+  };
 
   useEffect(() => {
     function handleClickOutside(event) {

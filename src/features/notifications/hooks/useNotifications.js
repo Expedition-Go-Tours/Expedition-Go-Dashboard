@@ -22,12 +22,13 @@ export function useNotifications(params = {}, options = {}) {
     queryFn: () => fetchNotifications(params),
     enabled: hasToken && (options.enabled ?? true),
     refetchInterval: options.refetchInterval ?? REFETCH_INTERVAL_MS,
-    refetchIntervalInBackground: false,
+    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: true,
     staleTime: 30_000,
   });
 }
 
-function invalidateNotifications(queryClient) {
+export function invalidateNotifications(queryClient) {
   return queryClient.invalidateQueries({ queryKey: [NOTIFICATIONS_QUERY_KEY] });
 }
 
