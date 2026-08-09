@@ -40,11 +40,8 @@ export default function ProtectedRoute({ requireAdmin = false }) {
 
   useEffect(() => {
     if (!needsProfileLookup) {
-      setProfileResolved(true);
       return undefined;
     }
-
-    setProfileResolved(false);
 
     if (profileCheckStarted.current) {
       return undefined;
@@ -53,28 +50,34 @@ export default function ProtectedRoute({ requireAdmin = false }) {
     profileCheckStarted.current = true;
     let cancelled = false;
 
-    const timeoutId = window.setTimeout(() => {
-      if (!cancelled) {
-        setProfileResolved(true);
-      }
-    }, PROFILE_CHECK_TIMEOUT_MS);
+    // Defer the state writes into a microtask so the effect body stays free
+    // of synchronous setState (avoids cascading render warnings).
+    Promise.resolve().then(() => {
+      if (cancelled) return;
+      setProfileResolved(false);
 
-    loadSupplierProfile(authToken)
-      .then((profile) => {
+      const timeoutId = window.setTimeout(() => {
         if (!cancelled) {
-          setSupplierProfile(profile);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          window.clearTimeout(timeoutId);
           setProfileResolved(true);
         }
-      });
+      }, PROFILE_CHECK_TIMEOUT_MS);
+
+      loadSupplierProfile(authToken)
+        .then((profile) => {
+          if (!cancelled) {
+            setSupplierProfile(profile);
+          }
+        })
+        .finally(() => {
+          if (!cancelled) {
+            window.clearTimeout(timeoutId);
+            setProfileResolved(true);
+          }
+        });
+    });
 
     return () => {
       cancelled = true;
-      window.clearTimeout(timeoutId);
     };
   }, [needsProfileLookup, authToken, setSupplierProfile]);
 

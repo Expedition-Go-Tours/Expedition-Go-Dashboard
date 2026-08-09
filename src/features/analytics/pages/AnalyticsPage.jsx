@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
-import { DollarSign, ShoppingCart, Star, TrendingUp, ArrowUpRight, Loader2, RefreshCw, AlertTriangle } from "lucide-react";
+import { DollarSign, ShoppingCart, Star, TrendingUp, Loader2, RefreshCw, AlertTriangle } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { getAuthToken } from "@/stores/authStore";
 import { fetchSupplierAnalytics } from "../api";
@@ -41,7 +41,16 @@ export default function AnalyticsPage() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => {
+    let cancelled = false;
+    // Defer the initial fetch out of the effect's synchronous body so no
+    // setState runs during the effect itself.
+    Promise.resolve().then(() => {
+      if (cancelled) return;
+      fetchData();
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   const dashboardData = data;
   const tours = dashboardData?.tours || {};
@@ -50,10 +59,6 @@ export default function AnalyticsPage() {
 
   const totalRevenue = Number(earnings.totalEarnings) || 0;
   const totalBookings = bookingsData.total || 0;
-  const pendingBookings = bookingsData.pending || 0;
-  const confirmedBookings = bookingsData.confirmed || 0;
-  const completedBookings = bookingsData.completed || 0;
-  const cancelledBookings = bookingsData.cancelled || 0;
   const activeTours = tours.active || 0;
 
   const avgRating = 4.75;
@@ -87,12 +92,11 @@ export default function AnalyticsPage() {
     return Object.entries(map)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 4)
-      .map(([name, revenue], i) => {
-        const count = productBookings.find(p => name.startsWith(p.name.slice(0, -1)) || p.name.startsWith(name.slice(0, -1)));
+      .map(([name, revenue]) => {
         const bookingCount = bookings.filter(b => (b.tourName || "Unknown") === name).length;
         return { name, revenue, bookings: bookingCount, rating: avgRating };
       });
-  }, [bookings, productBookings]);
+  }, [bookings]);
 
   return (
     <div className="p-5 md:p-6 max-w-7xl mx-auto space-y-5">

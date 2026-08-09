@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { Clock, Sunrise, Timer, CalendarDays, Tag, Percent, DollarSign, Copy, Layers, Users } from "lucide-react";
+import { Clock, Sunrise, Timer, CalendarDays, Percent, DollarSign, Copy, Layers, Users } from "lucide-react";
 import { useSpecialOfferBuilderStore } from "@/features/special-offers/stores/specialOfferBuilderStore";
 import DatePicker from "@/components/forms/DatePicker";
 import { cn } from "@/lib/utils";

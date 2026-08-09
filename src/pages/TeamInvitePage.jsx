@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
 import { Loader2, CheckCircle2, XCircle, Clock, Mail, Shield, Building2, AlertTriangle, ArrowRight } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
@@ -30,41 +30,7 @@ export default function TeamInvitePage() {
   const [invite, setInvite] = useState(null);
   const [errorMsg, setErrorMsg] = useState("");
 
-  useEffect(() => {
-    if (!token) {
-      setStatus(STATUS.INVALID);
-      setErrorMsg("No invitation token provided.");
-      return;
-    }
-
-    if (!isAuthenticated) {
-      setStatus(STATUS.NOT_AUTHENTICATED);
-      return;
-    }
-
-    loadInvite();
-  }, [token, isAuthenticated]);
-
-  useEffect(() => {
-    if (status === STATUS.READY && invite && isAuthenticated && user) {
-      if (user.email?.toLowerCase() === invite.invitedEmail?.toLowerCase()) {
-        (async () => {
-          setStatus(STATUS.ACCEPTING);
-          try {
-            await acceptInvite(token);
-            await refetch();
-            setStatus(STATUS.SUCCESS);
-          } catch (err) {
-            const msg = err?.response?.data?.message || "Failed to accept invitation.";
-            setErrorMsg(msg);
-            setStatus(STATUS.ERROR);
-          }
-        })();
-      }
-    }
-  }, [status, invite, isAuthenticated, user, token, refetch]);
-
-  const loadInvite = async () => {
+  const loadInvite = useCallback(async () => {
     setStatus(STATUS.LOADING);
     try {
       const data = await fetchInviteDetails(token);
@@ -96,7 +62,43 @@ export default function TeamInvitePage() {
         setErrorMsg(msg);
       }
     }
-  };
+  }, [token]);
+
+  useEffect(() => {
+    if (!token) {
+      Promise.resolve().then(() => {
+        setStatus(STATUS.INVALID);
+        setErrorMsg("No invitation token provided.");
+      });
+      return;
+    }
+
+    if (!isAuthenticated) {
+      Promise.resolve().then(() => setStatus(STATUS.NOT_AUTHENTICATED));
+      return;
+    }
+
+    Promise.resolve().then(() => loadInvite());
+  }, [token, isAuthenticated, loadInvite]);
+
+  useEffect(() => {
+    if (status === STATUS.READY && invite && isAuthenticated && user) {
+      if (user.email?.toLowerCase() === invite.invitedEmail?.toLowerCase()) {
+        Promise.resolve().then(async () => {
+          setStatus(STATUS.ACCEPTING);
+          try {
+            await acceptInvite(token);
+            await refetch();
+            setStatus(STATUS.SUCCESS);
+          } catch (err) {
+            const msg = err?.response?.data?.message || "Failed to accept invitation.";
+            setErrorMsg(msg);
+            setStatus(STATUS.ERROR);
+          }
+        });
+      }
+    }
+  }, [status, invite, isAuthenticated, user, token, refetch]);
 
   const handleAccept = async () => {
     if (!isAuthenticated) {

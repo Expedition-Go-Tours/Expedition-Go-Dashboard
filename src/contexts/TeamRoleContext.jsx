@@ -1,8 +1,7 @@
-import { createContext, useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import api from "@/lib/axios";
 import { useAuthStore } from "@/stores/authStore";
-
-export const TeamRoleContext = createContext(null);
+import { TeamRoleContext } from "./teamRoleContext";
 
 export function TeamRoleProvider({ children }) {
   const [teamRole, setTeamRole] = useState(null);
@@ -35,37 +34,46 @@ export function TeamRoleProvider({ children }) {
 
   useEffect(() => {
     if (!isAuthenticated) {
-      setTeamRole(null);
-      setPermissions([]);
-      setIsOwner(false);
-      setLoading(false);
-      return;
-    }
-
-    let cancelled = false;
-    setLoading(true);
-
-    const fetchTeamRole = async () => {
-      try {
-        const response = await api.get("/suppliers/settings/team/my-role", {
-          skipGlobalErrorHandler: true,
-        });
-        if (cancelled) return;
-        const data = response.data?.data;
-        setTeamRole(data?.role || null);
-        setPermissions(data?.permissions || []);
-        setIsOwner(data?.isOwner || false);
-      } catch {
+      let cancelled = false;
+      // Deferred so the resets never run synchronously inside the effect
+      Promise.resolve().then(() => {
         if (cancelled) return;
         setTeamRole(null);
         setPermissions([]);
         setIsOwner(false);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
+        setLoading(false);
+      });
+      return () => { cancelled = true; };
+    }
 
-    fetchTeamRole();
+    let cancelled = false;
+    // Deferred: keeps the synchronous effect body free of state updates
+    Promise.resolve().then(() => {
+      if (cancelled) return;
+      setLoading(true);
+
+      const fetchTeamRole = async () => {
+        try {
+          const response = await api.get("/suppliers/settings/team/my-role", {
+            skipGlobalErrorHandler: true,
+          });
+          if (cancelled) return;
+          const data = response.data?.data;
+          setTeamRole(data?.role || null);
+          setPermissions(data?.permissions || []);
+          setIsOwner(data?.isOwner || false);
+        } catch {
+          if (cancelled) return;
+          setTeamRole(null);
+          setPermissions([]);
+          setIsOwner(false);
+        } finally {
+          if (!cancelled) setLoading(false);
+        }
+      };
+
+      fetchTeamRole();
+    });
     return () => { cancelled = true; };
   }, [isAuthenticated]);
 

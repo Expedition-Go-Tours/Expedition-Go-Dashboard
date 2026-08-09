@@ -79,30 +79,6 @@ export default function ChatPage() {
     }
   }, [currentUserId, loaded, loadConversations]);
 
-  // Auto-create conversation from customerId param
-  useEffect(() => {
-    if (!customerIdParam || !currentUserId) return;
-    if (lastProcessedCustomerId.current === customerIdParam) return;
-    lastProcessedCustomerId.current = customerIdParam;
-
-    const existing = conversations.find(
-      (c) =>
-        c.participants?.some((p) => p.userId === customerIdParam)
-    );
-
-    if (existing) {
-      handleSelectConversation(existing);
-      return;
-    }
-
-    getOrCreateConversation(customerIdParam)
-      .then((conv) => {
-        appendConversation(conv);
-        handleSelectConversation(conv);
-      })
-      .catch(() => {});
-  }, [customerIdParam, currentUserId, conversations]);
-
   const loadMessages = useCallback(async (convId, conv) => {
     if (!convId || isFetchingRef.current) return;
     isFetchingRef.current = true;
@@ -149,6 +125,30 @@ export default function ChatPage() {
     markAsRead(conv.id);
   }, [loadMessages, emitMarkRead, setSelectedConv, markAsRead, queryClient]);
 
+  // Auto-create conversation from customerId param
+  useEffect(() => {
+    if (!customerIdParam || !currentUserId) return;
+    if (lastProcessedCustomerId.current === customerIdParam) return;
+    lastProcessedCustomerId.current = customerIdParam;
+
+    const existing = conversations.find(
+      (c) =>
+        c.participants?.some((p) => p.userId === customerIdParam)
+    );
+
+    if (existing) {
+      Promise.resolve().then(() => handleSelectConversation(existing));
+      return;
+    }
+
+    getOrCreateConversation(customerIdParam)
+      .then((conv) => {
+        appendConversation(conv);
+        Promise.resolve().then(() => handleSelectConversation(conv));
+      })
+      .catch(() => {});
+  }, [customerIdParam, currentUserId, conversations, handleSelectConversation, appendConversation]);
+
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     resetChat();
@@ -159,7 +159,7 @@ export default function ChatPage() {
     }, { replace: true });
   };
 
-  const handleLoadMore = useCallback(async () => {
+  const handleLoadMore = async () => {
     if (!selectedConv?.id || !hasMore || loadingMore || isFetchingRef.current) return;
     isFetchingRef.current = true;
     setLoadingMore(true);
@@ -188,9 +188,9 @@ export default function ChatPage() {
       setLoadingMore(false);
       isFetchingRef.current = false;
     }
-  }, [selectedConv?.id, hasMore, loadingMore, cursor, messageStatuses, appendMessages, setCursor, setHasMore, updateMessageStatuses, currentUserId]);
+  };
 
-  const handleSend = useCallback(async (content, attachment) => {
+  const handleSend = async (content, attachment) => {
     if (!selectedConv?.id || sending) return;
     setSending(true);
     try {
@@ -203,9 +203,9 @@ export default function ChatPage() {
     } finally {
       setSending(false);
     }
-  }, [selectedConv?.id, sending, addMessage, updateMessageStatuses, touchConversation]);
+  };
 
-  const handleDeleteConversation = useCallback(async (conv) => {
+  const handleDeleteConversation = async (conv) => {
     try {
       await deleteConversation(conv.id);
       removeConversation(conv.id);
@@ -215,7 +215,7 @@ export default function ChatPage() {
     } catch {
       // handled globally
     }
-  }, [selectedConv?.id, removeConversation, resetChat]);
+  };
 
   useEffect(() => {
     if (!onNewMessage) return;

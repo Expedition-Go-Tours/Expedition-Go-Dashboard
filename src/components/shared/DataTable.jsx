@@ -22,6 +22,10 @@ export default function DataTable({
   isLoading = false,
   emptyState,
 }) {
+  // TanStack Table's useReactTable() intentionally returns non-memoizable
+  // functions; nothing can be done on our side and React Compiler is not
+  // enabled, so compilations are irrelevant here.
+  // eslint-disable-next-line react-hooks/incompatible-library -- see comment
   const table = useReactTable({
     data,
     columns,

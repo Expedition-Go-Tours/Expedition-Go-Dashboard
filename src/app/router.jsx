@@ -1,11 +1,9 @@
-import { createBrowserRouter, Navigate, Outlet, useParams } from "react-router-dom";
-import ScrollToTop from "@/components/shared/ScrollToTop";
-import { TeamRoleProvider } from "@/contexts/TeamRoleContext";
-import { Toaster } from "sonner";
+import { createBrowserRouter, Navigate } from "react-router-dom";
 import AppShell from "@/components/layout/AppShell";
 import ProtectedRoute from "@/components/shared/ProtectedRoute";
 import AuthOnlyRoute from "@/components/shared/AuthOnlyRoute";
 import GuestRoute from "@/components/shared/GuestRoute";
+import RootLayout, { ProductBuilderRedirect } from "./RootLayout";
 
 import DashboardPage from "@/features/dashboard/pages/DashboardPage";
 import BookingsPage from "@/features/bookings/pages/BookingsPage";
@@ -34,53 +32,6 @@ import NotFoundPage from "@/pages/errors/NotFoundPage";
 import ServerErrorPage from "@/pages/errors/ServerErrorPage";
 import ForbiddenPage from "@/pages/errors/ForbiddenPage";
 import NetworkErrorPage from "@/pages/errors/NetworkErrorPage";
-
-const LEGACY_STEP_MAP = {
-  type: { section: "basics", step: "categorization" },
-  basics: { section: "basics", step: "language-and-title" },
-  content: { section: "product-content", step: "meeting-and-pickup" },
-  photos: { section: "basics", step: "photos" },
-  pricing: { section: "schedules-and-pricing", step: "pricing-schedules" },
-  schedule: { section: "schedules-and-pricing", step: "pricing-schedules" },
-  booking: { section: "booking-and-tickets", step: "booking-process" },
-  review: { section: "finish", step: "submit-for-review" },
-};
-
-function ProductBuilderRedirect() {
-  const { id, step } = useParams();
-  const mapping = LEGACY_STEP_MAP[step];
-  const params = new URLSearchParams();
-  if (mapping) {
-    params.set("section", mapping.section);
-    params.set("step", mapping.step);
-  } else {
-    params.set("section", "basics");
-    params.set("step", "language-and-title");
-  }
-  const target = `/products/build/${id || "new"}?${params.toString()}`;
-  return <Navigate to={target} replace />;
-}
-
-function RootLayout() {
-  return (
-    <>
-      <ScrollToTop />
-      <TeamRoleProvider>
-        <Outlet />
-      </TeamRoleProvider>
-      <Toaster
-        position="top-right"
-        richColors
-        closeButton
-        toastOptions={{
-          style: {
-            fontFamily: "'DM Sans', system-ui, sans-serif",
-          },
-        }}
-      />
-    </>
-  );
-}
 
 export const router = createBrowserRouter([
   {

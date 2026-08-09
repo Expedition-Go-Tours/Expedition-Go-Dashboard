@@ -1,5 +1,5 @@
 import { useContext } from "react";
-import { TeamRoleContext } from "@/contexts/TeamRoleContext";
+import { TeamRoleContext } from "@/contexts/teamRoleContext";
 
 export function useTeamRole() {
   const context = useContext(TeamRoleContext);

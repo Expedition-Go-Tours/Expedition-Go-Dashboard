@@ -1,11 +1,11 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSidebarStore } from "@/stores/sidebarStore";
 import { useAuthStore } from "@/stores/authStore";
 import { toast } from "sonner";
 import { loadSupplierProfile } from "@/features/auth/api";
-import { LogOut, ChevronLeft, ChevronRight, Menu, X, LayoutDashboard, Package, Ticket, CalendarDays, Users, DollarSign, Star, Bell, BarChart3, BadgeCheck, Settings, CalendarX2, BadgePercent } from "lucide-react";
+import { LogOut, ChevronLeft, ChevronRight, Menu, LayoutDashboard, Package, Ticket, CalendarDays, Users, DollarSign, Star, Bell, BarChart3, BadgeCheck, Settings, CalendarX2, BadgePercent } from "lucide-react";
 import { optimizeImage } from "@/lib/image";
 import { useTeamRole } from "@/hooks/useTeamRole";
 
@@ -49,7 +49,10 @@ export default function Sidebar() {
   const navigate = useNavigate();
   const logoUrl = user?.logoUrl;
   const [businessName, setBusinessName] = useState(null);
-  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+const [logoutConfirmOpen, setShowLogoutConfirm] = useState(false);
+  // Derived state: a collapsed sidebar can never show the confirm dialog.
+  // Expressing the reset during render avoids a setState-from-effect cascade.
+  const showLogoutConfirm = logoutConfirmOpen && !isCollapsed;
   const [profileHover, setProfileHover] = useState(false);
   const { hasPermission } = useTeamRole();
 
@@ -66,10 +69,6 @@ export default function Sidebar() {
       if (name) setBusinessName(name);
     });
   }, [user?.roles]);
-
-  useEffect(() => {
-    if (isCollapsed) setShowLogoutConfirm(false);
-  }, [isCollapsed]);
 
   const statusStyle = SIDEBAR_STATUS_STYLES[supplierProfile?.status] || null;
 

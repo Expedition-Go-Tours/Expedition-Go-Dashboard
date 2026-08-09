@@ -1,6 +1,5 @@
 import { useState } from "react";
 import {
-  LineChart,
   Line,
   AreaChart,
   Area,
@@ -16,7 +15,7 @@ import {
   Pie,
   Cell,
 } from "recharts";
-import { TrendingUp, TrendingDown, Calendar, DollarSign, Users, ShoppingCart, ArrowUpRight } from "lucide-react";
+import { TrendingUp, TrendingDown, DollarSign, Users, ShoppingCart, ArrowUpRight } from "lucide-react";
 import { format, subMonths } from "date-fns";
 
 // Mock revenue data (last 6 months)

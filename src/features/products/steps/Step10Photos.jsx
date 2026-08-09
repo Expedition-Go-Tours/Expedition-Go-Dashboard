@@ -31,8 +31,9 @@ export default function Step10Photos() {
   const blobUrls = useRef({})
 
   useEffect(() => {
+    const urls = blobUrls.current;
     return () => {
-      Object.values(blobUrls.current).forEach(URL.revokeObjectURL)
+      Object.values(urls).forEach(URL.revokeObjectURL)
     }
   }, [])
 
