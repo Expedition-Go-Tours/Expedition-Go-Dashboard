@@ -3,11 +3,13 @@ import Sidebar from "./Sidebar";
 import Header from "./Header";
 import { useSidebarStore } from "@/stores/sidebarStore";
 import SupportFloating from "@/features/chat/components/SupportFloating";
+import { useRealtimeNotifications } from "@/features/notifications/hooks/useRealtimeNotifications";
 
 export default function AppShell() {
   const { isCollapsed, isMobileOpen } = useSidebarStore();
   const location = useLocation();
   const isProductBuilder = location.pathname.includes('/products/build');
+  useRealtimeNotifications();
 
   return (
     <div className="min-h-screen bg-slate-50">
