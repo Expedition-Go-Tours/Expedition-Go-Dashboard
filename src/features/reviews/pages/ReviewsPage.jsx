@@ -1,7 +1,6 @@
 import { AnimatePresence, motion } from "framer-motion";
 import {
   AlertCircle,
-  ArrowLeft,
   ArrowUpRight,
   Calendar,
   Camera,
@@ -386,7 +385,7 @@ export default function ReviewsPage() {
     }
   }, [currentTab.status]);
 
-  useEffect(() => { loadReviews(); }, [loadReviews]);
+  useEffect(() => { Promise.resolve().then(() => loadReviews()); }, [loadReviews]);
 
   const filteredReviews = useMemo(() => {
     let data = [...reviews];
@@ -414,11 +413,13 @@ export default function ReviewsPage() {
     if (highlightId && reviews.length > 0) {
       const match = reviews.find((r) => r.id === highlightId);
       if (match) {
-        setHighlightedReviewId(highlightId);
-        setTimeout(() => {
-          const el = document.getElementById(`review-${highlightId}`);
-          el?.scrollIntoView({ behavior: "smooth", block: "center" });
-        }, 100);
+        Promise.resolve().then(() => {
+          setHighlightedReviewId(highlightId);
+          setTimeout(() => {
+            const el = document.getElementById(`review-${highlightId}`);
+            el?.scrollIntoView({ behavior: "smooth", block: "center" });
+          }, 100);
+        });
         const timer = setTimeout(() => {
           setHighlightedReviewId(null);
           setSearchParams((prev) => {
@@ -485,11 +486,11 @@ export default function ReviewsPage() {
 
   const closeLightbox = () => setLightboxPhotos(null);
 
-  const changeLightboxIndex = (next) => {
+  const changeLightboxIndex = useCallback((next) => {
     if (!lightboxPhotos) return;
     const total = lightboxPhotos.length;
     setLightboxIndex(((next % total) + total) % total);
-  };
+  }, [lightboxPhotos]);
 
   useEffect(() => {
     if (!lightboxPhotos) return;
@@ -500,7 +501,7 @@ export default function ReviewsPage() {
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [lightboxPhotos, lightboxIndex]);
+  }, [lightboxPhotos, lightboxIndex, changeLightboxIndex]);
 
   const formatCurrency = (amount, currency = "EUR") =>
     new Intl.NumberFormat("en-US", { style: "currency", currency }).format(amount);

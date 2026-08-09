@@ -27,14 +27,19 @@ export default function WizardSidebar({ currentStep, onSelectStep }) {
   })
 
   useEffect(() => {
-    if (currentSectionId) {
+    if (!currentSectionId) return
+    let cancelled = false
+    // Deferred so the state update runs outside the effect's sync body
+    Promise.resolve().then(() => {
+      if (cancelled || !currentSectionId) return
       setExpandedSections((prev) => {
         if (prev.has(currentSectionId)) return prev
         const next = new Set(prev)
         next.add(currentSectionId)
         return next
       })
-    }
+    })
+    return () => { cancelled = true }
   }, [currentSectionId])
 
   useEffect(() => {

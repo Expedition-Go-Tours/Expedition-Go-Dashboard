@@ -60,6 +60,7 @@ export const useAuthStore = create(
           const { default: api } = await import("@/lib/axios");
           await api.post("/auth/logout", {}, { skipAuthGuard: true });
         } catch {
+          // Best-effort server logout — local session state is cleared regardless
         }
 
         localStorage.removeItem("auth_token");

@@ -431,7 +431,7 @@ export default function ProductBuilderPage() {
         // A FLAGGED tour (no draft row) is editable and shows the review note.
         const effectiveDraftStatus = tour.draftStatus
           || (tour.status === 'PENDING_APPROVAL' ? 'PENDING_APPROVAL' : null)
-          || (tour.status === 'FLAGGED' ? 'REJECTED' : null)
+          || (tour.status === 'FLAGGED' || tour.status === 'REJECTED' ? 'REJECTED' : null)
         if (effectiveDraftStatus) {
           setDraftInfo({
             draftStatus: effectiveDraftStatus,

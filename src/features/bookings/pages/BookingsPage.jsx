@@ -1,10 +1,10 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import {
-  Search, X, ChevronDown, RefreshCw, Calendar, Loader2, Users,
-  Phone, Mail, Clock, Tag, ShoppingCart, MessageCircle,
-  CheckCircle2, AlertTriangle, Ban, ArrowUpDown, Download,
-  ChevronRight, TrendingUp, Eye,
+  Search, X, RefreshCw, Calendar, Loader2,
+  Phone, Mail, Clock, ShoppingCart, MessageCircle,
+  CheckCircle2, AlertTriangle,
+  TrendingUp,
 } from "lucide-react";
 import { toast } from "sonner";
 import StatusBadge from "@/components/shared/StatusBadge";
@@ -12,7 +12,6 @@ import {
   BOOKING_STATUSES,
   DEFAULT_PAGE_SIZE,
   PAGE_SIZE_OPTIONS,
-  SUPPLIER_BOOKING_STATUS_OPTIONS,
 } from "@/lib/constants";
 import { formatCurrency, formatDate, formatTime, cn } from "@/lib/utils";
 import { optimizeImage } from "@/lib/image";
@@ -89,7 +88,14 @@ export default function BookingsPage() {
     }
   }, [page, pageSize, apiStatus]);
 
-  useEffect(() => { loadBookings(); }, [loadBookings]);
+  useEffect(() => {
+    let cancelled = false;
+    // Defer so setState happens outside the effect's synchronous body
+    Promise.resolve().then(() => {
+      if (!cancelled) loadBookings();
+    });
+    return () => { cancelled = true; };
+  }, [loadBookings]);
 
   useEffect(() => {
     if (highlightedBookingId && bookings.length > 0) {
@@ -122,21 +128,12 @@ export default function BookingsPage() {
     setSearchParams(params);
   }, [searchParams, setSearchParams]);
 
-  const handleTabClick = (tabKey) => updateFilters({ tab: tabKey, page: 0 });
-
   const clearFilters = () => {
     setLocalSearch(""); setLocPurchaseFrom(""); setLocPurchaseTo(""); setLocActivityFrom(""); setLocActivityTo("");
     setSearchParams({});
   };
 
-  const applyFilters = () => {
-    updateFilters({
-      search: localSearch || null,
-      purchaseFrom: locPurchaseFrom || null, purchaseTo: locPurchaseTo || null,
-      activityFrom: locActivityFrom || null, activityTo: locActivityTo || null,
-      page: 0,
-    });
-  };
+  const handleTabClick = (tabKey) => updateFilters({ tab: tabKey, page: 0 });
 
   const handleStatusUpdate = useCallback(async (bookingId, status) => {
     setUpdatingId(bookingId);

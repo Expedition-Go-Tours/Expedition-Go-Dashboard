@@ -2,9 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   User, Bell, CreditCard, Shield, FileText, ClipboardList, Users,
-  Check, Loader2, ImagePlus, Upload, Trash2, X, Plus, Building2,
-  Wallet, Globe, MapPin, Clock, Phone, Mail, Camera, ExternalLink,
-  AtSign, Briefcase, Save, Key, LogOut, Eye, EyeOff, ChevronDown,
+  Loader2, Upload, Trash2, X, Plus, Building2,
+  Wallet, Globe, MapPin, Clock, Phone, Camera, ExternalLink,
+  AtSign, Save, Key, Eye, EyeOff,
   Landmark, Banknote, AlertTriangle, RefreshCw
 } from "lucide-react";
 import { toast } from "sonner";
@@ -29,7 +29,7 @@ import { getAuthToken, useAuthStore } from "@/stores/authStore";
 import { cn } from "@/lib/utils";
 import { config } from "@/config";
 import { useTeamRole } from "@/hooks/useTeamRole";
-import { TEAM_ROLES, TEAM_ROLE_LABELS, TEAM_ROLE_COLORS } from "@/config/teamRoles";
+import { TEAM_ROLE_LABELS, TEAM_ROLE_COLORS } from "@/config/teamRoles";
 
 const TABS = [
   { key: "profile", label: "Profile", icon: User },
@@ -53,12 +53,9 @@ const FADE_UP = {
 };
 
 export default function SettingsPage() {
-  const authUser = useAuthStore((state) => state.user);
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get("tab") || "profile";
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const { canManageTeam, canManageFinance, canManageChat, isOwner, teamRole } = useTeamRole();
+  const { canManageTeam, canManageFinance, isOwner, teamRole } = useTeamRole();
 
   const filteredTabs = TABS.filter((tab) => {
     if (tab.key === "team") return canManageTeam();
@@ -657,7 +654,7 @@ function PayoutsTab() {
     finally { setLoading(false); }
   };
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => { Promise.resolve().then(() => loadData()); }, []);
 
   const handleAddMethod = async (e) => {
     e.preventDefault();
@@ -1178,26 +1175,27 @@ function TaxTab() {
   );
 }
 
+const BOOKING_RULES_DEFAULTS = {
+  confirmationType: "INSTANT",
+  maxTravelersPerBooking: 15,
+  minAdvanceHours: 24,
+  maxAdvanceDays: 365,
+  cancellationPolicy: "Free cancellation up to 24 hours before start time",
+  cancellationWindowHours: 24,
+};
+
 function BookingRulesTab() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [initialForm, setInitialForm] = useState(null);
-  const [form, setForm] = useState({
-    confirmationType: "INSTANT",
-    maxTravelersPerBooking: 15,
-    minAdvanceHours: 24,
-    maxAdvanceDays: 365,
-    cancellationPolicy: "Free cancellation up to 24 hours before start time",
-    cancellationWindowHours: 24,
-  });
+  const [form, setForm] = useState(BOOKING_RULES_DEFAULTS);
 
   useEffect(() => {
     fetchBookingRules()
       .then((data) => {
         if (data) {
-          const merged = { ...form, ...data };
-          setForm(merged);
-          setInitialForm(merged);
+          setForm((prev) => ({ ...prev, ...data }));
+          setInitialForm({ ...BOOKING_RULES_DEFAULTS, ...data });
         }
       })
       .catch(() => {})

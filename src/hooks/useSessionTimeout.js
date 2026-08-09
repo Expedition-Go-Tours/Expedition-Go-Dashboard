@@ -9,11 +9,13 @@ const DEBOUNCE_MS = 1000
 export function useSessionTimeout() {
   const navigate = useNavigate()
   const timerRef = useRef(null)
-  const lastActivityRef = useRef(Date.now())
+  const lastActivityRef = useRef(0)
   const timeoutMs = config.auth.sessionTimeout
 
   useEffect(() => {
     if (!timeoutMs || timeoutMs <= 0) return
+
+    lastActivityRef.current = Date.now()
 
     const clearTimer = () => {
       if (timerRef.current) {

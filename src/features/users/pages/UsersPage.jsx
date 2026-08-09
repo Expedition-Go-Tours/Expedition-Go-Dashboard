@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, Filter, Plus, Eye, Edit, Ban, Trash2, User, Mail, Shield, Check, X } from "lucide-react";
+import { Search, Plus, Eye, Edit, Ban, Trash2, Shield, Check, X } from "lucide-react";
 import StatusBadge from "@/components/shared/StatusBadge";
 import DataTable from "@/components/shared/DataTable";
 import { formatDate } from "@/lib/utils";

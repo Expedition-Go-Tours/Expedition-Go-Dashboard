@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   DollarSign, Wallet, CreditCard, Loader2, RefreshCw, Plus, Trash2,
@@ -79,7 +79,14 @@ export default function FinancePage() {
     } finally { setLoading(false); }
   }, [activeTab]);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => {
+    let cancelled = false;
+    // Deferred so the setState's happen inside the promise chain
+    Promise.resolve().then(() => {
+      if (!cancelled) loadData();
+    });
+    return () => { cancelled = true; };
+  }, [loadData]);
 
   const handleAddMethod = async (e) => {
     e.preventDefault(); setSavingMethod(true);
@@ -126,7 +133,7 @@ export default function FinancePage() {
       }, { replace: true });
     }, 3000);
     return () => { clearTimeout(scrollTimer); clearTimeout(clearTimer); };
-  }, [payouts, highlightedPayoutId]);
+  }, [payouts, highlightedPayoutId, setSearchParams]);
 
   const summaryStats = useMemo(() => {
     if (activeTab === "earnings") return [

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { X, Calendar, Users, ChevronRight, Clock, Ticket, DollarSign, Hash, CalendarDays, Phone, Mail, Shield, Circle, Baby, User } from "lucide-react";
+import { X, Calendar, Users, Clock, Ticket, Hash, Phone, Mail, Circle } from "lucide-react";
 import { fetchCustomerBookings } from "@/features/bookings/api";
 import { useNavigate } from "react-router-dom";
 import { optimizeImage } from "@/lib/image";
@@ -51,11 +51,13 @@ export default function CustomerDetailsPanel({ conversation, currentUserId, onCl
 
   useEffect(() => {
     if (!customerId) return;
-    setLoading(true);
-    fetchCustomerBookings(customerId)
-      .then(setBookings)
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    Promise.resolve().then(() => {
+      setLoading(true);
+      fetchCustomerBookings(customerId)
+        .then(setBookings)
+        .catch(() => {})
+        .finally(() => setLoading(false));
+    });
   }, [customerId]);
 
   const stats = useMemo(() => {

@@ -1,5 +1,5 @@
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, ArrowLeft, Check, Package, CalendarRange, Percent } from "lucide-react";
 import { toast } from "sonner";
@@ -28,39 +28,43 @@ export default function SpecialOfferBuilderPage() {
 
   useEffect(() => {
     if (step && stepIndex !== currentStep) setStep(stepIndex);
-  }, [step, stepIndex]);
+  }, [step, stepIndex, currentStep, setStep]);
 
   useEffect(() => {
     const currentStepId = STEPS[currentStep]?.id;
     if (currentStepId && currentStepId !== step) {
       navigate(`/special-offers/build/${id || "new"}/${currentStepId}`, { replace: true });
     }
-  }, [currentStep]);
+  }, [currentStep, step, id, navigate]);
 
   useEffect(() => {
     if (!id || id === "new" || !hasHydrated) return;
     let cancelled = false;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLoadingProduct(true);
-    setProductError(null);
-    getSpecialOffer(id)
-      .then((res) => {
-        if (cancelled) return;
-        const offer = res.data?.data?.offer;
-        if (!offer) { setProductError("Offer not found"); return; }
-        loadOffer(offer);
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        setProductError(err.response?.data?.message || err.message || "Failed to load offer");
-      })
-      .finally(() => { if (!cancelled) setLoadingProduct(false); });
+    Promise.resolve().then(() => {
+      if (cancelled) return;
+      setLoadingProduct(true);
+      setProductError(null);
+      getSpecialOffer(id)
+        .then((res) => {
+          if (cancelled) return;
+          const offer = res.data?.data?.offer;
+          if (!offer) { setProductError("Offer not found"); return; }
+          loadOffer(offer);
+        })
+        .catch((err) => {
+          if (cancelled) return;
+          setProductError(err.response?.data?.message || err.message || "Failed to load offer");
+        })
+        .finally(() => { if (!cancelled) setLoadingProduct(false); });
+    });
     return () => { cancelled = true; };
-  }, [id, hasHydrated]);
+  }, [id, hasHydrated, loadOffer]);
 
   // Reset store when creating a new offer
+  const resetHandledRef = useRef(false);
   useEffect(() => {
-    if ((!id || id === "new") && hasHydrated) {
+    if ((!id || id === "new") && hasHydrated && !resetHandledRef.current) {
+      resetHandledRef.current = true;
       reset();
       const productId = searchParams.get("productId");
       if (productId) {
@@ -73,7 +77,7 @@ export default function SpecialOfferBuilderPage() {
         });
       }
     }
-  }, [id, hasHydrated]);
+  }, [id, hasHydrated, reset, addTarget, searchParams]);
 
   if (loadingProduct) {
     return (

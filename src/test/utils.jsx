@@ -145,5 +145,6 @@ export const mockApiResponses = {
 };
 
 // Re-export everything from @testing-library/react
+// eslint-disable-next-line react-refresh/only-export-components -- test helper re-exports are not components
 export * from '@testing-library/react';
 export { default as userEvent } from '@testing-library/user-event';

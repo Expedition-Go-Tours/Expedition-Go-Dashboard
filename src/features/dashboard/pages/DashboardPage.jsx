@@ -95,7 +95,14 @@ export default function DashboardPage() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { fetchDashboard(); }, []);
+  useEffect(() => {
+    let cancelled = false;
+    // Deferred so the setState's happen outside the effect's sync body
+    Promise.resolve().then(() => {
+      if (!cancelled) fetchDashboard();
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   const handleMarkAllRead = async () => {
     try {

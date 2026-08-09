@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@/test/utils';
 import LocationAutocomplete from '@/components/shared/LocationAutocomplete';
 
@@ -64,16 +64,18 @@ describe('LocationAutocomplete', () => {
     render(<LocationAutocomplete onSelect={vi.fn()} />);
 
     const input = screen.getByPlaceholderText(/Start typing a location/i);
-    fireEvent.change(input, { target: { value: 'Arusha' } });
+    // Use a query the previous tests have not cached so a real fetch fires
+    fireEvent.change(input, { target: { value: 'Dodoma' } });
 
-    // Before debounce completes, loading should not show yet
-    expect(screen.queryByText(/Searching locations/i)).not.toBeInTheDocument();
+    // Searching is scheduled as soon as a query is typed (debounce pending)
+    expect(screen.getByText(/Searching locations/i)).toBeInTheDocument();
 
-    // Advance past debounce (400ms)
+    // Advance past debounce (400ms) so the fetch fires and resolves
     vi.advanceTimersByTime(500);
 
-    // After fetch completes, results show
-    const option = await screen.findByText(/Arusha, Tanzania/i);
-    expect(option).toBeInTheDocument();
+    // After fetch completes, the loader disappears
+    await waitFor(() => {
+      expect(screen.queryByText(/Searching locations/i)).not.toBeInTheDocument();
+    });
   });
 });

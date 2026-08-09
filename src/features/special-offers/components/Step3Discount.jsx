@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { Infinity, Target, ChevronRight, DollarSign, Percent } from "lucide-react";
+import { Infinity as InfinityIcon, Target, ChevronRight, DollarSign, Percent } from "lucide-react";
 import { useSpecialOfferBuilderStore } from "@/features/special-offers/stores/specialOfferBuilderStore";
 import { cn } from "@/lib/utils";
 
@@ -212,7 +212,7 @@ export default function Step3Discount() {
                 </svg>
               </div>
             )}
-            <Infinity size={24} className={cn("mb-3", offer.capacityType === "UNLIMITED" ? "text-emerald-600" : "text-slate-400")} />
+            <InfinityIcon size={24} className={cn("mb-3", offer.capacityType === "UNLIMITED" ? "text-emerald-600" : "text-slate-400")} />
             <p className={cn("text-sm font-semibold", offer.capacityType === "UNLIMITED" ? "text-emerald-800" : "text-slate-800")}>
               Unlimited
             </p>

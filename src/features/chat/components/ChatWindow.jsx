@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, ChevronDown, ChevronLeft, ChevronRight, Paperclip, User } from "lucide-react";
+import { Send, ChevronDown, ChevronLeft, Paperclip } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import MessageBubble from "./MessageBubble";
@@ -49,17 +49,17 @@ const MessageSkeleton = ({ align = "left" }) => (
       {align === "left" && <div className="h-7 w-7 shrink-0 rounded-full bg-slate-100 animate-pulse" />}
       <div className="flex flex-col gap-2">
         <div className="rounded-2xl bg-slate-100 animate-pulse"
-          style={{ width: `${140 + Math.random() * 100}px`, height: `${30 + Math.random() * 16}px` }}
+          style={{ width: "180px", height: "38px" }}
         />
         <div className="rounded-2xl bg-slate-100 animate-pulse"
-          style={{ width: `${90 + Math.random() * 80}px`, height: `${30 + Math.random() * 16}px` }}
+          style={{ width: "130px", height: "38px" }}
         />
       </div>
     </div>
   </div>
 );
 
-export default function ChatWindow({ conversation, messages, messageStatuses, onSendMessage, onLoadMore, hasMore, loading, loadingMore, sending, currentUserId, onOpenDetails, showDetailsButton, showDetails, showBackButton, onBack }) {
+export default function ChatWindow({ conversation, messages, messageStatuses, onSendMessage, onLoadMore, hasMore, loading, loadingMore, sending, currentUserId, onOpenDetails, showDetailsButton, showBackButton, onBack }) {
   const currentUser = useAuthStore((s) => s.user);
   const [input, setInput] = useState("");
   const [showScrollBtn, setShowScrollBtn] = useState(false);
@@ -75,7 +75,7 @@ export default function ChatWindow({ conversation, messages, messageStatuses, on
   const typingIntervalRef = useRef(null);
   const typingStopRef = useRef(null);
 
-  const { onNewMessage, onTyping, emitTyping, emitMarkRead } = useChatSocket(conversation?.id, currentUserId);
+  const { onTyping, emitTyping } = useChatSocket(conversation?.id, currentUserId);
 
   const isNearBottom = useCallback(() => {
     const el = messagesContainerRef.current;
@@ -140,7 +140,7 @@ export default function ChatWindow({ conversation, messages, messageStatuses, on
     }
   }, [hasMore, loadingMore, onLoadMore, isNearBottom]);
 
-  const stopTypingSignal = useCallback(() => {
+  const stopTypingSignal = () => {
     if (conversation?.id) {
       emitTyping(conversation.id, false);
     }
@@ -152,16 +152,16 @@ export default function ChatWindow({ conversation, messages, messageStatuses, on
       clearTimeout(typingStopRef.current);
       typingStopRef.current = null;
     }
-  }, [conversation?.id, emitTyping]);
+  };
 
-  const handleSend = useCallback(async () => {
+  const handleSend = async () => {
     const trimmed = input.trim();
     if (!trimmed || sending) return;
     setInput("");
     stopTypingSignal();
     await onSendMessage(trimmed);
     requestAnimationFrame(() => scrollToBottom(true));
-  }, [input, sending, onSendMessage, scrollToBottom, stopTypingSignal]);
+  };
 
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {

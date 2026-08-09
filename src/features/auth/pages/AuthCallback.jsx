@@ -10,20 +10,15 @@ export default function AuthCallback() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const login = useAuthStore((state) => state.login);
-  const [status, setStatus] = useState("checking");
-  const [errorMessage, setErrorMessage] = useState("");
+  const accessToken = searchParams.get("accessToken");
+  const refreshToken = searchParams.get("refreshToken");
+  const hasToken = Boolean(accessToken);
+  const [status, setStatus] = useState(() => (hasToken ? "loading" : "error"));
+  const [errorMessage, setErrorMessage] = useState(() =>
+    hasToken ? "" : "No authentication token found in the URL."
+  );
 
   useEffect(() => {
-    const accessToken = searchParams.get("accessToken");
-    const refreshToken = searchParams.get("refreshToken");
-
-    if (!accessToken) {
-      setStatus("error");
-      setErrorMessage("No authentication token found in the URL.");
-      toast.error("Authentication failed: missing token.");
-      return;
-    }
-
     if (window.history.replaceState) {
       const cleanUrl =
         window.location.protocol +
@@ -33,10 +28,14 @@ export default function AuthCallback() {
       try {
         window.history.replaceState({ path: cleanUrl }, "", cleanUrl);
       } catch {
+        // replaceState can throw in sandboxed/inline-frame contexts; auth continues
       }
     }
 
-    setStatus("loading");
+    if (!hasToken) {
+      toast.error("Authentication failed: missing token.");
+      return;
+    }
 
     localStorage.setItem("auth_token", accessToken);
     if (refreshToken) {
@@ -69,7 +68,7 @@ export default function AuthCallback() {
         setErrorMessage(message);
         toast.error(message);
       });
-  }, [searchParams, login, navigate]);
+  }, [searchParams, login, navigate, accessToken, refreshToken, hasToken]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] px-4">

@@ -10,13 +10,13 @@ import {
   MapPin, CalendarDays,
 } from "lucide-react";
 import { toast } from "sonner";
-import { getMyProduct, updateProduct, deleteProduct } from "@/features/products/api";
+import { getMyProduct, deleteProduct } from "@/features/products/api";
 import { fetchTourAvailability } from "@/features/availability/api";
 import StatusBadge from "@/components/shared/StatusBadge";
 import { PRODUCT_STATUSES } from "@/lib/constants";
 import { formatCurrency, formatDate, formatTime, cn } from "@/lib/utils";
-import { getUniqueCities, getLocationSummary } from "@/features/products/utils/getUniqueCities";
-import { transformImage, getSrcSet } from "@/lib/image";
+import { getUniqueCities } from "@/features/products/utils/getUniqueCities";
+import { transformImage } from "@/lib/image";
 import DeleteModal from "@/components/ui/DeleteModal";
 
 function reorderPhotos(tour) {
@@ -112,7 +112,7 @@ function DetailRow({ icon: Icon, label, value, children }) {
   );
 }
 
-function PhotoGalleryModal({ displayPhotos, index: lightboxIndex, setLightboxIndex, handleImageError, tour }) {
+function PhotoGalleryModal({ displayPhotos, index: lightboxIndex, setLightboxIndex, tour }) {
   if (lightboxIndex === null) return null;
   const photo = displayPhotos[lightboxIndex];
   if (!photo) return null;
@@ -309,18 +309,20 @@ export default function ProductDetailPage() {
 
   useEffect(() => {
     if (!id) return;
-    setLoading(true);
-    setError(null);
-    getMyProduct(id)
-      .then((res) => {
-        const data = res.data?.data?.tour;
-        if (!data) { setError("Product not found"); return; }
-        setTour(data);
-      })
-      .catch((err) => {
-        setError(err.response?.data?.message || err.message || "Failed to load product");
-      })
-      .finally(() => setLoading(false));
+    Promise.resolve().then(() => {
+      setLoading(true);
+      setError(null);
+      getMyProduct(id)
+        .then((res) => {
+          const data = res.data?.data?.tour;
+          if (!data) { setError("Product not found"); return; }
+          setTour(data);
+        })
+        .catch((err) => {
+          setError(err.response?.data?.message || err.message || "Failed to load product");
+        })
+        .finally(() => setLoading(false));
+    });
   }, [id]);
 
   useEffect(() => {
@@ -329,11 +331,13 @@ export default function ProductDetailPage() {
     const startDate = `${availMonth}-01`;
     const lastDay = new Date(year, month, 0).getDate();
     const endDate = `${availMonth}-${String(lastDay).padStart(2, "0")}`;
-    setAvailLoading(true);
-    fetchTourAvailability(id, startDate, endDate)
-      .then((res) => setAvailability(res.calendar || []))
-      .catch(() => {})
-      .finally(() => setAvailLoading(false));
+    Promise.resolve().then(() => {
+      setAvailLoading(true);
+      fetchTourAvailability(id, startDate, endDate)
+        .then((res) => setAvailability(res.calendar || []))
+        .catch(() => {})
+        .finally(() => setAvailLoading(false));
+    });
   }, [id, availMonth]);
 
   const handleDeleteConfirm = () => {
@@ -395,17 +399,8 @@ export default function ProductDetailPage() {
   const avail = schedules.availability || {};
   const travelerDetails = schedules.travelerDetails || {};
   const cancellation = booking.cancellationPolicy || {};
-  const meetingPoint = (() => {
-    if (booking.meetingPoint?.name) return booking.meetingPoint;
-    if (categorization.location?.meetingPoint) {
-      return { name: categorization.location.meetingPoint, address: '' };
-    }
-    if (booking.meetingPoint) return booking.meetingPoint;
-    return {};
-  })();
   const location = content.location?.city ? content.location : (categorization.location || {});
   const uniqueCities = getUniqueCities(content.locations);
-  const locationsCitySummary = getLocationSummary(content.locations);
   const duration = categorization.duration;
   const durationStr = typeof duration === 'string' ? duration : formatDuration(duration || {});
   const currency = pricingSchedules.currency || schedules.currency || 'GHS';
@@ -615,7 +610,7 @@ export default function ProductDetailPage() {
               <div className="flex-1">
                 <p className="text-sm font-semibold text-rose-700">Tour was flagged for changes</p>
                 <p className="text-sm text-rose-600 mt-0.5 leading-relaxed">
-                  {tour.reviewNote || "An admin flagged this tour for review. Make the requested changes and resubmit it for approval."}
+                  {tour.draftReviewNote || tour.reviewNote || "An admin flagged this tour for review. Make the requested changes and resubmit it for approval."}
                 </p>
               </div>
               <button
@@ -1507,7 +1502,7 @@ export default function ProductDetailPage() {
 
       {/* MODALS */}
       <AllPhotosModal displayPhotos={displayPhotos} open={galleryOpen} onClose={() => setGalleryOpen(false)} onSelect={setLightboxIndex} handleImageError={handleImageError} tour={tour} />
-      <PhotoGalleryModal displayPhotos={displayPhotos} index={lightboxIndex} setLightboxIndex={setLightboxIndex} handleImageError={handleImageError} tour={tour} />
+      <PhotoGalleryModal displayPhotos={displayPhotos} index={lightboxIndex} setLightboxIndex={setLightboxIndex} tour={tour} />
       <DeleteModal
         isOpen={deleteModalOpen}
         onClose={() => setDeleteModalOpen(false)}

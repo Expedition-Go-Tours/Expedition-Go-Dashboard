@@ -1,3 +1,4 @@
+import { describe, it, expect } from 'vitest'
 import { buildPayload } from '../useAutoSave'
 
 describe('buildPayload nested -> flat mapping', () => {
@@ -6,7 +7,9 @@ describe('buildPayload nested -> flat mapping', () => {
       title: 'Test',
       categorization: { category: 'transport', difficulty: 'hard', duration: { value: 4, unit: 'hours' } },
       productContent: { writingLanguage: 'Bislama' },
-      schedulesAndPricing: { availability: { weeklySchedule: { Monday: [{ startTime: '09:00', endTime: '10:00' }] }, timeSlots: [] }, travelerDetails: { pricingCategories: [{ name: 'Adult', price: 100 }], pricingModel: 'perPerson' }, pricingSchedules: { currency: 'USD', schedules: [] } },
+      // Pricing lives in the builder's flat buffers (top level), which
+      // buildSchedulesAndPricing projects into the nested payload.
+      pricingCategories: [{ name: 'Adult', price: 100 }],
       photos: [],
       options: [],
       fullDescription: 'desc',
@@ -18,6 +21,8 @@ describe('buildPayload nested -> flat mapping', () => {
     expect(payload.duration).toBe(4)
     expect(payload.durationUnit).toBe('hours')
     expect(payload.language).toBe('Bislama')
-    expect(payload.pricingCategories).toEqual([{ name: 'Adult', price: 100 }])
+    expect(payload.schedulesAndPricing.travelerDetails.pricingCategories).toEqual([
+      { name: 'Adult', price: 100, tiers: [] },
+    ])
   })
 })
