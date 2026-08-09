@@ -241,6 +241,8 @@ export function builderSignature(state) {
   return stableStringify(buildPayload(state))
 }
 
+export { stableStringify };
+
 export function useAutoSave() {
   const timerRef = useRef(null)
   const savingRef = useRef(false)
