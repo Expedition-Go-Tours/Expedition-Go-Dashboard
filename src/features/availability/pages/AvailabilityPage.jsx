@@ -591,7 +591,17 @@ export default function AvailabilityPage() {
                   ) : isPast ? (
                     <span className="text-[8px] sm:text-[9px] font-medium text-slate-300 uppercase tracking-wider leading-none mt-0.5">Past</span>
                   ) : day.status === "limited" ? (
-                    <span className="text-[8px] sm:text-[9px] font-medium text-amber-600 uppercase tracking-wider leading-none mt-0.5">Limited</span>
+                    <>
+                      <span className="text-[8px] sm:text-[9px] font-medium text-amber-600 uppercase tracking-wider leading-none mt-0.5">Limited</span>
+                      {day.capacity > 0 && (
+                        <>
+                          <div className="hidden sm:block w-8 h-1 rounded-full bg-amber-100 overflow-hidden mt-0.5 mb-1">
+                            <div className="h-full rounded-full bg-amber-400" style={{ width: `${Math.min(usage, 100)}%` }} />
+                          </div>
+                          <span className="text-[9px] sm:text-[10px] text-amber-700 leading-none">{day.booked}/{day.capacity}{day.capacityUnit === "groups" ? "g" : ""}</span>
+                        </>
+                      )}
+                    </>
                   ) : (
                     <>
                       <div className="hidden sm:block w-8 h-1 rounded-full bg-slate-100 overflow-hidden mb-1">
