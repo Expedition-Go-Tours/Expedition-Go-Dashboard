@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { validateStep } from './stepValidation'
 import { useProductBuilderStore } from './productBuilderStore'
+import { builderSignature } from './useAutoSave'
 import { scrollToField, getFieldLabel } from './fieldLabels'
 import { GYG_STEPS } from './gygSteps'
 
@@ -29,6 +30,18 @@ export default function WizardNavFooter({ currentStep, totalSteps, onBack, onNex
   const isLastStep = currentStep === totalSteps
 
   const isPendingReview = formData.draftStatus === 'PENDING_APPROVAL'
+
+  // Gate "Submit for Review" when the builder content is identical to the last
+  // submitted snapshot — no signed-off changes exist to queue a review for.
+  const submissionMeta = formData.submissionMeta?.[formData.savedProductId] || null
+  const currentSignature = builderSignature(formData)
+  const noChangesToSubmit = Boolean(
+    onSubmitForReview
+      && !isPendingReview
+      && submissionMeta?.signature
+      && currentSignature
+      && currentSignature === submissionMeta.signature
+  )
 
   const displayErrors = stepErrors[currentStep] || {}
   const hasDisplayErrors = Object.keys(displayErrors).length > 0
@@ -76,7 +89,7 @@ export default function WizardNavFooter({ currentStep, totalSteps, onBack, onNex
 
   async function handleSubmitForReview(e) {
     e.preventDefault()
-    if (isPendingReview) return
+    if (isPendingReview || noChangesToSubmit) return
     const errors = validateStep(currentStep, formData)
     if (Object.keys(errors).length > 0) {
       setStepErrors(currentStep, errors)
@@ -151,6 +164,11 @@ export default function WizardNavFooter({ currentStep, totalSteps, onBack, onNex
             This product is locked while pending review — withdraw it above to make changes.
           </span>
         )}
+        {!isPendingReview && noChangesToSubmit && (
+          <span className="text-xs text-slate-500 font-semibold max-w-[420px] text-center">
+            No changes to submit — the current content was already submitted for review.
+          </span>
+        )}
         {!saving && !hasDisplayErrors && !autosaveError && savedText && (
           <span className="text-xs text-emerald-600 font-semibold animate-[fadeIn_0.2s_ease]">{savedText}</span>
         )}
@@ -170,7 +188,7 @@ export default function WizardNavFooter({ currentStep, totalSteps, onBack, onNex
           <button
             className="px-5 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-medium hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={onSubmitForReview ? handleFinalClick : handleSubmit}
-            disabled={saving || isPendingReview}
+            disabled={saving || isPendingReview || (onSubmitForReview ? noChangesToSubmit : false)}
             type="button"
           >
             {saving

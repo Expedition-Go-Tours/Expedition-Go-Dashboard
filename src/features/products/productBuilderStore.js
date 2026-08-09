@@ -199,6 +199,11 @@ export const useProductBuilderStore = create(
       savedProductId: null,
       draftStatus: null,
 
+      // Per-product submission bookkeeping (persisted): track when each product
+      // was last submitted for review and the content signature at that time so
+      // "Submit for Review" can be disabled when nothing has changed since.
+      submissionMeta: {},
+
       // The option currently open in the Pricing / Cut-off steps. Its live
       // editor buffers are projected into the option on switch/navigation.
       selectedOptionId: null,
@@ -1019,6 +1024,15 @@ export const useProductBuilderStore = create(
       setSavedProductId: (id) => set({ savedProductId: id }),
       setAutosaveError: (message) => set({ autosaveError: message }),
       setDraftStatus: (status) => set({ draftStatus: status || null }),
+
+      setSubmissionMeta: (productId, meta) =>
+        set((s) => ({ submissionMeta: { ...s.submissionMeta, [productId]: meta } })),
+      clearSubmissionMeta: (productId) =>
+        set((s) => {
+          const next = { ...s.submissionMeta }
+          delete next[productId]
+          return { submissionMeta: next }
+        }),
 
       markSaved: () => set({ isDirty: false, lastSaved: new Date().toISOString(), autosaveError: null }),
       completeStep: (stepId) =>
