@@ -1,11 +1,12 @@
 import { useParams, useSearchParams, useNavigate, useBlocker } from 'react-router-dom'
 import { useEffect, useState, useCallback, useRef } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { Loader2, AlertCircle, X } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
 import { useProductBuilderStore } from '@/features/products/productBuilderStore'
-import { getMyProduct, getTourDraft, createProduct, updateProduct, submitProductForReview, withdrawProductForReview, cleanupMediaUrls } from '@/features/products/api'
-import { buildPayload, builderSignature, useAutoSave } from '@/features/products/useAutoSave'
+import { getMyProduct, getTourDraft, createProduct, updateProduct, listMyProducts, submitProductForReview, withdrawProductForReview, cleanupMediaUrls } from '@/features/products/api'
+import { buildPayload, builderSignature, stableStringify, useAutoSave } from '@/features/products/useAutoSave'
 import { GYG_STEPS } from '@/features/products/gygSteps'
 import { normalizePricingCategories } from '@/features/products/tierUtils'
 import { hasAnyWeeklyHours } from '@/features/products/utils/pricingValidation'
@@ -279,6 +280,8 @@ export default function ProductBuilderPage() {
   const [draftInfo, setDraftInfo] = useState(null)
 
   const [saving, setSaving] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const queryClient = useQueryClient()
   const savedProductId = useProductBuilderStore((s) => s.savedProductId)
   const setStoreSavedProductId = useProductBuilderStore((s) => s.setSavedProductId)
 
@@ -504,36 +507,51 @@ export default function ProductBuilderPage() {
   }
 
   const handleSubmitForReview = async () => {
-    // Always persist the CURRENT state before submitting — never skip based on
-    // isDirty (a silently-failed autosave can leave isDirty false while the
-    // stored draft is stale). The submitted payload is passed to the server so
-    // it persists + validates exactly what the supplier sees.
-    await handleSave({ force: true, skipNavigate: true })
-    const currentId = useProductBuilderStore.getState().savedProductId
-    if (!currentId) {
-      throw new Error('Failed to obtain product ID')
+    if (submitting) return
+    setSubmitting(true)
+    try {
+      // Always persist the CURRENT state before submitting — never skip based on
+      // isDirty (a silently-failed autosave can leave isDirty false while the
+      // stored draft is stale). The submitted payload is passed to the server so
+      // it persists + validates exactly what the supplier sees.
+      await handleSave({ force: true, skipNavigate: true })
+      const currentId = useProductBuilderStore.getState().savedProductId
+      if (!currentId) {
+        throw new Error('Failed to obtain product ID')
+      }
+      const state = useProductBuilderStore.getState()
+      const payload = buildPayload(state)
+      // Ensure duration/durationUnit are explicitly in payload for submit-for-review
+      // (defensive: buildPayload spreads state but this guarantees they're present)
+      payload.duration = state.duration
+      payload.durationUnit = state.durationUnit
+      // Content signature of the EXACT payload being submitted — computed before
+      // the request so nothing blocks navigation once the response arrives.
+      const signature = stableStringify(payload)
+      // Warm the products list while the submission is in flight so /products
+      // renders from cache the moment the route mounts.
+      void queryClient.prefetchQuery({
+        queryKey: ['products', 'list'],
+        queryFn: () => listMyProducts({ limit: 100 }),
+      })
+      const res = await submitProductForReview(currentId, payload)
+      const noChanges = res?.data?.data?.noChanges === true
+      if (noChanges) {
+        toast.info('No changes to submit — the submission was already current')
+      } else {
+        toast.success('Submit for review successful')
+      }
+      // Record the submission + content signature so the footer can gate the
+      // button until the supplier actually changes something again.
+      const storeAfter = useProductBuilderStore.getState()
+      storeAfter.setSubmissionMeta(currentId, {
+        submittedAt: new Date().toISOString(),
+        signature,
+      })
+      navigate('/products')
+    } finally {
+      setSubmitting(false)
     }
-    const state = useProductBuilderStore.getState()
-    const payload = buildPayload(state)
-    // Ensure duration/durationUnit are explicitly in payload for submit-for-review
-    // (defensive: buildPayload spreads state but this guarantees they're present)
-    payload.duration = state.duration
-    payload.durationUnit = state.durationUnit
-    const res = await submitProductForReview(currentId, payload)
-    const noChanges = res?.data?.data?.noChanges === true
-    if (noChanges) {
-      toast.info('No changes to submit — the submission was already current')
-    } else {
-      toast.success('Submit for review successful')
-    }
-    // Record the submission + content signature so the footer can gate the
-    // button until the supplier actually changes something again.
-    const store = useProductBuilderStore.getState()
-    store.setSubmissionMeta(currentId, {
-      submittedAt: new Date().toISOString(),
-      signature: builderSignature(store),
-    })
-    navigate('/products')
   }
 
   const [withdrawing, setWithdrawing] = useState(false)
@@ -734,6 +752,7 @@ export default function ProductBuilderPage() {
                 onSave={handleSave}
                 onSubmitForReview={handleSubmitForReview}
                 saving={saving}
+                submitting={submitting}
                 isEditing={id && id !== 'new'}
               />
             </div>

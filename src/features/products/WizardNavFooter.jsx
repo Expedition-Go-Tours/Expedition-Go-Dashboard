@@ -6,7 +6,7 @@ import { builderSignature } from './useAutoSave'
 import { scrollToField, getFieldLabel } from './fieldLabels'
 import { GYG_STEPS } from './gygSteps'
 
-export default function WizardNavFooter({ currentStep, totalSteps, onBack, onNext, onSave, onSubmitForReview, saving, isEditing }) {
+export default function WizardNavFooter({ currentStep, totalSteps, onBack, onNext, onSave, onSubmitForReview, saving, submitting, isEditing }) {
   const formData = useProductBuilderStore()
   const setStepErrors = useProductBuilderStore((s) => s.setStepErrors)
   const clearStepErrors = useProductBuilderStore((s) => s.clearStepErrors)
@@ -89,7 +89,7 @@ export default function WizardNavFooter({ currentStep, totalSteps, onBack, onNex
 
   async function handleSubmitForReview(e) {
     e.preventDefault()
-    if (isPendingReview || noChangesToSubmit) return
+    if (isPendingReview || noChangesToSubmit || submitting) return
     const errors = validateStep(currentStep, formData)
     if (Object.keys(errors).length > 0) {
       setStepErrors(currentStep, errors)
@@ -179,27 +179,29 @@ export default function WizardNavFooter({ currentStep, totalSteps, onBack, onNex
           <button
             className="px-5 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-medium hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={handleSaveAndContinue}
-            disabled={saving || isPendingReview}
+            disabled={saving || submitting || isPendingReview}
             type="button"
           >
-            {isPendingReview ? 'Locked' : saving ? 'Saving...' : 'Save & Continue'}
+            {isPendingReview ? 'Locked' : saving || submitting ? 'Saving...' : 'Save & Continue'}
           </button>
         ) : (
           <button
             className="px-5 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-medium hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={onSubmitForReview ? handleFinalClick : handleSubmit}
-            disabled={saving || isPendingReview || (onSubmitForReview ? noChangesToSubmit : false)}
+            disabled={saving || submitting || isPendingReview || (onSubmitForReview ? noChangesToSubmit : false)}
             type="button"
           >
-            {saving
-              ? (onSubmitForReview ? 'Submitting...' : 'Saving...')
-              : isPendingReview
-                ? 'Locked'
-                : onSubmitForReview
-                  ? 'Submit for Review'
-                  : isEditing
-                    ? 'Update'
-                    : 'Save'}
+            {submitting
+              ? 'Submitting...'
+              : saving
+                ? (onSubmitForReview ? 'Submitting...' : 'Saving...')
+                : isPendingReview
+                  ? 'Locked'
+                  : onSubmitForReview
+                    ? 'Submit for Review'
+                    : isEditing
+                      ? 'Update'
+                      : 'Save'}
           </button>
         )}
       </div>
