@@ -1,14 +1,31 @@
 import api from "@/lib/axios";
 
 export function mapCalendarDay(day) {
+  const rawStatus = (day.status || "available").toLowerCase();
+  const overrideCapacity = day.overrideCapacity ?? null;
+  const baseCapacity = day.baseCapacity ?? day.capacity;
+
+  // A day override with a capacity BELOW the tour default limits the day.
+  // The backend only labels such days AVAILABLE — derive the Limited badge here
+  // so the calendar shows amber "Limited" exactly like the Blocked treatment.
+  let status = rawStatus;
+  if (
+    overrideCapacity != null &&
+    baseCapacity != null &&
+    overrideCapacity < baseCapacity &&
+    (rawStatus === "available" || rawStatus === "limited")
+  ) {
+    status = "limited";
+  }
+
   return {
     date: day.date,
     dayOfWeek: day.dayOfWeek,
     isOperatingDay: day.isOperatingDay,
-    status: (day.status || "available").toLowerCase(),
+    status,
     capacity: day.capacity,
-    baseCapacity: day.baseCapacity ?? day.capacity,
-    overrideCapacity: day.overrideCapacity ?? null,
+    baseCapacity,
+    overrideCapacity,
     booked: day.booked,
     remaining: day.remaining,
     capacityUnit: day.capacityUnit === "groups" ? "groups" : "people",

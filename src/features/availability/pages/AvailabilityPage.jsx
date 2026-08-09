@@ -564,10 +564,12 @@ export default function AvailabilityPage() {
                           ? "bg-slate-50 hover:bg-slate-100 cursor-pointer"
                           : day.status === "full"
                             ? "bg-red-50 hover:bg-red-100 cursor-pointer"
-                            : "hover:bg-slate-50 active:bg-slate-100 cursor-pointer bg-white"
-                  } ${today && !isBlocked && !isPast && day.status !== "full" ? "bg-emerald-50/40" : ""}`}
+                            : day.status === "limited"
+                              ? "bg-amber-50 hover:bg-amber-100 cursor-pointer"
+                              : "hover:bg-slate-50 active:bg-slate-100 cursor-pointer bg-white"
+                  } ${today && !isBlocked && !isPast && day.status !== "full" && day.status !== "limited" ? "bg-emerald-50/40" : ""}`}
                 >
-                  <span className={`text-xs sm:text-sm font-semibold leading-none mb-1 sm:mb-1.5 ${today && !isBlocked && !isPast && day.status !== "full" ? "text-[#044b3b]" : isPast ? "text-slate-300" : isBlocked || day.status === "full" ? "text-slate-400" : "text-slate-700"}`}>
+                  <span className={`text-xs sm:text-sm font-semibold leading-none mb-1 sm:mb-1.5 ${today && !isBlocked && !isPast && day.status !== "full" && day.status !== "limited" ? "text-[#044b3b]" : isPast ? "text-slate-300" : isBlocked || day.status === "full" ? "text-slate-400" : day.status === "limited" ? "text-amber-600" : "text-slate-700"}`}>
                     {format(date, "d")}
                   </span>
 
@@ -588,6 +590,8 @@ export default function AvailabilityPage() {
                     <span className="text-[8px] sm:text-[9px] font-medium text-slate-400 uppercase tracking-wider leading-none mt-0.5">Blocked</span>
                   ) : isPast ? (
                     <span className="text-[8px] sm:text-[9px] font-medium text-slate-300 uppercase tracking-wider leading-none mt-0.5">Past</span>
+                  ) : day.status === "limited" ? (
+                    <span className="text-[8px] sm:text-[9px] font-medium text-amber-600 uppercase tracking-wider leading-none mt-0.5">Limited</span>
                   ) : (
                     <>
                       <div className="hidden sm:block w-8 h-1 rounded-full bg-slate-100 overflow-hidden mb-1">
