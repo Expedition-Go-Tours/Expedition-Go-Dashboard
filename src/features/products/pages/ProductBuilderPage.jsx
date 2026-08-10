@@ -98,6 +98,7 @@ function tourToProduct(tour) {
     transportMode: categorization.transportMode || '',
     duration: categorization.duration?.value ?? categorization.duration?.hours ?? null,
     durationUnit: categorization.duration?.unit || 'hours',
+    accommodationIncluded: categorization.accommodationIncluded ?? false,
     title: tour.title || '',
     referenceCode: tour.referenceCode || '',
     shortDescription: content.shortSummary || '',

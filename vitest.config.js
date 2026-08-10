@@ -9,6 +9,12 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.js', './src/test/mocks/server.js'],
     css: true,
+    pool: 'threads',
+    minThreads: 1,
+    maxThreads: 2,
+    useAtomics: true,
+    testTimeout: 30000,
+    hookTimeout: 30000,
     env: {
       VITE_API_BASE_URL: 'https://expedition-go-backend-v2.onrender.com/api',
     },
