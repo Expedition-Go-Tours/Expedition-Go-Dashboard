@@ -132,6 +132,7 @@ function tourToProduct(tour) {
     notSuitableFor: content.healthRestrictions || [],
     notAllowed: content.notAllowed || [],
     petFriendly: !!content.petFriendly,
+    wifiIncluded: !!content.wifiIncluded,
     mandatoryItems: content.whatToBring || [],
     knowBeforeYouGo: content.additionalInfo || '',
     emergencyPhone: (() => {

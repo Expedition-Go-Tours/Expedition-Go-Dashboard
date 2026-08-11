@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from 'react'
+import { useRef, useState, useEffect, useCallback } from 'react'
 import {
   Select,
   SelectTrigger,
@@ -6,11 +6,12 @@ import {
   SelectContent,
   SelectItem,
 } from '@/components/ui/select'
-import { HelpCircle, Info, Upload, X, ChevronDown, Image, MapPin } from 'lucide-react'
+import { HelpCircle, Info, Upload, X, ChevronDown, Image, MapPin, Loader2 } from 'lucide-react'
 import { useProductBuilderStore } from '@/features/products/productBuilderStore'
 import { useStepErrors } from '@/features/products/useStepErrors'
 import { GYG_PICKUP_TRANSPORT } from '@/constants/gygLists'
 import LocationMapPicker from '@/components/shared/LocationMapPicker'
+import { uploadPhotos } from '@/features/products/api'
 
 const ARRIVAL_OPTIONS = [
   { value: 'none', label: 'Not relevant for this activity' },
@@ -110,6 +111,7 @@ function MeetingPointSection({ errors }) {
   } = useProductBuilderStore()
   const fileInputRef = useRef(null)
   const [showAddressModal, setShowAddressModal] = useState(false)
+  const [uploading, setUploading] = useState(false)
 
   useEffect(() => {
     if (previewFocus?.step === 'meeting-point' && previewFocus.section === 'meeting') {
@@ -121,13 +123,25 @@ function MeetingPointSection({ errors }) {
     }
   }, [previewFocus, clearPreviewFocus])
 
-  const handlePhotoUpload = (e) => {
+  const handlePhotoUpload = useCallback(async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
-    const reader = new FileReader()
-    reader.onload = (ev) => setField('meetingPointPicture', ev.target.result)
-    reader.readAsDataURL(file)
-  }
+    setUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append('photos', file)
+      const res = await uploadPhotos(formData)
+      const urls = res.data?.data?.photos || []
+      if (urls.length > 0) {
+        setField('meetingPointPicture', urls[0])
+      }
+    } catch {
+      // upload failed silently
+    } finally {
+      setUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }, [setField])
 
   return (
     <div className="space-y-8">
@@ -213,6 +227,11 @@ function MeetingPointSection({ errors }) {
             >
               <X className="w-4 h-4" />
             </button>
+          </div>
+        ) : uploading ? (
+          <div className="border-2 border-dashed border-emerald-300 rounded-xl p-8 text-center bg-emerald-50/50">
+            <Loader2 className="w-8 h-8 text-emerald-500 animate-spin mx-auto mb-2" />
+            <p className="text-sm text-slate-500">Uploading to cloud...</p>
           </div>
         ) : (
           <div

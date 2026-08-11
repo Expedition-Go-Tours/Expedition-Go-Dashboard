@@ -1,6 +1,6 @@
 import { Navigate, Outlet, useParams } from "react-router-dom";
 import ScrollToTop from "@/components/shared/ScrollToTop";
-import { TeamRoleProvider } from "@/contexts/TeamRoleContext";
+import { TeamRoleProvider } from "@/contexts/TeamRoleProvider";
 import { Toaster } from "sonner";
 
 const LEGACY_STEP_MAP = {
