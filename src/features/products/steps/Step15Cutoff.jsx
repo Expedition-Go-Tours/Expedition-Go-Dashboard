@@ -66,7 +66,7 @@ export default function Step15Cutoff() {
   const operatingHoursEnd = useProductBuilderStore((s) => s.operatingHoursEnd)
   const timezone = useProductBuilderStore((s) => s.timezone)
   const setField = useProductBuilderStore((s) => s.setField)
-  const errors = useStepErrors(17)
+  const errors = useStepErrors(16)
 
   const [showBanner, setShowBanner] = useState(true)
 

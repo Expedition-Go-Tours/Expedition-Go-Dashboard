@@ -1413,7 +1413,7 @@ export default function Step14PricingAvailability() {
     scheduleType, pricingModel, schedules, groupSizes, pricingCategories, uniformPrice,
     setField, resetScheduleForm, clearStepErrors,
   } = useProductBuilderStore()
-  const errors = useStepErrors(16)
+  const errors = useStepErrors(15)
   const [showWizard, setShowWizard] = useState(false)
   const [, setEditingIndex] = useState(null)
   const [pricingModelConfirm, setPricingModelConfirm] = useState(null)

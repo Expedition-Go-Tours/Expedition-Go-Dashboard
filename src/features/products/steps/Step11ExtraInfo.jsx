@@ -120,13 +120,14 @@ export default function Step09ExtraInfo() {
   const notSuitableFor = useProductBuilderStore((s) => s.notSuitableFor)
   const notAllowed = useProductBuilderStore((s) => s.notAllowed)
   const petFriendly = useProductBuilderStore((s) => s.petFriendly)
+  const wheelchairAccessible = useProductBuilderStore((s) => s.wheelchairAccessible)
   const wifiIncluded = useProductBuilderStore((s) => s.wifiIncluded)
   const mandatoryItems = useProductBuilderStore((s) => s.mandatoryItems)
   const knowBeforeYouGo = useProductBuilderStore((s) => s.knowBeforeYouGo)
   const emergencyPhone = useProductBuilderStore((s) => s.emergencyPhone)
   const voucherInfo = useProductBuilderStore((s) => s.voucherInfo)
   const setField = useProductBuilderStore((s) => s.setField)
-  const errors = useStepErrors(10)
+  const errors = useStepErrors(9)
   const addNotSuitable = useProductBuilderStore((s) => s.addNotSuitable)
   const removeNotSuitable = useProductBuilderStore((s) => s.removeNotSuitable)
   const addNotAllowed = useProductBuilderStore((s) => s.addNotAllowed)
@@ -184,6 +185,21 @@ export default function Step09ExtraInfo() {
           <span>Pets are allowed</span>
         </label>
         {errors.petFriendly && <span className="text-[13px] text-red-600 font-medium mt-1">{errors.petFriendly[0]}</span>}
+      </div>
+
+      <div className="mb-5">
+        <label className="block text-sm font-semibold mb-2 text-slate-800">Wheelchair accessibility</label>
+        <label className="flex items-center gap-2 cursor-pointer text-sm">
+          <input
+            type="checkbox"
+            checked={wheelchairAccessible}
+            onChange={(e) => setField('wheelchairAccessible', e.target.checked)}
+            className="w-[18px] h-[18px] cursor-pointer"
+            data-field="wheelchairAccessible"
+          />
+          <span>Activity is wheelchair accessible</span>
+        </label>
+        {errors.wheelchairAccessible && <span className="text-[13px] text-red-600 font-medium mt-1">{errors.wheelchairAccessible[0]}</span>}
       </div>
 
       <div className="mb-5" data-field="wifiIncluded">

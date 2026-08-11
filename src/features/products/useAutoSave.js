@@ -99,7 +99,7 @@ export function buildPayload(state) {
   const options = Array.isArray(state.options) ? state.options : []
   const optionPayload = options.map((o) => {
     const { pricing, availability, cutoff } = effectiveOptionData(state, o)
-    return { ...o, pricing, availability, cutoff }
+    return { ...o, pricing, availability, cutoff, wheelchairAccessible: false }
   })
 
   const primary = primaryOptionData(state)

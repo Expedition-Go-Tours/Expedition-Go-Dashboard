@@ -9,8 +9,8 @@ import {
 import { HelpCircle, Info, Upload, X, ChevronDown, Image, MapPin, Loader2 } from 'lucide-react'
 import { useProductBuilderStore } from '@/features/products/productBuilderStore'
 import { useStepErrors } from '@/features/products/useStepErrors'
-import { GYG_PICKUP_TRANSPORT } from '@/constants/gygLists'
 import LocationMapPicker from '@/components/shared/LocationMapPicker'
+import AmPmTimePicker from '@/components/shared/AmPmTimePicker'
 import { uploadPhotos } from '@/features/products/api'
 
 const ARRIVAL_OPTIONS = [
@@ -292,6 +292,7 @@ function PickupSection({ errors }) {
     pickupLocations,
     planPickupTimes,
     pickupStartTime,
+    pickupAtSpecificTime,
     setField,
     addPickupArea,
     updatePickupArea,
@@ -451,6 +452,40 @@ function PickupSection({ errors }) {
 
       {/* Pickup locations with geocoding */}
       <div data-field="pickupLocations">
+
+        {/* Pickup time toggle */}
+        <div className="mb-5">
+          <label className="block text-sm font-bold text-slate-900 mb-3">Do customers get picked up at a specific time?</label>
+          <div className="space-y-3">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="radio"
+                name="pickupAtSpecificTime"
+                checked={pickupAtSpecificTime === true}
+                onChange={() => setField('pickupAtSpecificTime', true)}
+                className="mt-0.5 w-4 h-4 text-emerald-600 border-slate-300 focus:ring-emerald-500"
+              />
+              <div>
+                <span className="text-sm text-slate-700">Yes, at a specific time</span>
+                <p className="text-xs text-slate-500 mt-0.5">You'll set a pickup time for each area or location</p>
+              </div>
+            </label>
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="radio"
+                name="pickupAtSpecificTime"
+                checked={pickupAtSpecificTime === false}
+                onChange={() => setField('pickupAtSpecificTime', false)}
+                className="mt-0.5 w-4 h-4 text-emerald-600 border-slate-300 focus:ring-emerald-500"
+              />
+              <div>
+                <span className="text-sm text-slate-700">No, pickup time varies</span>
+                <p className="text-xs text-slate-500 mt-0.5">You'll coordinate pickup times individually with each customer</p>
+              </div>
+            </label>
+          </div>
+        </div>
+
         <div className="flex items-center gap-2 mb-3">
           <label className="text-sm font-bold text-slate-900">
             {pickupType === 'area' ? 'Pickup areas' : 'Pickup locations'}
@@ -513,13 +548,13 @@ function PickupSection({ errors }) {
                   >
                     <MapPin className="w-4 h-4" />
                   </button>
-                  <input
-                    className="h-9 rounded-lg border border-slate-200 px-2.5 text-sm focus:outline-none focus:border-emerald-500 w-[130px]"
-                    type="time"
-                    value={area.time}
-                    onChange={(e) => updatePickupArea(i, { time: e.target.value })}
-                    data-field={`pickupAreas.${i}.time`}
-                  />
+                  {pickupAtSpecificTime && (
+                    <AmPmTimePicker
+                      value={area.time}
+                      onChange={(t) => updatePickupArea(i, { time: t })}
+                      className="shrink-0"
+                    />
+                  )}
                   <button
                     onClick={() => removePickupArea(i)}
                     className="w-7 h-7 rounded-full flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
@@ -531,7 +566,7 @@ function PickupSection({ errors }) {
                 {area.address && (
                   <p className="text-[12px] text-slate-400 mt-1.5 ml-0.5 truncate">{area.address}</p>
                 )}
-                {errors[`pickupAreas.${i}.time`] && <span className="text-[13px] text-red-600 font-medium mt-1">{errors[`pickupAreas.${i}.time`][0]}</span>}
+                {pickupAtSpecificTime && errors[`pickupAreas.${i}.time`] && <span className="text-[13px] text-red-600 font-medium mt-1">{errors[`pickupAreas.${i}.time`][0]}</span>}
               </div>
             ))}
           </div>
@@ -585,11 +620,9 @@ function PickupSection({ errors }) {
                   <HelpCircle size={14} className="text-slate-400" />
                 </div>
                 <div className="flex items-center gap-3">
-                  <input
-                    type="time"
+                  <AmPmTimePicker
                     value={pickupStartTime}
-                    onChange={(e) => setField('pickupStartTime', e.target.value)}
-                    className="h-10 w-[120px] rounded-lg border border-slate-200 px-3 text-sm focus:outline-none focus:border-emerald-500"
+                    onChange={(t) => setField('pickupStartTime', t)}
                   />
                   <p className="text-xs text-slate-500">
                     We'll use this example to calculate the timing between your pickup locations. Your actual activity start times won't change.
@@ -599,18 +632,18 @@ function PickupSection({ errors }) {
 
               {/* Pickup time table */}
               <div className="border-t border-slate-200">
-                <div className="grid grid-cols-[140px_1fr] bg-slate-50 px-4 py-2.5 border-b border-slate-200">
-                  <span className="text-xs font-bold text-slate-600">Pickup time</span>
+                <div className={`grid ${pickupAtSpecificTime ? 'grid-cols-[auto_1fr]' : 'grid-cols-[1fr]'} bg-slate-50 px-4 py-2.5 border-b border-slate-200 gap-4`}>
+                  {pickupAtSpecificTime && <span className="text-xs font-bold text-slate-600">Pickup time</span>}
                   <span className="text-xs font-bold text-slate-600">Pickup locations</span>
                 </div>
                 {pickupLocations.map((loc, i) => (
-                  <div key={i} className="grid grid-cols-[140px_1fr] items-center px-4 py-3 border-b border-slate-100 last:border-b-0">
-                    <input
-                      type="time"
-                      value={loc.pickupTime || ''}
-                      onChange={(e) => updatePickupLocation(i, { pickupTime: e.target.value })}
-                      className="h-9 w-[120px] rounded-lg border border-slate-200 px-2 text-sm focus:outline-none focus:border-emerald-500"
-                    />
+                  <div key={i} className="grid grid-cols-[auto_1fr] items-center px-4 py-3 border-b border-slate-100 last:border-b-0 gap-4">
+                    {pickupAtSpecificTime && (
+                      <AmPmTimePicker
+                        value={loc.pickupTime || ''}
+                        onChange={(t) => updatePickupLocation(i, { pickupTime: t })}
+                      />
+                    )}
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium text-slate-800">{loc.name}</p>
@@ -849,104 +882,9 @@ function DropoffSection({ errors }) {
   )
 }
 
-function TransportationSection() {
-  const {
-    pickupTransportTypes,
-    addPickupTransportType,
-    removePickupTransportType,
-  } = useProductBuilderStore()
-  const [isOpen, setIsOpen] = useState(false)
-  const ref = useRef(null)
-
-  const selectedCount = pickupTransportTypes.length
-
-  useEffect(() => {
-    function handleClickOutside(e) {
-      if (ref.current && !ref.current.contains(e.target)) setIsOpen(false)
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
-  return (
-    <div className="space-y-3">
-      <h3 className="text-base font-bold text-slate-900">Transportation</h3>
-      <label className="block text-sm font-bold text-slate-900 mb-1">What's the transportation used for pickup and drop-off?</label>
-
-      <div ref={ref} className="relative">
-        <button
-          type="button"
-          onClick={() => setIsOpen(!isOpen)}
-          onKeyDown={(e) => {
-            if (e.key === 'Escape') setIsOpen(false)
-          }}
-          aria-haspopup="listbox"
-          aria-expanded={isOpen}
-          className="w-full h-11 rounded-lg border border-slate-200 px-3.5 text-sm text-left bg-white flex items-center justify-between focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
-        >
-          <span className={selectedCount > 0 ? 'text-slate-700' : 'text-slate-400'}>
-            {selectedCount > 0 ? `${selectedCount} selected` : 'Select a transportation type'}
-          </span>
-          <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-        </button>
-
-        {isOpen && (
-          <div className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-[300px] overflow-auto">
-            {Object.entries(GYG_PICKUP_TRANSPORT).map(([category, types]) => (
-              <div key={category}>
-                <div className="px-3 py-2 bg-slate-50 border-b border-slate-100">
-                  <span className="text-xs font-bold text-slate-700">{category}</span>
-                </div>
-                {types.map((type) => (
-                  <button
-                    key={type}
-                    type="button"
-                    onClick={() => {
-                      if (pickupTransportTypes.includes(type)) {
-                        removePickupTransportType(pickupTransportTypes.indexOf(type))
-                      } else {
-                        addPickupTransportType(type)
-                      }
-                    }}
-                    className={`w-full text-left px-3 py-2.5 text-sm hover:bg-slate-50 transition-colors ${
-                      pickupTransportTypes.includes(type) ? 'bg-emerald-50 text-emerald-700 font-medium' : 'text-slate-700'
-                    }`}
-                  >
-                    {type}
-                  </button>
-                ))}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {selectedCount > 0 && (
-        <div className="flex flex-wrap gap-1.5 mt-2">
-          {pickupTransportTypes.map((type, i) => (
-            <span
-              key={i}
-              className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-full text-xs font-medium"
-            >
-              {type}
-              <button
-                type="button"
-                onClick={() => removePickupTransportType(i)}
-                className="w-3.5 h-3.5 rounded-full flex items-center justify-center hover:bg-emerald-100 transition-colors"
-              >
-                <X className="w-2.5 h-2.5" />
-              </button>
-            </span>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
 export default function Step13MeetingPoint() {
   const { meetingMode, setField } = useProductBuilderStore()
-  const errors = useStepErrors(14)
+  const errors = useStepErrors(13)
 
   return (
     <div className="max-w-[720px] space-y-8">
@@ -1000,14 +938,6 @@ export default function Step13MeetingPoint() {
         <>
           <hr className="border-slate-100" />
           <DropoffSection errors={errors} />
-        </>
-      )}
-
-      {/* Transportation */}
-      {meetingMode && meetingMode !== 'none' && (
-        <>
-          <hr className="border-slate-100" />
-          <TransportationSection />
         </>
       )}
     </div>

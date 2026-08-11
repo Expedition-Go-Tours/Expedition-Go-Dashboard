@@ -55,7 +55,7 @@ export const productOptionSchema = z.object({
     'express_security',
     'express_elevators',
   ]),
-  wheelchairAccessible: z.boolean(),
+  wheelchairAccessible: z.boolean().catch(false),
   audioGuide: z.boolean().optional(),
   infoBooklet: z.boolean().optional(),
   maxGroupSize: z.number().nullable().optional(),
@@ -149,21 +149,17 @@ export const stepSchemas = {
     dietaryOptions: z.array(z.string()).optional(),
   }),
   8: z.object({
-    transportationProvided: z.boolean(),
-    pickupTransportTypes: z.array(z.string()).optional(),
-    crossCityTravel: z.boolean().optional(),
-  }),
-  9: z.object({
     guideType: z.enum(['tour-guide', 'driver', 'host', 'greeter', 'self-guided', 'instructor']),
     guideMaterials: z.object({
       audioGuide: z.boolean(),
       infoBooklet: z.boolean(),
     }),
   }),
-  10: z.object({
+  9: z.object({
     notSuitableFor: z.array(z.string().max(EXTRA_INFO_TAG_MAX_CHARS, `Each item must be ${EXTRA_INFO_TAG_MAX_CHARS} characters or fewer`)).optional(),
     notAllowed: z.array(z.string().max(EXTRA_INFO_TAG_MAX_CHARS, `Each item must be ${EXTRA_INFO_TAG_MAX_CHARS} characters or fewer`)).optional(),
     petFriendly: z.boolean().optional(),
+    wheelchairAccessible: z.boolean().catch(false),
     mandatoryItems: z.array(z.string().max(EXTRA_INFO_TAG_MAX_CHARS, `Each item must be ${EXTRA_INFO_TAG_MAX_CHARS} characters or fewer`)).optional(),
     knowBeforeYouGo: z.string().max(KNOW_BEFORE_YOU_GO_MAX_CHARS, `Know before you go must be ${KNOW_BEFORE_YOU_GO_MAX_CHARS} characters or fewer`).optional(),
     emergencyPhone: z.string()
@@ -171,7 +167,14 @@ export const stepSchemas = {
       .optional(),
     voucherInfo: z.string().max(VOUCHER_INFO_MAX_CHARS, `Voucher info must be ${VOUCHER_INFO_MAX_CHARS} characters or fewer`).optional(),
   }),
-  12: z.object({
+  10: z.object({
+    cancellationType: z.enum(['standard', 'all_sales_final'], {
+      errorMap: () => ({ message: 'Select a cancellation policy' }),
+    }),
+    supplierCanCancelBadWeather: z.boolean().optional(),
+    supplierCanCancelNotEnoughTravelers: z.boolean().optional(),
+  }),
+  11: z.object({
     photos: z
       .array(z.object({ id: z.string(), url: z.string() }))
       .min(4, 'Upload at least 4 photos'),
@@ -179,12 +182,12 @@ export const stepSchemas = {
       message: 'You must confirm copyright ownership',
     }),
   }),
-  13: z.object({
+  12: z.object({
     options: z
       .array(productOptionSchema)
       .min(1, 'Add at least one option'),
   }),
-  14: z.object({
+  13: z.object({
     meetingMode: z.enum(['meeting_point', 'pickup', 'none']),
     meetingPoint: locationPointSchema.nullable().optional(),
     meetingPointPicture: z.string().optional(),
@@ -196,7 +199,7 @@ export const stepSchemas = {
     pickupTiming: z.enum(['at_start', 'before_start']).optional(),
     pickupFinalLocationTiming: z.enum(['day_before', 'after_selection']).optional(),
     referenceStartTime: z.string().optional(),
-    pickupAreas: z.array(z.object({ name: z.string().min(1, 'Pickup area name is required'), time: z.string().min(1, 'Pickup time is required'), address: z.string().optional(), lat: z.number().nullable().optional(), lng: z.number().nullable().optional() })).optional(),
+    pickupAreas: z.array(z.object({ name: z.string().min(1, 'Pickup area name is required'), time: z.string().optional(), address: z.string().optional(), lat: z.number().nullable().optional(), lng: z.number().nullable().optional() })).optional(),
     pickupLocations: z.array(locationPointSchema).optional(),
     pickupGeoshape: z.any().nullable().optional(),
     planPickupTimes: z.boolean().optional(),
@@ -205,8 +208,8 @@ export const stepSchemas = {
     dropoffLocation: locationPointSchema.nullable().optional(),
     dropoffDescription: z.string().optional(),
   }),
-   15: z.object({}),
-   16: z.object({
+  14: z.object({}),
+  15: z.object({
     pricingModel: z.enum(['perPerson', 'perGroup'], {
       errorMap: () => ({ message: 'Select a pricing model' }),
     }),
@@ -245,17 +248,10 @@ export const stepSchemas = {
     }
     validateCapacity(data).forEach(add)
   }),
-  17: z.object({
+  16: z.object({
     cutoffMinutes: z.number().min(0, 'Select a cut-off time'),
     lastMinuteBookings: z.boolean().optional(),
     perSlotCutoff: z.boolean().optional(),
     perSlotCutoffs: z.record(z.string(), z.number().min(0).max(600)).optional(),
-  }),
-  11: z.object({
-    cancellationType: z.enum(['standard', 'all_sales_final'], {
-      errorMap: () => ({ message: 'Select a cancellation policy' }),
-    }),
-    supplierCanCancelBadWeather: z.boolean().optional(),
-    supplierCanCancelNotEnoughTravelers: z.boolean().optional(),
   }),
 }

@@ -665,7 +665,7 @@ export default function ProductDetailPage() {
             )}
 
             {/* MEETING & PICKUP */}
-            {(content.meetingMode || booking.meetingPoint?.name || content.meetingPointPicture || content.arrivalTimeType !== 'none' || content.pickupTransportTypes?.length > 0 || content.pickupAreas?.length > 0 || content.pickupLocations?.length > 0 || content.pickupDescription || content.dropoffOption !== 'none') && (
+            {(content.meetingMode || booking.meetingPoint?.name || content.meetingPointPicture || content.arrivalTimeType !== 'none' || content.pickupAreas?.length > 0 || content.pickupLocations?.length > 0 || content.pickupDescription || content.dropoffOption !== 'none') && (
               <SectionCard title="Meeting & Pickup" onEdit={() => handleEditSection("Meeting & Pickup")}>
                 {/* Mode badge */}
                 <div className="flex items-center flex-wrap gap-2 mb-4">
@@ -729,18 +729,6 @@ export default function ProductDetailPage() {
                 {/* PICKUP MODE */}
                 {content.meetingMode === 'pickup' && (
                   <>
-                    {content.pickupTransportTypes?.length > 0 && (
-                      <div className="mb-3">
-                        <p className="text-[11px] text-slate-400 uppercase tracking-wider font-medium mb-1.5">Transport</p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {content.pickupTransportTypes.map((t, i) => (
-                            <span key={i} className="text-xs px-2.5 py-1 rounded-md bg-slate-50 text-slate-500 font-medium border border-slate-100">
-                              {typeof t === 'string' ? t : t.name || t.type || ''}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
                     {content.pickupAreas?.length > 0 && (
                       <div className="mb-3">
                         <p className="text-[11px] text-slate-400 uppercase tracking-wider font-medium mb-1.5">Pickup Areas</p>

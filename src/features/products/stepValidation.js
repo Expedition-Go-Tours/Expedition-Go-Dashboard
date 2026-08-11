@@ -5,68 +5,68 @@ const STEP_FIELDS = {
   2: ['title', 'referenceCode'],
   3: ['category', 'activitiesIncluded', 'transportModes', 'transportServices', 'difficulty', 'duration', 'durationUnit', 'accommodationIncluded'],
   4: ['shortDescription', 'fullDescription', 'highlights'],
-    5: ['locations'],
-   6: ['keywords', 'activitiesIncluded'],
-    7: [
-      'whatsIncluded',
-      'whatsNotIncluded',
-      'foodProvided',
-      'meals',
-      'drinksIncluded',
-      'showDietaryRestrictions',
-      'dietaryOptions',
-    ],
-   8: ['transportationProvided', 'pickupTransportTypes', 'crossCityTravel'],
-   9: ['guideType', 'guideMaterials'],
-10: [
-      'notSuitableFor',
-      'notAllowed',
-      'petFriendly',
-      'mandatoryItems',
-      'knowBeforeYouGo',
-      'emergencyPhone',
-      'voucherInfo',
-    ],
-    11: ['cancellationType', 'supplierCanCancelBadWeather', 'supplierCanCancelNotEnoughTravelers'],
-    12: ['photos', 'copyrightConfirmed'],
-    13: ['options'],
-    14: [
-     'meetingMode',
-     'meetingPoint',
-     'meetingPointPicture',
-     'meetingPointDescription',
-     'arrivalTimeType',
-     'arrivalTimeCustom',
-     'pickupType',
-     'pickupDescription',
-     'pickupTiming',
-     'pickupFinalLocationTiming',
-     'referenceStartTime',
-     'pickupAreas',
-     'pickupLocations',
-     'pickupGeoshape',
-     'dropoffOption',
-     'dropoffLocation',
-     'dropoffDescription',
-   ],
-    15: [],
-    16: [
-      'pricingModel',
-      'currency',
-      'scheduleType',
-      'schedules',
-      'pricingApproach',
-      'pricingCategories',
-      'uniformPrice',
-      'groupSizes',
-      'timeSlots',
-      'minParticipants',
-      'maxParticipants',
-      'maxGroupsPerTimeSlot',
-      'additionalPersonsEnabled',
-      'additionalPersonPrice',
-    ],
-    17: ['cutoffMinutes', 'lastMinuteBookings', 'perSlotCutoff', 'perSlotCutoffs'],
+  5: ['locations'],
+  6: ['keywords', 'activitiesIncluded'],
+  7: [
+    'whatsIncluded',
+    'whatsNotIncluded',
+    'foodProvided',
+    'meals',
+    'drinksIncluded',
+    'showDietaryRestrictions',
+    'dietaryOptions',
+  ],
+  8: ['guideType', 'guideMaterials'],
+  9: [
+    'notSuitableFor',
+    'notAllowed',
+    'petFriendly',
+    'wheelchairAccessible',
+    'mandatoryItems',
+    'knowBeforeYouGo',
+    'emergencyPhone',
+    'voucherInfo',
+  ],
+  10: ['cancellationType', 'supplierCanCancelBadWeather', 'supplierCanCancelNotEnoughTravelers'],
+  11: ['photos', 'copyrightConfirmed'],
+  12: ['options'],
+  13: [
+    'meetingMode',
+    'meetingPoint',
+    'meetingPointPicture',
+    'meetingPointDescription',
+    'arrivalTimeType',
+    'arrivalTimeCustom',
+    'pickupType',
+    'pickupDescription',
+    'pickupTiming',
+    'pickupFinalLocationTiming',
+    'referenceStartTime',
+    'pickupAreas',
+    'pickupLocations',
+    'pickupGeoshape',
+    'dropoffOption',
+    'dropoffLocation',
+    'dropoffDescription',
+  ],
+  14: [],
+  15: [
+    'pricingModel',
+    'currency',
+    'scheduleType',
+    'schedules',
+    'pricingApproach',
+    'pricingCategories',
+    'uniformPrice',
+    'groupSizes',
+    'timeSlots',
+    'minParticipants',
+    'maxParticipants',
+    'maxGroupsPerTimeSlot',
+    'additionalPersonsEnabled',
+    'additionalPersonPrice',
+  ],
+  16: ['cutoffMinutes', 'lastMinuteBookings', 'perSlotCutoff', 'perSlotCutoffs'],
 }
 
 function pick(obj, keys) {
@@ -87,14 +87,28 @@ export function validateStep(stepIndex, formData) {
   const partialData = pick(formData, fields)
 
   const result = schema.safeParse(partialData)
-  if (result.success) return {}
-
   const errors = {}
-  for (const issue of result.error.issues) {
-    const path = issue.path.join('.')
-    if (!errors[path]) errors[path] = []
-    errors[path].push(issue.message)
+  if (!result.success) {
+    for (const issue of result.error.issues) {
+      const path = issue.path.join('.')
+      if (!errors[path]) errors[path] = []
+      errors[path].push(issue.message)
+    }
   }
+
+  // Step 13: require pickup time when pickupAtSpecificTime is true
+  if (stepIndex === 13 && formData.pickupAtSpecificTime && formData.meetingMode === 'pickup') {
+    if (formData.pickupType === 'area' && Array.isArray(formData.pickupAreas)) {
+      formData.pickupAreas.forEach((area, i) => {
+        if (!area.time || !area.time.trim()) {
+          const path = `pickupAreas.${i}.time`
+          if (!errors[path]) errors[path] = []
+          errors[path].push('Pickup time is required')
+        }
+      })
+    }
+  }
+
   return errors
 }
 

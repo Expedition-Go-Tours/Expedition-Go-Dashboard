@@ -20,7 +20,6 @@ import Step04Descriptions from '@/features/products/steps/Step04Descriptions'
 import Step05Locations from '@/features/products/steps/Step05Locations'
 import Step06Keywords from '@/features/products/steps/Step06Keywords'
 import Step07Inclusions from '@/features/products/steps/Step07Inclusions'
-import Step08Transportation from '@/features/products/steps/Step08Transportation'
 import Step09GuideInfo from '@/features/products/steps/Step09GuideInfo'
 import Step10Photos from '@/features/products/steps/Step10Photos'
 import Step11ExtraInfo from '@/features/products/steps/Step11ExtraInfo'
@@ -40,16 +39,15 @@ const STEP_COMPONENTS = {
   5: Step05Locations,
   6: Step06Keywords,
   7: Step07Inclusions,
-  8: Step08Transportation,
-  9: Step09GuideInfo,
-   10: Step11ExtraInfo,
-   11: Step17CancellationPolicy,
-  12: Step10Photos,
-  13: Step12Options,
-  14: Step13MeetingPoint,
-  15: Step05ItineraryPreview,
-  16: Step14PricingAvailability,
-  17: Step15Cutoff,
+  8: Step09GuideInfo,
+  9: Step11ExtraInfo,
+  10: Step17CancellationPolicy,
+  11: Step10Photos,
+  12: Step12Options,
+  13: Step13MeetingPoint,
+  14: Step05ItineraryPreview,
+  15: Step14PricingAvailability,
+  16: Step15Cutoff,
 }
 
 const STEP_LABELS = {
@@ -58,18 +56,17 @@ const STEP_LABELS = {
   3: 'Product Category',
   4: 'Descriptions & highlights',
   5: 'Locations & Itinerary',
-  6: 'Keywords',
+  6: 'Keywords and activities',
   7: 'Inclusions',
-  8: 'Transportation',
-  9: 'Guide information',
-   10: 'Extra information',
-   11: 'Cancellation Policy',
-  12: 'Photos',
-  13: 'Options',
-  14: 'Meeting Point or Pickup',
-  15: 'Itinerary Preview',
-  16: 'Pricing & Availability',
-  17: 'Cut-off',
+  8: 'Guide information',
+  9: 'Extra information',
+  10: 'Cancellation Policy',
+  11: 'Photos',
+  12: 'Booking Options',
+  13: 'Meeting Point or Pickup',
+  14: 'Itinerary Preview',
+  15: 'Pricing & Availability',
+  16: 'Cut-off',
 }
 
 function getGygStepIndex(sectionId, stepId) {
@@ -110,7 +107,6 @@ function tourToProduct(tour) {
     activitiesIncluded: content.activitiesIncluded || [],
     transportModes: categorization.transportModes || [],
     transportServices: categorization.transportServices || [],
-    pickupTransportTypes: content.pickupTransportTypes || [],
     whatsIncluded: content.included || [],
     whatsNotIncluded: content.excluded || [],
     guideType: (content.guideType === 'greeter' ? 'host' : content.guideType) || 'tour-guide',
@@ -132,6 +128,7 @@ function tourToProduct(tour) {
     notSuitableFor: content.healthRestrictions || [],
     notAllowed: content.notAllowed || [],
     petFriendly: !!content.petFriendly,
+    wheelchairAccessible: !!content.wheelchairAccessible,
     wifiIncluded: !!content.wifiIncluded,
     mandatoryItems: content.whatToBring || [],
     knowBeforeYouGo: content.additionalInfo || '',
@@ -154,7 +151,7 @@ function tourToProduct(tour) {
     }),
     copyrightConfirmed: !!content.copyrightConfirmed,
     coverPhoto: tour.coverPhoto || '',
-    options: content.options || [],
+    options: (content.options || []).map((o) => ({ ...o, wheelchairAccessible: false })),
     meetingMode: content.meetingMode || 'meeting_point',
     meetingPoint: meetingPoint.lat
       ? {
@@ -171,6 +168,9 @@ function tourToProduct(tour) {
     pickupType: content.pickupType || 'area',
     pickupDescription: content.pickupDescription || '',
     pickupTiming: content.pickupTiming || 'at_start',
+    pickupAtSpecificTime: content.pickupAtSpecificTime !== undefined
+      ? !!content.pickupAtSpecificTime
+      : (content.pickupAreas || []).some((a) => typeof a === 'object' && a.time),
     pickupFinalLocationTiming: content.pickupFinalLocationTiming || 'day_before',
     referenceStartTime: content.referenceStartTime || '',
     pickupAreas: (content.pickupAreas || []).map((a) =>

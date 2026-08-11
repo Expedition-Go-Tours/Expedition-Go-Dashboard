@@ -16,7 +16,7 @@ export default function Step17CancellationPolicy() {
   const supplierCanCancelBadWeather = useProductBuilderStore((s) => s.supplierCanCancelBadWeather)
   const supplierCanCancelNotEnoughTravelers = useProductBuilderStore((s) => s.supplierCanCancelNotEnoughTravelers)
   const setField = useProductBuilderStore((s) => s.setField)
-  const errors = useStepErrors(11)
+  const errors = useStepErrors(10)
 
   const [showBanner, setShowBanner] = useState(true)
   const [showWeatherBanner, setShowWeatherBanner] = useState(true)

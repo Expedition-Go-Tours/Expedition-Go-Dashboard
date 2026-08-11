@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/select'
 import {
   ArrowLeft, Plus, Check,
-  Headphones, Book, Copy, Trash2,
+  Copy, Trash2,
 } from 'lucide-react'
 import { useProductBuilderStore } from '@/features/products/productBuilderStore'
 import { useStepErrors } from '@/features/products/useStepErrors'
@@ -231,7 +231,6 @@ function DurationValidityBlock({ option, index, updateOption }) {
 function OptionSummaryCard({ option, index, onEdit, onDuplicate, onRemove }) {
   const featurePills = []
   if (option.isPrivate) featurePills.push({ label: 'Private', type: 'private' })
-  if (option.wheelchairAccessible) featurePills.push({ label: 'Wheelchair accessible', type: 'wc' })
   if (option.skipTheLine && option.skipTheLine !== 'none') featurePills.push({ label: 'Skip line', type: 'skip' })
   if (option.audioGuide) featurePills.push({ label: 'Audio guide', type: 'audio' })
   if (option.infoBooklet) featurePills.push({ label: 'Booklet', type: 'booklet' })
@@ -321,9 +320,6 @@ function OptionSummaryCard({ option, index, onEdit, onDuplicate, onRemove }) {
 
 function OptionEditorScreen({ option, index, updateOption, onBack, onRemove, errors }) {
   const titleError = errors[`options.${index}.title`]
-  const [maxGroupSizeDraft, setMaxGroupSizeDraft] = useState(() =>
-    option.maxGroupSize == null ? '' : String(option.maxGroupSize)
-  )
 
   return (
     <motion.div
@@ -399,115 +395,6 @@ function OptionEditorScreen({ option, index, updateOption, onBack, onRemove, err
 
         <div className="mb-6">
           <label className="block text-sm font-semibold text-slate-800 mb-1">
-            Maximum group size
-          </label>
-          <p className="text-xs text-slate-500 mb-3 leading-relaxed">
-            What&apos;s the maximum total of people in your activity for each time slot?
-          </p>
-          <div className="flex items-center gap-4">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                name={`maxGroupSize-${option.id}`}
-                checked={option.maxGroupSize === null}
-                onChange={() => {
-                  setMaxGroupSizeDraft('')
-                  updateOption(index, { maxGroupSize: null })
-                }}
-                className="accent-emerald-600"
-              />
-              <span className="text-sm text-slate-600">No limit</span>
-            </label>
-            <div className="flex items-center gap-2">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name={`maxGroupSize-${option.id}`}
-                  checked={option.maxGroupSize !== null}
-                  onChange={() => {
-                    setMaxGroupSizeDraft('10')
-                    updateOption(index, { maxGroupSize: 10 })
-                  }}
-                  className="accent-emerald-600"
-                />
-                <span className="text-sm text-slate-600">Max</span>
-              </label>
-              {option.maxGroupSize !== null && (
-                <div className="flex items-center gap-1.5">
-                  <input
-                    className="w-20 min-h-[34px] rounded-lg border border-slate-200 bg-white px-3 py-1 text-sm transition-all focus-ring text-right"
-                    type="number"
-                    min={1}
-                    max={100}
-                    value={maxGroupSizeDraft}
-                    onChange={(e) => {
-                      if (e.target.value === '') {
-                        setMaxGroupSizeDraft('')
-                        return
-                      }
-                      setMaxGroupSizeDraft(e.target.value)
-                      updateOption(index, { maxGroupSize: Number(e.target.value) })
-                    }}
-                    onBlur={() => {
-                      if (maxGroupSizeDraft === '') {
-                        setMaxGroupSizeDraft(option.maxGroupSize == null ? '' : String(option.maxGroupSize))
-                      }
-                    }}
-                  />
-                  <span className="text-xs text-slate-400">people</span>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <hr className="border-slate-100 mb-6" />
-
-        <div className="mb-6">
-          <label className="block text-sm font-semibold text-slate-800 mb-2">
-            Add guide materials <span className="font-normal text-slate-400">(optional)</span>
-          </label>
-          <p className="text-xs text-slate-500 mb-3">
-            What guide materials do you provide in which languages? Choose all that apply.
-          </p>
-          <div className="flex flex-col gap-2.5 pl-1">
-            <label className="flex items-center gap-2.5 cursor-pointer group">
-              <div className="relative">
-                <input
-                  type="checkbox"
-                  checked={option.audioGuide ?? false}
-                  onChange={(e) => updateOption(index, { audioGuide: e.target.checked })}
-                  className="peer sr-only"
-                />
-                <div className="w-[18px] h-[18px] rounded border-2 border-slate-300 peer-checked:border-emerald-600 peer-checked:bg-emerald-600 transition-all duration-150 grid place-items-center shrink-0">
-                  {(option.audioGuide) && <Check size={12} strokeWidth={3} className="text-white" />}
-                </div>
-              </div>
-              <Headphones size={14} className="text-slate-400 shrink-0" />
-              <span className="text-sm text-slate-700 group-hover:text-slate-900">Audio guides and headphones</span>
-            </label>
-            <label className="flex items-center gap-2.5 cursor-pointer group">
-              <div className="relative">
-                <input
-                  type="checkbox"
-                  checked={option.infoBooklet ?? false}
-                  onChange={(e) => updateOption(index, { infoBooklet: e.target.checked })}
-                  className="peer sr-only"
-                />
-                <div className="w-[18px] h-[18px] rounded border-2 border-slate-300 peer-checked:border-emerald-600 peer-checked:bg-emerald-600 transition-all duration-150 grid place-items-center shrink-0">
-                  {(option.infoBooklet) && <Check size={12} strokeWidth={3} className="text-white" />}
-                </div>
-              </div>
-              <Book size={14} className="text-slate-400 shrink-0" />
-              <span className="text-sm text-slate-700 group-hover:text-slate-900">Information booklets</span>
-            </label>
-          </div>
-        </div>
-
-        <hr className="border-slate-100 mb-6" />
-
-        <div className="mb-6">
-          <label className="block text-sm font-semibold text-slate-800 mb-1">
             Is this a private activity?
           </label>
           <p className="text-xs text-slate-500 mb-3 leading-relaxed">
@@ -540,18 +427,6 @@ function OptionEditorScreen({ option, index, updateOption, onBack, onRemove, err
         <hr className="border-slate-100 mb-6" />
 
         <div className="mb-6">
-          <label className="block text-sm font-semibold text-slate-800 mb-2">
-            Is the activity wheelchair accessible?
-          </label>
-          <NoYesPill
-            value={option.wheelchairAccessible}
-            onChange={(v) => updateOption(index, { wheelchairAccessible: v })}
-          />
-        </div>
-
-        <hr className="border-slate-100 mb-6" />
-
-        <div className="mb-6">
           <label className="block text-sm font-semibold text-slate-800 mb-3">
             Duration or validity
           </label>
@@ -568,7 +443,7 @@ export default function Step12Options() {
   const updateOption = useProductBuilderStore((s) => s.updateOption)
   const removeOption = useProductBuilderStore((s) => s.removeOption)
   const duplicateOption = useProductBuilderStore((s) => s.duplicateOption)
-  const errors = useStepErrors(13)
+  const errors = useStepErrors(12)
 
   const [editingIndex, setEditingIndex] = useState(null)
   const [showIntro, setShowIntro] = useState(true)

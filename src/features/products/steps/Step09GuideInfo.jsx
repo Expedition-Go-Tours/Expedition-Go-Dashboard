@@ -35,7 +35,7 @@ export default function Step09GuideInfo() {
   const guideType = useProductBuilderStore((s) => s.guideType)
   const guideMaterials = useProductBuilderStore((s) => s.guideMaterials)
   const setField = useProductBuilderStore((s) => s.setField)
-  const errors = useStepErrors(9)
+  const errors = useStepErrors(8)
 
   return (
     <div className="max-w-[720px] space-y-6">

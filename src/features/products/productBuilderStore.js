@@ -78,7 +78,6 @@ const INITIAL_FORM = {
   activitiesIncluded: [],
   transportModes: [],
   transportServices: [],
-  pickupTransportTypes: [],
   whatsIncluded: [],
   whatsNotIncluded: [],
   guideType: 'tour-guide',
@@ -99,6 +98,7 @@ const INITIAL_FORM = {
   notSuitableFor: [],
   notAllowed: [],
   petFriendly: false,
+  wheelchairAccessible: false,
   wifiIncluded: false,
   accommodationIncluded: false,
   mandatoryItems: [],
@@ -120,6 +120,7 @@ const INITIAL_FORM = {
   pickupType: 'area',
   pickupDescription: '',
   pickupTiming: 'at_start',
+  pickupAtSpecificTime: true,
   pickupFinalLocationTiming: 'day_before',
   referenceStartTime: '',
   pickupAreas: [],
@@ -275,10 +276,6 @@ export const useProductBuilderStore = create(
         set((s) => ({ activitiesIncluded: [...s.activitiesIncluded, item], isDirty: true })),
       removeActivityIncluded: (index) =>
         set((s) => ({ activitiesIncluded: s.activitiesIncluded.filter((_, i) => i !== index), isDirty: true })),
-      addPickupTransportType: (item) =>
-        set((s) => ({ pickupTransportTypes: [...s.pickupTransportTypes, item], isDirty: true })),
-      removePickupTransportType: (index) =>
-        set((s) => ({ pickupTransportTypes: s.pickupTransportTypes.filter((_, i) => i !== index), isDirty: true })),
 
       addInclusionItem: (field, item) =>
         set((s) => ({ [field]: [...s[field], item], isDirty: true })),
