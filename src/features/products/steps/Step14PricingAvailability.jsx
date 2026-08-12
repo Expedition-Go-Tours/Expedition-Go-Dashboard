@@ -1221,8 +1221,10 @@ function ScheduleWizard({ onBack }) {
   const [direction, setDirection] = useState(1)
   const { wizardErrors, setWizardErrors, touch, touchAll } = useLiveWizardErrors(currentScheduleStep)
 
-  const handleNext = () => {
+  const handleNext = async () => {
     setDirection(1)
+    // Wait one tick so DraftNumberInput onCommit handlers flush to the store
+    if (currentScheduleStep === 4) await new Promise(r => setTimeout(r, 0))
     const state = useProductBuilderStore.getState()
 
     if (currentScheduleStep < 4) {
