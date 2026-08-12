@@ -101,6 +101,7 @@ const INITIAL_FORM = {
   wheelchairAccessible: false,
   wifiIncluded: false,
   accommodationIncluded: false,
+  dayLogistics: {},
   mandatoryItems: [],
   knowBeforeYouGo: '',
   emergencyPhone: '',
@@ -320,6 +321,15 @@ export const useProductBuilderStore = create(
         set((s) => ({ dietaryOptions: [...s.dietaryOptions, opt], isDirty: true })),
       removeDietaryOption: (index) =>
         set((s) => ({ dietaryOptions: s.dietaryOptions.filter((_, i) => i !== index), isDirty: true })),
+
+      setDayLogistics: (day, patch) =>
+        set((s) => ({
+          dayLogistics: {
+            ...s.dayLogistics,
+            [day]: { ...(s.dayLogistics[day] || {}), ...patch },
+          },
+          isDirty: true,
+        })),
 
       addNotSuitable: (item) =>
         set((s) => ({ notSuitableFor: [...s.notSuitableFor, item], isDirty: true })),

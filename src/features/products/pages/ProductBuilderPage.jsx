@@ -116,6 +116,7 @@ function tourToProduct(tour) {
     drinksIncluded: !!content.drinksIncluded,
     showDietaryRestrictions: !!content.showDietaryRestrictions,
     dietaryOptions: content.dietaryOptions || [],
+    dayLogistics: content.dayLogistics || {},
     transportationProvided: !!content.transportationProvided,
     transportationType: content.transportationType || '',
     crossCityTravel: !!content.crossCityTravel,

@@ -1,5 +1,6 @@
-import { MapPin, Navigation, Flag, Pencil } from 'lucide-react'
+import { MapPin, Navigation, Flag, Pencil, Bed, UtensilsCrossed } from 'lucide-react'
 import { useProductBuilderStore } from '@/features/products/productBuilderStore'
+import { ACCOMMODATION_LABELS } from '@/features/products/utils/itineraryConstants'
 
 const ADMISSION_LABELS = { yes: 'Admission included', no: 'Pay separately', passby: 'Pass by', na: 'Pass by' }
 
@@ -84,6 +85,7 @@ export default function Step05ItineraryPreview() {
   const pickupDescription = useProductBuilderStore((s) => s.pickupDescription)
   const dropoffOption = useProductBuilderStore((s) => s.dropoffOption)
   const dropoffLocation = useProductBuilderStore((s) => s.dropoffLocation)
+  const dayLogistics = useProductBuilderStore((s) => s.dayLogistics)
   const navigateTo = useProductBuilderStore((s) => s.navigateTo)
   const setPreviewFocus = useProductBuilderStore((s) => s.setPreviewFocus)
 
@@ -230,6 +232,22 @@ export default function Step05ItineraryPreview() {
                           {dayStops.length} stop{dayStops.length !== 1 ? 's' : ''}
                         </span>
                       </div>
+                      {(dayLogistics?.[dayNum]?.accommodation || dayLogistics?.[dayNum]?.meals?.length > 0) && (
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-2 text-[12px] text-slate-500">
+                          {dayLogistics?.[dayNum]?.accommodation && (
+                            <span className="flex items-center gap-1">
+                              <Bed size={12} className="text-slate-400" />
+                              {ACCOMMODATION_LABELS[dayLogistics[dayNum].accommodation]}
+                            </span>
+                          )}
+                          {dayLogistics?.[dayNum]?.meals?.length > 0 && (
+                            <span className="flex items-center gap-1">
+                              <UtensilsCrossed size={12} className="text-slate-400" />
+                              {dayLogistics[dayNum].meals.map((m) => `${m.type}${m.format ? ` (${m.format})` : ''}`).join(', ')}
+                            </span>
+                          )}
+                        </div>
+                      )}
                       {dayStops.map((loc, i) => (
                         <TimelineNode key={loc._globalIdx} rail={!isLastDay || i < dayStops.length - 1 || !!end}>
                           <NodeDot>{loc._globalIdx + 1}</NodeDot>

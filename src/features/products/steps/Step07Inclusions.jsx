@@ -12,15 +12,7 @@ import { useProductBuilderStore } from '@/features/products/productBuilderStore'
 import { useStepErrors } from '@/features/products/useStepErrors'
 import { DIETARY_OPTIONS } from '@/constants/gygLists'
 import { INCLUSION_ITEM_MAX_CHARS, limitMessage } from '@/features/products/productFormSchema'
-
-const MEAL_TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Brunch', 'Lunch or dinner, depending on starting time']
-const MEAL_FORMATS_BY_TYPE = {
-  'Breakfast': ['Buffet', 'Continental', 'Full meal', 'Light breakfast', 'Pastry', 'Packed meal'],
-  'Lunch': ['Buffet', 'Full meal', 'Food tasting', 'Light lunch', 'Packed meal', 'Picnic'],
-  'Dinner': ['BBQ', 'Buffet', 'Fine dining', 'Food tasting', 'Full meal', 'Light dinner'],
-  'Brunch': ['Buffet', 'Food tasting', 'Full meal', 'Light meal'],
-  'Lunch or dinner, depending on starting time': ['Buffet', 'Full meal', 'Food tasting', 'Light meal'],
-}
+import { MEAL_TYPES, MEAL_FORMATS_BY_TYPE } from '@/features/products/utils/itineraryConstants'
 
 function DietarySelect({ selected, onAdd, onRemove }) {
   function toggle(opt) {
@@ -165,6 +157,8 @@ export default function Step07Inclusions() {
     drinksIncluded,
     showDietaryRestrictions,
     dietaryOptions,
+    duration,
+    durationUnit,
   } = store
   const setField = useProductBuilderStore((s) => s.setField)
   const errors = useStepErrors(7)
@@ -172,6 +166,8 @@ export default function Step07Inclusions() {
   const updateMeal = useProductBuilderStore((s) => s.updateMeal)
   const addDietaryOption = useProductBuilderStore((s) => s.addDietaryOption)
   const removeDietaryOption = useProductBuilderStore((s) => s.removeDietaryOption)
+
+  const isMultiDay = durationUnit === 'days' && typeof duration === 'number' && duration > 1
 
   return (
     <div className="max-w-[720px] space-y-6">
@@ -199,7 +195,9 @@ export default function Step07Inclusions() {
         {errors.whatsNotIncluded && <span className="text-[13px] text-red-600 font-medium mt-1">{errors.whatsNotIncluded[0]}</span>}
       </div>
 
-      <hr className="border-slate-100" />
+      {!isMultiDay && (
+        <>
+          <hr className="border-slate-100" />
 
       {/* Food & Drinks */}
       <div>
@@ -340,6 +338,8 @@ export default function Step07Inclusions() {
           </div>
         )}
       </div>
+        </>
+      )}
     </div>
   )
 }

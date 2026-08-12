@@ -154,6 +154,7 @@ export function buildPayload(state) {
     payload.attractions = Array.isArray(p.attractions) ? p.attractions : payload.attractions
     payload.meals = Array.isArray(p.meals) ? p.meals : payload.meals
     payload.mealType = p.mealType ?? payload.mealType
+    payload.dayLogistics = p.dayLogistics ?? payload.dayLogistics
     payload.meetingPoint = p.meetingPoint ?? payload.meetingPoint
     payload.meetingPointPicture = p.meetingPointPicture ?? payload.meetingPointPicture
     payload.arrivalTime = p.arrivalTime ?? payload.arrivalTime

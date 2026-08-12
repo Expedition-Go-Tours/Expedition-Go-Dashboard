@@ -9,7 +9,7 @@ import {
   SelectContent,
   SelectItem,
 } from '@/components/ui/select'
-import { Pencil, GripVertical, ChevronDown } from 'lucide-react'
+import { Pencil, GripVertical, ChevronDown, Bed, UtensilsCrossed, MoonStar, Plus, X } from 'lucide-react'
 import LocationAutocomplete from '@/components/shared/LocationAutocomplete'
 import {
   sumStopMinutes,
@@ -17,6 +17,13 @@ import {
   formatMinutes,
   stopDurationsExceedProduct,
 } from '@/features/products/utils/durationValidation'
+import {
+  ACCOMMODATION_TYPES,
+  ACCOMMODATION_LABELS,
+  MEAL_TYPES,
+  MEAL_FORMATS_BY_TYPE,
+} from '@/features/products/utils/itineraryConstants'
+import { DIETARY_OPTIONS } from '@/constants/gygLists'
 
 const ADMISSION_OPTIONS = [
   { value: 'yes', label: 'Yes', desc: 'Admission is covered by the tour price.' },
@@ -35,6 +42,14 @@ export default function Step05Locations() {
   const updateLocation = useProductBuilderStore((s) => s.updateLocation)
   const reorderLocations = useProductBuilderStore((s) => s.reorderLocations)
   const moveLocationToDay = useProductBuilderStore((s) => s.moveLocationToDay)
+  const accommodationIncluded = useProductBuilderStore((s) => s.accommodationIncluded)
+  const dayLogistics = useProductBuilderStore((s) => s.dayLogistics)
+  const setDayLogistics = useProductBuilderStore((s) => s.setDayLogistics)
+  const showDietaryRestrictions = useProductBuilderStore((s) => s.showDietaryRestrictions)
+  const dietaryOptions = useProductBuilderStore((s) => s.dietaryOptions)
+  const addDietaryOption = useProductBuilderStore((s) => s.addDietaryOption)
+  const removeDietaryOption = useProductBuilderStore((s) => s.removeDietaryOption)
+  const setField = useProductBuilderStore((s) => s.setField)
   const errors = useStepErrors(5)
   const previewFocus = useProductBuilderStore((s) => s.previewFocus)
   const clearPreviewFocus = useProductBuilderStore((s) => s.clearPreviewFocus)
@@ -88,6 +103,14 @@ export default function Step05Locations() {
           moveLocationToDay={moveLocationToDay}
           duration={duration}
           durationUnit={durationUnit}
+          accommodationIncluded={accommodationIncluded}
+          dayLogistics={dayLogistics}
+          setDayLogistics={setDayLogistics}
+          showDietaryRestrictions={showDietaryRestrictions}
+          dietaryOptions={dietaryOptions}
+          addDietaryOption={addDietaryOption}
+          removeDietaryOption={removeDietaryOption}
+          setField={setField}
           onEdit={handleOpenModal}
           dragRef={dragRef}
           onDragStart={handleGlobalDragStart}
@@ -185,7 +208,7 @@ function SingleDayItinerary({ locations, addLocation, removeLocation, duration, 
   )
 }
 
-function MultiDayItinerary({ locations, dayCount, addLocation, removeLocation, moveLocationToDay, duration, durationUnit, onEdit, dragRef, onDragStart, onDrop, errors }) {
+function MultiDayItinerary({ locations, dayCount, addLocation, removeLocation, moveLocationToDay, duration, durationUnit, accommodationIncluded, dayLogistics, setDayLogistics, showDietaryRestrictions, dietaryOptions, addDietaryOption, removeDietaryOption, setField, onEdit, dragRef, onDragStart, onDrop, errors }) {
   const [dropTargetDay, setDropTargetDay] = useState(null)
   const [collapsedDays, setCollapsedDays] = useState({})
 
@@ -246,6 +269,14 @@ function MultiDayItinerary({ locations, dayCount, addLocation, removeLocation, m
         </div>
       </div>
 
+      <DietarySection
+        showDietaryRestrictions={showDietaryRestrictions}
+        dietaryOptions={dietaryOptions}
+        onToggle={(v) => setField('showDietaryRestrictions', v)}
+        onAdd={addDietaryOption}
+        onRemove={removeDietaryOption}
+      />
+
       <div className="relative pl-8">
         <div className="absolute left-[15px] top-6 bottom-6 w-px bg-slate-200" />
 
@@ -257,6 +288,7 @@ function MultiDayItinerary({ locations, dayCount, addLocation, removeLocation, m
             .filter((idx) => idx >= 0)
           const isCollapsed = collapsedDays[day] || false
           const isDropTarget = dropTargetDay === day
+          const logistics = dayLogistics?.[day] || {}
 
           return (
             <div key={day} className="relative pb-4 last:pb-0">
@@ -289,6 +321,13 @@ function MultiDayItinerary({ locations, dayCount, addLocation, removeLocation, m
 
                 {!isCollapsed && (
                   <>
+                    <DayLogisticsPanel
+                      day={day}
+                      logistics={logistics}
+                      accommodationIncluded={accommodationIncluded}
+                      setDayLogistics={setDayLogistics}
+                    />
+
                     <DayAutocomplete
                       day={day}
                       locations={locations}
@@ -306,20 +345,30 @@ function MultiDayItinerary({ locations, dayCount, addLocation, removeLocation, m
                         </p>
                       </div>
                     ) : (
-                      <div className="px-4 pb-4">
-                        <LocationList
-                          locations={dayLocations}
-                          globalIndices={globalIndices}
-                          removeLocation={removeLocation}
-                          onEdit={onEdit}
-                          dragRef={dragRef}
-                          onDragStart={onDragStart}
-                          onDrop={(targetIdx) => onDrop(targetIdx)}
-                          duration={duration}
-                          durationUnit={durationUnit}
-                          showHeader={false}
-                        />
-                      </div>
+                      <>
+                        <div className="px-4 pb-4">
+                          <LocationList
+                            locations={dayLocations}
+                            globalIndices={globalIndices}
+                            removeLocation={removeLocation}
+                            onEdit={onEdit}
+                            dragRef={dragRef}
+                            onDragStart={onDragStart}
+                            onDrop={(targetIdx) => onDrop(targetIdx)}
+                            duration={duration}
+                            durationUnit={durationUnit}
+                            showHeader={false}
+                            timeline
+                          />
+                        </div>
+                        <div className="px-4 pb-3 -mt-1 flex items-center gap-1.5 text-[11px] text-slate-400 border-t border-slate-100 pt-2.5 mx-4">
+                          <MoonStar size={12} className="text-amber-500" />
+                          Overnight in {dayLocations[dayLocations.length - 1].city || dayLocations[dayLocations.length - 1].name || dayLocations[dayLocations.length - 1].address || 'this location'}
+                          {logistics.accommodation && (
+                            <span className="text-slate-500">· {ACCOMMODATION_LABELS[logistics.accommodation]}</span>
+                          )}
+                        </div>
+                      </>
                     )}
                   </>
                 )}
@@ -336,6 +385,178 @@ function MultiDayItinerary({ locations, dayCount, addLocation, removeLocation, m
           )
         })}
       </div>
+    </div>
+  )
+}
+
+function DietarySection({ showDietaryRestrictions, dietaryOptions, onToggle, onAdd, onRemove }) {
+  const [open, setOpen] = useState(showDietaryRestrictions)
+
+  function toggle(opt) {
+    if (dietaryOptions.includes(opt)) onRemove(dietaryOptions.indexOf(opt))
+    else onAdd(opt)
+  }
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white mb-4 overflow-hidden">
+      <button
+        type="button"
+        onClick={() => { setOpen(!open); onToggle(!open) }}
+        className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-slate-50/50 transition-colors bg-transparent border-0 cursor-pointer"
+      >
+        <span className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+          <UtensilsCrossed size={15} className="text-slate-400" />
+          Dietary restrictions
+          {dietaryOptions.length > 0 && (
+            <span className="text-xs font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">{dietaryOptions.length}</span>
+          )}
+        </span>
+        <ChevronDown size={16} className={`text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="px-4 pb-4 border-t border-slate-100 pt-3">
+          <p className="text-[12px] text-slate-400 mb-3">Select which dietary needs you can accommodate across the whole tour.</p>
+          <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+            {DIETARY_OPTIONS.map((opt) => {
+              const checked = dietaryOptions.includes(opt)
+              return (
+                <label key={opt} className="flex items-center gap-2.5 cursor-pointer group">
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => toggle(opt)}
+                    className="sr-only peer"
+                  />
+                  <div className={`w-[18px] h-[18px] rounded border-2 flex items-center justify-center transition-all ${checked ? 'bg-emerald-600 border-emerald-600' : 'border-slate-300 group-hover:border-slate-400'}`}>
+                    {checked && (
+                      <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                        <path d="M1 4l2.5 2.5L9 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    )}
+                  </div>
+                  <span className="text-sm text-slate-700 group-hover:text-slate-900">{opt}</span>
+                </label>
+              )
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function DayLogisticsPanel({ day, logistics, accommodationIncluded, setDayLogistics }) {
+  const meals = logistics?.meals || []
+  const drinksIncluded = !!logistics?.drinksIncluded
+  const accommodation = logistics?.accommodation || null
+
+  function addMeal() {
+    setDayLogistics(day, { meals: [...meals, { type: '', format: '' }] })
+  }
+
+  function updateMeal(i, field, value) {
+    const next = [...meals]
+    const meal = next[i]
+    if (field === 'type') {
+      const formats = MEAL_FORMATS_BY_TYPE[value] || []
+      next[i] = { type: value, format: formats.includes(meal.format) ? meal.format : '' }
+    } else {
+      next[i] = { ...meal, [field]: value }
+    }
+    setDayLogistics(day, { meals: next })
+  }
+
+  function removeMeal(i) {
+    setDayLogistics(day, { meals: meals.filter((_, idx) => idx !== i) })
+  }
+
+  return (
+    <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/60 space-y-3">
+      {accommodationIncluded && (
+        <div>
+          <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+            <Bed size={12} />
+            Overnight accommodation
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {ACCOMMODATION_TYPES.map((t) => {
+              const selected = accommodation === t.value
+              return (
+                <button
+                  key={t.value}
+                  type="button"
+                  onClick={() => setDayLogistics(day, { accommodation: selected ? null : t.value })}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all cursor-pointer ${
+                    selected
+                      ? 'bg-emerald-600 border-emerald-600 text-white shadow-sm'
+                      : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
+                  }`}
+                >
+                  {t.label}
+                  <span className={`ml-1 text-[10px] ${selected ? 'text-emerald-100' : 'text-slate-400'}`}>{t.stars}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      <div>
+        <div className="flex items-center justify-between mb-1.5">
+          <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+            <UtensilsCrossed size={12} />
+            Meals
+          </div>
+          <button
+            type="button"
+            onClick={addMeal}
+            className="flex items-center gap-1 text-xs font-medium text-emerald-600 hover:text-emerald-700 bg-transparent border-0 cursor-pointer p-0"
+          >
+            <Plus size={12} /> Add meal
+          </button>
+        </div>
+        {meals.length > 0 && (
+          <div className="space-y-2">
+            {meals.map((m, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <Select value={m.type} onValueChange={(v) => updateMeal(i, 'type', v)}>
+                  <SelectTrigger className="h-9 text-sm flex-1 bg-white">
+                    <SelectValue placeholder="Type of meal" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MEAL_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Select value={m.format} onValueChange={(v) => updateMeal(i, 'format', v)}>
+                  <SelectTrigger className="h-9 text-sm flex-1 bg-white">
+                    <SelectValue placeholder="Format" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(MEAL_FORMATS_BY_TYPE[m.type] || []).map((f) => <SelectItem key={f} value={f}>{f}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <button
+                  type="button"
+                  onClick={() => removeMeal(i)}
+                  className="shrink-0 w-6 h-6 rounded-md border-0 bg-transparent text-slate-400 cursor-pointer grid place-items-center hover:text-red-600 hover:bg-red-50 transition-colors"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <label className="flex items-center gap-2.5 cursor-pointer pt-0.5">
+        <input
+          type="checkbox"
+          checked={drinksIncluded}
+          onChange={(e) => setDayLogistics(day, { drinksIncluded: e.target.checked })}
+          className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+        />
+        <span className="text-[13px] font-medium text-slate-700">Drinks included</span>
+      </label>
     </div>
   )
 }
@@ -441,7 +662,7 @@ function DayAutocomplete({ day, locations, addLocation, onEdit }) {
   )
 }
 
-function LocationList({ locations, globalIndices, removeLocation, onEdit, dragRef, onDragStart, onDrop, duration, durationUnit, errors, showHeader }) {
+function LocationList({ locations, globalIndices, removeLocation, onEdit, dragRef, onDragStart, onDrop, duration, durationUnit, errors, showHeader, timeline }) {
   const productMinutes = productDurationMinutes(duration, durationUnit)
   const totalStopMinutes = sumStopMinutes(locations)
   const exceedsProductDuration = stopDurationsExceedProduct(locations, duration, durationUnit)
@@ -474,7 +695,8 @@ function LocationList({ locations, globalIndices, removeLocation, onEdit, dragRe
           </p>
         </>
       )}
-      <ul className="list-none p-0 m-0 space-y-2">
+      <ul className={`list-none p-0 m-0 space-y-2 ${timeline ? 'relative' : ''}`}>
+        {timeline && <span className="absolute left-[25px] top-4 bottom-4 w-px bg-slate-200" aria-hidden="true" />}
         {locations.map((loc, i) => {
           const globalIdx = indexMap[i]
           return (

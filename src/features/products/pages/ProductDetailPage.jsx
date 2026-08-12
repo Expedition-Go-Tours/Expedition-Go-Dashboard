@@ -17,6 +17,7 @@ import { PRODUCT_STATUSES } from "@/lib/constants";
 import { formatCurrency, formatDate, formatTime, cn } from "@/lib/utils";
 import OptimizedImage from "@/components/shared/OptimizedImage";
 import { getUniqueCities } from "@/features/products/utils/getUniqueCities";
+import { ACCOMMODATION_LABELS } from "@/features/products/utils/itineraryConstants";
 import DeleteModal from "@/components/ui/DeleteModal";
 
 function reorderPhotos(tour) {
@@ -863,6 +864,26 @@ export default function ProductDetailPage() {
                     {content.foodProvided && <p className="text-sm text-slate-600"><span className="font-medium">Meals:</span> {content.meals?.map(m => `${m.type} (${m.format})`).join(', ') || 'Provided'}</p>}
                     {content.drinksIncluded && <p className="text-sm text-slate-600"><span className="font-medium">Drinks:</span> Included</p>}
                     {content.dietaryOptions?.length > 0 && <p className="text-sm text-slate-600"><span className="font-medium">Dietary options:</span> {content.dietaryOptions.join(', ')}</p>}
+                  </div>
+                )}
+                {content.dayLogistics && Object.keys(content.dayLogistics).length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-slate-100">
+                    <h3 className="text-xs font-medium text-slate-500 mb-3">Day-by-day</h3>
+                    <div className="space-y-2.5">
+                      {Object.keys(content.dayLogistics).sort((a, b) => Number(a) - Number(b)).map((day) => {
+                        const l = content.dayLogistics[day]
+                        return (
+                          <div key={day} className="flex items-start gap-2.5 text-sm text-slate-600">
+                            <span className="shrink-0 text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">Day {day}</span>
+                            <div className="space-y-0.5">
+                              {l.accommodation && <p>Overnight: {ACCOMMODATION_LABELS[l.accommodation] || l.accommodation}</p>}
+                              {l.meals?.length > 0 && <p>Meals: {l.meals.map(m => `${m.type}${m.format ? ` (${m.format})` : ''}`).join(', ')}</p>}
+                              {l.drinksIncluded && <p>Drinks included</p>}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
                   </div>
                 )}
               </SectionCard>
