@@ -21,6 +21,14 @@ function getSectionStep(index) {
   return { sectionId: step.sectionId, stepId: step.stepId }
 }
 
+// Keep the locations array ordered by `day` so the flat array order (which is
+// what gets persisted and sent to the backend) always matches the day grouping
+// shown in the multi-day editor and itinerary preview. Stable sort preserves
+// the relative order of stops within the same day.
+function sortLocationsByDay(list) {
+  return [...list].sort((a, b) => (a.day ?? 1) - (b.day ?? 1))
+}
+
 const SCHEDULE_WIZARD_RESET = {
   currentScheduleStep: 1,
   editingScheduleIndex: null,
@@ -242,14 +250,20 @@ export const useProductBuilderStore = create(
         set((s) => ({ highlights: s.highlights.filter((_, i) => i !== index), isDirty: true })),
 
       addLocation: (loc) =>
-        set((s) => ({ locations: [...s.locations, { ...loc, day: loc.day ?? 1 }], isDirty: true })),
+        set((s) => ({
+          locations: sortLocationsByDay([...s.locations, { ...loc, day: loc.day ?? 1 }]),
+          isDirty: true,
+        })),
       removeLocation: (index) =>
         set((s) => ({ locations: s.locations.filter((_, i) => i !== index), isDirty: true })),
       updateLocation: (index, updates) =>
-        set((s) => ({
-          locations: s.locations.map((loc, i) => (i === index ? { ...loc, ...updates } : loc)),
-          isDirty: true,
-        })),
+        set((s) => {
+          const locations = s.locations.map((loc, i) => (i === index ? { ...loc, ...updates } : loc))
+          // Changing a stop's day must keep the array day-sorted so ordering
+          // stays consistent with the day grouping everywhere it's consumed.
+          const next = 'day' in updates ? sortLocationsByDay(locations) : locations
+          return { locations: next, isDirty: true }
+        }),
       reorderLocations: (from, to) =>
         set((s) => {
           const locations = [...s.locations]
@@ -259,8 +273,10 @@ export const useProductBuilderStore = create(
         }),
       moveLocationToDay: (index, newDay) =>
         set((s) => {
-          const locations = s.locations.map((loc, i) =>
-            i === index ? { ...loc, day: newDay } : loc
+          const locations = sortLocationsByDay(
+            s.locations.map((loc, i) =>
+              i === index ? { ...loc, day: newDay } : loc
+            )
           )
           return { locations, isDirty: true }
         }),

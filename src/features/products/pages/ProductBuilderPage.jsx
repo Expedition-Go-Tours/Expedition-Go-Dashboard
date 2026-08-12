@@ -100,7 +100,7 @@ function tourToProduct(tour) {
     shortDescription: content.shortSummary || '',
     fullDescription: tour.description || '',
     highlights: Array.isArray(content.highlights) ? content.highlights : [],
-    locations: (content.locations || []).map((l) => ({ ...l, day: l.day ?? 1 })),
+    locations: (content.locations || []).map((l) => ({ ...l, day: l.day ?? 1 })).sort((a, b) => (a.day ?? 1) - (b.day ?? 1)),
     attractions: content.attractions || [],
     keywords: tour.tags || [],
     activitiesIncluded: content.activitiesIncluded || [],

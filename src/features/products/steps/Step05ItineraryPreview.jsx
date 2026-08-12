@@ -120,6 +120,25 @@ export default function Step05ItineraryPreview() {
       }, {})
     : null
 
+  // Sequential display position for each stop in true itinerary order (Day 1
+  // first, then Day 2, ...). The raw array index is no longer a reliable
+  // ordering signal once stops are grouped by day, so we number them by their
+  // position in the rendered timeline instead.
+  const stopNumber = (() => {
+    const map = new Map()
+    if (isMultiDay && groupedByDay) {
+      let n = 0
+      for (const dayNum of Object.keys(groupedByDay).sort((a, b) => Number(a) - Number(b))) {
+        for (const loc of groupedByDay[dayNum]) {
+          map.set(loc._globalIdx, ++n)
+        }
+      }
+    } else {
+      locations.forEach((_, i) => map.set(i, i + 1))
+    }
+    return map
+  })()
+
   const start = (() => {
     if (meetingMode === 'pickup') {
       return {
@@ -250,7 +269,7 @@ export default function Step05ItineraryPreview() {
                       )}
                       {dayStops.map((loc, i) => (
                         <TimelineNode key={loc._globalIdx} rail={!isLastDay || i < dayStops.length - 1 || !!end}>
-                          <NodeDot>{loc._globalIdx + 1}</NodeDot>
+                          <NodeDot>{stopNumber.get(loc._globalIdx)}</NodeDot>
                           <div className="pt-0.5">
                             <div className="flex items-start justify-between gap-3">
                               <p className="text-sm font-bold text-slate-900">{stopTitle(loc)}</p>
@@ -278,7 +297,7 @@ export default function Step05ItineraryPreview() {
                 })
               : locations.map((loc, i) => (
               <TimelineNode key={i} rail={i < locations.length - 1 || !!end}>
-                <NodeDot>{i + 1}</NodeDot>
+                <NodeDot>{stopNumber.get(i)}</NodeDot>
                 <div className="pt-0.5">
                   <div className="flex items-start justify-between gap-3">
                     <p className="text-sm font-bold text-slate-900">{stopTitle(loc)}</p>

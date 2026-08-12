@@ -328,13 +328,6 @@ function MultiDayItinerary({ locations, dayCount, addLocation, removeLocation, m
                       onEdit={onEdit}
                     />
 
-                    <DayLogisticsPanel
-                      day={day}
-                      logistics={logistics}
-                      accommodationIncluded={accommodationIncluded}
-                      setDayLogistics={setDayLogistics}
-                    />
-
                     {dayLocations.length === 0 ? (
                       <div className="px-4 pb-5 pt-1 text-center">
                         <p className="text-[13px] text-slate-400">
@@ -370,6 +363,13 @@ function MultiDayItinerary({ locations, dayCount, addLocation, removeLocation, m
                         </div>
                       </>
                     )}
+
+                    <DayLogisticsPanel
+                      day={day}
+                      logistics={logistics}
+                      accommodationIncluded={accommodationIncluded}
+                      setDayLogistics={setDayLogistics}
+                    />
                   </>
                 )}
 
