@@ -12,6 +12,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { optimizeImage } from "@/lib/image";
+import OptimizedImage from "@/components/shared/OptimizedImage";
 
 export default function Header() {
   const navigate = useNavigate();
@@ -50,7 +51,7 @@ export default function Header() {
               </div>
               <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full overflow-hidden bg-[#044b3b] shrink-0 ring-2 ring-[#044b3b]/10">
                 {(user?.avatar || user?.photoURL) ? (
-                  <img src={optimizeImage(user.avatar || user.photoURL, 32)} alt="" className="w-full h-full object-cover" />
+                  <OptimizedImage src={user.avatar || user.photoURL} width={32} className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-white font-medium text-[11px]">{avatarLetter}</div>
                 )}
@@ -63,7 +64,7 @@ export default function Header() {
             <div className="flex items-center gap-3 px-4 pt-4 pb-3 border-b border-slate-100">
               <div className="w-10 h-10 rounded-full overflow-hidden bg-[#044b3b] shrink-0 ring-2 ring-[#044b3b]/10">
                 {(user?.avatar || user?.photoURL) ? (
-                  <img src={optimizeImage(user.avatar || user.photoURL, 40)} alt="" loading="lazy" className="w-full h-full object-cover" />
+                  <OptimizedImage src={user.avatar || user.photoURL} width={40} className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-white text-sm font-semibold">{avatarLetter}</div>
                 )}

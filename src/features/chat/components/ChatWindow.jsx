@@ -6,6 +6,7 @@ import MessageBubble from "./MessageBubble";
 import { useChatSocket } from "../hooks/useChatSocket";
 import { uploadChatImage } from "../api";
 import { optimizeImage } from "@/lib/image";
+import OptimizedImage from "@/components/shared/OptimizedImage";
 import { CHAT_BG_STYLE } from "../utils/chatBackground";
 import { useAuthStore } from "@/stores/authStore";
 
@@ -249,10 +250,9 @@ export default function ChatWindow({ conversation, messages, messageStatuses, on
         <div className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-emerald-600 text-sm font-bold text-white shadow-sm">
           <span>{headerName.charAt(0).toUpperCase()}</span>
           {otherParticipant?.photoURL && (
-            <img
-              src={optimizeImage(otherParticipant.photoURL, 36)}
-              alt=""
-              loading="lazy"
+            <OptimizedImage
+              src={otherParticipant.photoURL}
+              width={36}
               className="absolute inset-0 h-full w-full object-cover"
               onError={(e) => { e.target.style.display = "none"; }}
             />

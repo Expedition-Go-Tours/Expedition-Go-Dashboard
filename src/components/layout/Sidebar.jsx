@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { loadSupplierProfile } from "@/features/auth/api";
 import { LogOut, ChevronLeft, ChevronRight, Menu, LayoutDashboard, Package, Ticket, CalendarDays, Users, DollarSign, Star, Bell, BarChart3, BadgeCheck, Settings, CalendarX2, BadgePercent } from "lucide-react";
 import { optimizeImage } from "@/lib/image";
+import OptimizedImage from "@/components/shared/OptimizedImage";
 import { useTeamRole } from "@/hooks/useTeamRole";
 
 const allNavItems = [
@@ -166,7 +167,7 @@ const [logoutConfirmOpen, setShowLogoutConfirm] = useState(false);
             <div className="relative shrink-0">
               {logoUrl ? (
                 <div className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-white/20">
-                  <img src={optimizeImage(logoUrl, 40)} alt="" className="w-full h-full object-cover" />
+                  <OptimizedImage src={logoUrl} width={40} className="w-full h-full object-cover" />
                 </div>
               ) : (
                 <div className="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center ring-2 ring-white/20">

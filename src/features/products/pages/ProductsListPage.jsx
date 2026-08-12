@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -13,7 +13,7 @@ import { formatCurrency, formatDate, cn } from "@/lib/utils";
 import { deleteProduct, productsListQuery, PRODUCTS_LIST_KEY } from "@/features/products/api";
 import EmptyState from "@/components/shared/EmptyState";
 import { getAuthToken, useAuthStore } from "@/stores/authStore";
-import { transformImage } from "@/lib/image";
+import OptimizedImage from "@/components/shared/OptimizedImage";
 import DeleteModal from "@/components/ui/DeleteModal";
 import {
   Select,
@@ -181,12 +181,6 @@ export default function ProductsListPage() {
     const matchesStatus = statusFilter === "all" || p.status === statusFilter;
     return matchesSearch && matchesCategory && matchesStatus;
   });
-
-  const getPhotoSrc = useCallback((product) => {
-    const url = product.coverPhoto || product.photos?.find((p) => p);
-    if (!url) return null;
-    return transformImage(url);
-  }, []);
 
   const stats = useMemo(() => {
     const total = products.length;
@@ -419,7 +413,7 @@ export default function ProductsListPage() {
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
           >
             {filteredProducts.map((product) => {
-              const src = getPhotoSrc(product);
+              const src = product.coverPhoto || product.photos?.find(p => p);
               const pid = product.id;
               const showSkeleton = src && !imgLoaded[pid] && !imgErrors[pid];
               const price = extractPrice(product);
@@ -441,13 +435,11 @@ export default function ProductsListPage() {
                     {src ? (
                       <>
                         {showSkeleton && <div className="absolute inset-0 bg-slate-100 animate-pulse" />}
-                        <img
-                          src={src}
+                        <OptimizedImage
+                          src={product.coverPhoto || product.photos?.find(p => p)}
+                          width={560}
                           alt={product.title}
-                          width="560"
-                          height="420"
                           className={`absolute inset-0 w-full h-full object-cover transition-all duration-500 group-hover:scale-105 ${imgLoaded[pid] ? "opacity-100" : "opacity-0"}`}
-                          loading="lazy"
                           onLoad={() => setImgLoaded((prev) => ({ ...prev, [pid]: true }))}
                           onError={() => {
                             setImgErrors((prev) => ({ ...prev, [pid]: true }));
@@ -574,7 +566,7 @@ export default function ProductsListPage() {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3 min-w-0">
                           <div className="w-9 h-9 rounded-lg bg-slate-100 overflow-hidden shrink-0">
-                            {(() => { const s = getPhotoSrc(product); return s ? <img src={s} alt="" loading="lazy" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center"><Package size={14} className="text-slate-300" /></div>; })()}
+                            {(() => { const rawUrl = product.coverPhoto || product.photos?.find(p => p); return rawUrl ? <OptimizedImage src={rawUrl} alt="" width={36} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center"><Package size={14} className="text-slate-300" /></div>; })()}
                           </div>
                           <div className="min-w-0">
                             <p className="text-sm font-medium text-slate-800 truncate cursor-pointer hover:text-emerald-700 transition-colors" onClick={() => navigate(`/products/${product.id}`)}>

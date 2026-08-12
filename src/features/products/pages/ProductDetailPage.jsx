@@ -15,8 +15,8 @@ import { fetchTourAvailability } from "@/features/availability/api";
 import StatusBadge from "@/components/shared/StatusBadge";
 import { PRODUCT_STATUSES } from "@/lib/constants";
 import { formatCurrency, formatDate, formatTime, cn } from "@/lib/utils";
+import OptimizedImage from "@/components/shared/OptimizedImage";
 import { getUniqueCities } from "@/features/products/utils/getUniqueCities";
-import { transformImage } from "@/lib/image";
 import DeleteModal from "@/components/ui/DeleteModal";
 
 function reorderPhotos(tour) {
@@ -33,9 +33,6 @@ function reorderPhotos(tour) {
   const rest = rawPhotos.filter((p) => extractId(p) !== coverId);
   return [coverPhoto, ...rest];
 }
-
-const getCloudinaryUrl = (url) => transformImage(url);
-const getCloudinaryHero = (url) => transformImage(url);
 
 function formatDuration(duration) {
   const parts = [];
@@ -145,11 +142,11 @@ function PhotoGalleryModal({ displayPhotos, index: lightboxIndex, setLightboxInd
       )}
       <div className="flex flex-col items-center max-w-6xl w-full" onClick={(e) => e.stopPropagation()}>
         <div className="relative w-full flex items-center justify-center">
-          <img
-            src={getCloudinaryUrl(photo, 1600, 1066)}
+          <OptimizedImage
+            src={photo}
+            width={1600}
             alt={`${tour?.title} - Photo ${lightboxIndex + 1}`}
-            width="1600"
-            height="1066"
+            fit="fill"
             className="max-h-[80vh] w-auto max-w-full object-contain rounded-xl shadow-2xl"
           />
         </div>
@@ -188,7 +185,7 @@ function AllPhotosModal({ displayPhotos, open, onClose, onSelect, handleImageErr
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {displayPhotos.map((photo, i) => (
               <button key={i} onClick={() => { onClose(); onSelect(i); }} className="group relative aspect-[4/3] overflow-hidden rounded-lg bg-slate-100">
-                <img src={getCloudinaryUrl(photo, 600, 450)} alt={`${tour?.title} - Photo ${i + 1}`} loading="lazy" className="absolute inset-0 w-full h-full object-cover transition-all duration-500 group-hover:scale-110" onError={(e) => handleImageError(e, i)} />
+                <OptimizedImage src={photo} width={600} alt={`${tour?.title} - Photo ${i + 1}`} className="absolute inset-0 w-full h-full object-cover transition-all duration-500 group-hover:scale-110" onError={(e) => handleImageError(e, i)} />
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all duration-300" />
                 <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-black/40 text-white text-[10px] px-2 py-0.5 rounded-full">{i + 1}</div>
               </button>
@@ -517,7 +514,7 @@ export default function ProductDetailPage() {
             <div className="grid grid-cols-1 md:grid-cols-4 md:grid-rows-2 gap-1 rounded-xl overflow-hidden shadow-sm shadow-slate-900/5">
               {displayPhotos.slice(0, 5).map((photo, i) => (
                 <button key={i} onClick={() => setLightboxIndex(i)} className={cn("relative overflow-hidden bg-slate-100 group cursor-pointer", i === 0 ? "md:col-span-2 md:row-span-2 min-h-[260px] md:min-h-[440px]" : "min-h-[130px] md:min-h-[219px]")}>
-                  <img src={i === 0 ? getCloudinaryHero(photo) : getCloudinaryUrl(photo, 600, 450)} alt={`${tour.title} - Photo ${i + 1}`} width={i === 0 ? 2400 : 600} height={i === 0 ? 1200 : 450} loading={i === 0 ? undefined : "lazy"} className="absolute inset-0 w-full h-full object-cover transition-all duration-700 group-hover:scale-105" />
+                  <OptimizedImage src={photo} width={i === 0 ? 2400 : 600} alt={`${tour.title} - Photo ${i + 1}`} className="absolute inset-0 w-full h-full object-cover transition-all duration-700 group-hover:scale-105" />
                   <div className="absolute inset-0 bg-linear-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300" />
                   {i === 0 && (
                     <div className="absolute bottom-3 right-3 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-white/10 backdrop-blur-sm border border-white/20 shadow-sm opacity-0 group-hover:opacity-100 transition-all duration-300">
@@ -528,7 +525,7 @@ export default function ProductDetailPage() {
               ))}
               {displayPhotos.length > 5 && (
                 <button onClick={() => setGalleryOpen(true)} className="relative overflow-hidden bg-slate-100 min-h-[130px] md:min-h-[219px] group cursor-pointer">
-                  <img src={getCloudinaryUrl(displayPhotos[5], 600, 450)} alt={`${tour.title} - Photo 6`} width="600" height="450" loading="lazy" className="absolute inset-0 w-full h-full object-cover transition-all duration-500 group-hover:scale-105" />
+                  <OptimizedImage src={displayPhotos[5]} width={600} alt={`${tour.title} - Photo 6`} className="absolute inset-0 w-full h-full object-cover transition-all duration-500 group-hover:scale-105" />
                   <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/30 to-transparent flex items-end justify-center pb-4 sm:pb-5 transition-all duration-300 group-hover:from-black/80">
                     <span className="text-xs font-semibold text-white/90 bg-white/10 backdrop-blur-sm border border-white/20 px-3 py-1.5 rounded-lg">+{displayPhotos.length - 5} more</span>
                   </div>
@@ -702,7 +699,7 @@ export default function ProductDetailPage() {
                     {content.meetingPointPicture && (
                       <div className="mb-3">
                         <p className="text-[11px] text-slate-400 uppercase tracking-wider font-medium mb-1.5">Photo</p>
-                        <img src={content.meetingPointPicture} alt="Meeting point" className="w-full max-h-48 object-cover rounded-lg border border-slate-200" />
+                        <OptimizedImage src={content.meetingPointPicture} alt="Meeting point" width={800} fit="fill" className="w-full max-h-48 object-cover rounded-lg border border-slate-200" />
                       </div>
                     )}
                     {content.arrivalTimeType && content.arrivalTimeType !== 'none' && (

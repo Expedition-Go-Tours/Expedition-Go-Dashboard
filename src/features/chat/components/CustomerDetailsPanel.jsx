@@ -3,6 +3,7 @@ import { X, Calendar, Users, Clock, Ticket, Hash, Phone, Mail, Circle } from "lu
 import { fetchCustomerBookings } from "@/features/bookings/api";
 import { useNavigate } from "react-router-dom";
 import { optimizeImage } from "@/lib/image";
+import OptimizedImage from "@/components/shared/OptimizedImage";
 
 const statusConfig = {
   PENDING: { label: "Pending", dot: "bg-amber-400", bg: "bg-amber-50", text: "text-amber-700" },
@@ -92,10 +93,9 @@ export default function CustomerDetailsPanel({ conversation, currentUserId, onCl
             <div className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-linear-to-br from-[#044b3b] to-emerald-500 text-xl font-bold text-white shadow-sm ring-2 ring-white/80">
               <span>{(cu.name || "?").charAt(0).toUpperCase()}</span>
               {cu.photoURL && (
-                <img
-                  src={optimizeImage(cu.photoURL, 56)}
-                  alt=""
-                  loading="lazy"
+                <OptimizedImage
+                  src={cu.photoURL}
+                  width={56}
                   className="absolute inset-0 h-full w-full object-cover"
                   onError={(e) => { e.target.style.display = "none"; }}
                 />
@@ -200,10 +200,9 @@ export default function CustomerDetailsPanel({ conversation, currentUserId, onCl
                   {/* Thumbnail */}
                   <div className="w-10 h-10 rounded-lg shrink-0 overflow-hidden bg-gray-100 flex items-center justify-center">
                     {booking.tourPhoto ? (
-                      <img
-                        src={optimizeImage(booking.tourPhoto, 40)}
-                        alt=""
-                        loading="lazy"
+                      <OptimizedImage
+                        src={booking.tourPhoto}
+                        width={40}
                         className="w-full h-full object-cover"
                         onError={(e) => { e.target.style.display = "none"; }} />
                     ) : (

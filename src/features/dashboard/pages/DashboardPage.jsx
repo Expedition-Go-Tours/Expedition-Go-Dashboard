@@ -7,6 +7,7 @@ import {
 import { Loader2, RefreshCw, ArrowUpRight, ShoppingBag, CheckCircle2, Star, DollarSign, MessageCircle, AlertTriangle, ClipboardList, MapPin, TrendingUp, Bell, Check, CalendarX2 } from "lucide-react";
 import StatusBadge from "@/components/shared/StatusBadge";
 import CancellationGauge from "@/components/shared/CancellationGauge";
+import OptimizedImage from "@/components/shared/OptimizedImage";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { fetchSupplierDashboard } from "../api";
 import { fetchCancellationSummary } from "@/features/cancellation/api";
@@ -395,7 +396,7 @@ export default function DashboardPage() {
               {recentBookings.slice(0, 4).map((b) => (
                 <div key={b.id} onClick={() => navigate(`/bookings?bookingId=${b.id}`)} className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-emerald-50/40 transition-colors cursor-pointer border border-transparent hover:border-emerald-100">
                   {b.tourPhoto ? (
-                    <img src={b.tourPhoto} alt="" loading="lazy" className="w-10 h-10 rounded-lg object-cover shrink-0 ring-1 ring-emerald-100" />
+                    <OptimizedImage src={b.tourPhoto} alt="" width={40} className="w-10 h-10 rounded-lg object-cover shrink-0 ring-1 ring-emerald-100" />
                   ) : (
                     <div className="w-10 h-10 rounded-lg bg-emerald-50 border border-emerald-200/60 flex items-center justify-center shrink-0 text-sm font-bold text-emerald-700">
                       {(b.tourName || "T").charAt(0)}

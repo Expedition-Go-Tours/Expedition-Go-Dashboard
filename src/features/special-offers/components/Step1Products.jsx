@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Search, X, Package, Loader2, Check, AlertCircle, ChevronRight } from "lucide-react";
 import { useSpecialOfferBuilderStore } from "@/features/special-offers/stores/specialOfferBuilderStore";
 import { cn } from "@/lib/utils";
+import OptimizedImage from "@/components/shared/OptimizedImage";
 import api from "@/lib/axios";
 
 export default function Step1Products() {
@@ -105,7 +106,7 @@ export default function Step1Products() {
                   >
                     <div className="w-11 h-11 rounded-lg bg-slate-100 overflow-hidden shrink-0 border border-slate-200">
                       {tour.photos?.[0] ? (
-                        <img src={tour.photos[0]} alt="" loading="lazy" className="w-full h-full object-cover" />
+                        <OptimizedImage src={tour.photos[0]} alt="" width={44} className="w-full h-full object-cover" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
                           <Package size={18} className="text-slate-400" />
@@ -174,7 +175,7 @@ export default function Step1Products() {
                 >
                   <div className="w-10 h-10 rounded-lg bg-emerald-100 overflow-hidden shrink-0">
                     {target.tourPhotos?.[0] ? (
-                      <img src={target.tourPhotos[0]} alt="" loading="lazy" className="w-full h-full object-cover" />
+                      <OptimizedImage src={target.tourPhotos[0]} alt="" width={40} className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
                         <Package size={16} className="text-emerald-600" />

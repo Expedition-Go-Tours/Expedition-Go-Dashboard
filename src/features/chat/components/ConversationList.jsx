@@ -1,5 +1,6 @@
 import { Trash2 } from "lucide-react";
 import { optimizeImage } from "@/lib/image";
+import OptimizedImage from "@/components/shared/OptimizedImage";
 
 function timeAgo(dateStr) {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -79,13 +80,12 @@ export default function ConversationList({ conversations, selectedId, onSelect, 
               <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-emerald-600 text-sm font-bold text-white">
                 <span>{initial}</span>
                 {otherUser?.photoURL && (
-                    <img
-                      src={optimizeImage(otherUser.photoURL, 40)}
-                      alt=""
-                      loading="lazy"
+                    <OptimizedImage
+                      src={otherUser.photoURL}
+                      width={40}
                       className="absolute inset-0 h-full w-full object-cover"
-                    onError={(e) => { e.target.style.display = "none"; }}
-                  />
+                      onError={(e) => { e.target.style.display = "none"; }}
+                    />
                 )}
                 {(conv.unreadCount ?? 0) > 0 && (
                   <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-emerald-600 px-1 text-[9px] font-bold text-white ring-2 ring-white">

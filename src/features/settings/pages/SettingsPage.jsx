@@ -14,6 +14,7 @@ import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem
 } from "@/components/ui/select";
 import { optimizeImage } from "@/lib/image";
+import OptimizedImage from "@/components/shared/OptimizedImage";
 import {
   fetchCurrentUser, updateCurrentUser, uploadSupplierLogo,
   fetchBusinessProfile, updateBusinessProfile,
@@ -273,9 +274,7 @@ function ProfileTab() {
           <div className="flex flex-col items-center mb-2">
             <div className="w-20 h-20 rounded-full overflow-hidden shadow-lg bg-slate-50 ring-2 ring-emerald-100">
               {(authUser?.photoURL || authUser?.avatar) ? (
-                <img src={optimizeImage(authUser.photoURL || authUser.avatar, 80)} alt=""
-                  loading="lazy"
-                  className="w-full h-full object-cover" />
+                <OptimizedImage src={authUser.photoURL || authUser.avatar} width={80} className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
                   <span className="text-2xl font-bold text-emerald-600">{(authUser?.name || "S").charAt(0).toUpperCase()}</span>
@@ -360,7 +359,7 @@ function ProfileTab() {
                 </div>
               ) : currentLogoUrl ? (
                 <div className="relative w-24 h-24 rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-                  <img src={optimizeImage(currentLogoUrl, 96)} alt="Logo" loading="lazy" className="w-full h-full object-cover"
+                  <OptimizedImage src={currentLogoUrl} width={96} className="w-full h-full object-cover"
                     onError={(e) => { e.target.style.display = "none"; }} />
                 </div>
               ) : null}

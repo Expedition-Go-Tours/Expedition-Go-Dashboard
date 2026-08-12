@@ -1,4 +1,5 @@
 ﻿import { Check, CheckCheck, Loader2 } from "lucide-react";
+import OptimizedImage from "@/components/shared/OptimizedImage";
 
 function formatMessageTime(dateStr) {
   return new Date(dateStr).toLocaleTimeString("en-US", {
@@ -36,10 +37,10 @@ export default function MessageBubble({ message, isOwn, status, showAvatar, send
           {avatarIcon ? (
             avatarIcon
           ) : senderAvatar ? (
-            <img
+            <OptimizedImage
               src={senderAvatar}
               alt=""
-              loading="lazy"
+              width={compact ? 24 : 32}
               className="absolute inset-0 h-full w-full object-cover"
               onError={(e) => { e.target.style.display = "none"; }}
             />
@@ -60,10 +61,11 @@ export default function MessageBubble({ message, isOwn, status, showAvatar, send
           }`}>
           {message.attachmentUrl && (
             <div className={`${attMargin} overflow-hidden ${attRadius}`}>
-              <img
+              <OptimizedImage
                 src={message.attachmentUrl}
                 alt=""
-                loading="lazy"
+                width={600}
+                fit="fill"
                 className="max-w-full object-cover"
                 onError={(e) => { e.target.style.display = "none"; }}
               />

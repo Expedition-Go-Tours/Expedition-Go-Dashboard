@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { Plus, Search, Edit, Power, Trash2, Package, Percent, Tag, X, TicketCheck, ArrowUp, Clock } from "lucide-react";
 import { toast } from "sonner";
+import OptimizedImage from "@/components/shared/OptimizedImage";
 import { fetchSpecialOffers, deleteSpecialOffer, toggleSpecialOffer } from "@/features/special-offers/api";
 import LoadingSkeleton from "@/components/shared/Skeleton";
 import CountdownBadge from "@/components/shared/CountdownBadge";
@@ -256,7 +257,7 @@ export default function SpecialOffersListPage() {
                         aria-label="View product"
                       />
                       {tour?.photos?.[0] || firstTarget.tourPhoto ? (
-                        <img src={tour?.photos?.[0] || firstTarget.tourPhoto} alt="" loading="lazy" className="w-full h-full object-cover" />
+                        <OptimizedImage src={tour?.photos?.[0] || firstTarget.tourPhoto} alt="" width={112} className="w-full h-full object-cover" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center bg-slate-100">
                           <Package size={20} className="text-slate-400" />
@@ -361,7 +362,7 @@ export default function SpecialOffersListPage() {
                             >
                               <div className="w-4 h-4 rounded bg-slate-200 overflow-hidden shrink-0">
                                 {tData.photos?.[0] || t.tourPhoto ? (
-                                  <img src={tData.photos?.[0] || t.tourPhoto} alt="" loading="lazy" className="w-full h-full object-cover" />
+                                  <OptimizedImage src={tData.photos?.[0] || t.tourPhoto} alt="" width={16} className="w-full h-full object-cover" />
                                 ) : (
                                   <Package size={9} className="text-slate-400 m-auto" />
                                 )}
@@ -639,7 +640,7 @@ export default function SpecialOffersListPage() {
                             >
                               <div className="w-10 h-10 rounded-lg bg-slate-200 overflow-hidden shrink-0">
                                 {tData.photos?.[0] || t.tourPhoto ? (
-                                  <img src={tData.photos?.[0] || t.tourPhoto} alt="" loading="lazy" className="w-full h-full object-cover" />
+                                  <OptimizedImage src={tData.photos?.[0] || t.tourPhoto} alt="" width={40} className="w-full h-full object-cover" />
                                 ) : (
                                   <div className="w-full h-full flex items-center justify-center">
                                     <Package size={14} className="text-slate-400" />

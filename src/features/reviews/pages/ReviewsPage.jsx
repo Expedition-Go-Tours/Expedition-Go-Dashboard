@@ -31,6 +31,7 @@ import StatusBadge from "@/components/shared/StatusBadge";
 import { formatDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { optimizeImage } from "@/lib/image";
+import OptimizedImage from "@/components/shared/OptimizedImage";
 import { REVIEW_STATUSES } from "@/lib/constants";
 import {
   addReviewResponse,
@@ -317,10 +318,8 @@ function ReviewPhotoLightbox({ photos, index, onClose, onIndexChange }) {
         className="max-w-[90vw] max-h-[85vh] flex items-center justify-center"
         onClick={(e) => e.stopPropagation()}
       >
-        <img
+        <OptimizedImage
           src={photos[index]}
-          alt=""
-          loading="lazy"
           className="max-w-full max-h-[85vh] object-contain rounded-lg"
         />
       </motion.div>
@@ -724,7 +723,7 @@ export default function ReviewsPage() {
                       className="w-10 h-10 rounded-full shrink-0 ring-1 ring-emerald-200/50 overflow-hidden bg-linear-to-br from-emerald-50 to-emerald-100 flex items-center justify-center hover:ring-emerald-400 transition-all"
                     >
                       {review.customerPhoto ? (
-                        <img src={optimizeImage(review.customerPhoto, 40)} alt="" loading="lazy" className="w-full h-full object-cover" />
+                        <OptimizedImage src={review.customerPhoto} width={40} className="w-full h-full object-cover" />
                       ) : (
                         <span className="text-sm font-bold text-emerald-700">
                           {(review.customerName || "?").charAt(0).toUpperCase()}
@@ -748,7 +747,7 @@ export default function ReviewsPage() {
                           className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-emerald-600 transition-colors"
                         >
                           {review.tourPhoto ? (
-                            <img src={optimizeImage(review.tourPhoto, 32)} alt="" loading="lazy" className="w-4 h-4 rounded object-cover" />
+                            <OptimizedImage src={review.tourPhoto} width={32} className="w-4 h-4 rounded object-cover" />
                           ) : (
                             <span className="w-4 h-4 rounded bg-slate-100 flex items-center justify-center">
                               <ArrowUpRight size={10} className="text-slate-300" />
@@ -914,10 +913,9 @@ export default function ReviewsPage() {
                     <div className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-linear-to-br from-[#044b3b] to-emerald-500 text-xl font-bold text-white shadow-sm ring-2 ring-white/80">
                       <span>{(selectedCustomer.customerName || "?").charAt(0).toUpperCase()}</span>
                       {selectedCustomer.customerPhoto && (
-                        <img
-                          src={optimizeImage(selectedCustomer.customerPhoto, 56)}
-                          alt=""
-                          loading="lazy"
+                        <OptimizedImage
+                          src={selectedCustomer.customerPhoto}
+                          width={56}
                           className="absolute inset-0 h-full w-full object-cover"
                           onError={(e) => { e.target.style.display = "none"; }}
                         />
@@ -1007,7 +1005,7 @@ export default function ReviewsPage() {
                         >
                           <div className="w-10 h-10 rounded-lg shrink-0 overflow-hidden bg-gray-100 flex items-center justify-center">
                             {booking.tourPhoto ? (
-                              <img src={optimizeImage(booking.tourPhoto, 40)} alt="" loading="lazy" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = "none"; }} />
+                              <OptimizedImage src={booking.tourPhoto} width={40} className="w-full h-full object-cover" onError={(e) => { e.target.style.display = "none"; }} />
                             ) : (
                               <Ticket size={16} className="text-gray-300" />
                             )}

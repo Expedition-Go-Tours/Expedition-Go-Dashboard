@@ -15,6 +15,7 @@ import {
 } from "@/lib/constants";
 import { formatCurrency, formatDate, formatTime, cn } from "@/lib/utils";
 import { optimizeImage } from "@/lib/image";
+import OptimizedImage from "@/components/shared/OptimizedImage";
 import DatePicker from "@/components/forms/DatePicker";
 import { fetchSupplierBookings, updateBookingStatus } from "../api";
 import { getAuthToken } from "@/stores/authStore";
@@ -345,7 +346,7 @@ export default function BookingsPage() {
                     {/* Tour photo */}
                     <div className="sm:w-48 shrink-0 relative">
                       {booking.tourPhoto ? (
-                        <img src={optimizeImage(booking.tourPhoto, 192)} alt="" loading="lazy" className="w-full sm:w-48 h-40 sm:h-48 object-cover" />
+                        <OptimizedImage src={booking.tourPhoto} width={192} className="w-full sm:w-48 h-40 sm:h-48 object-cover" />
                       ) : (
                         <div className="w-full sm:w-48 h-40 sm:h-48 bg-linear-to-br from-slate-100 to-slate-200 flex items-center justify-center">
                           <span className="text-2xl text-slate-300">🏰</span>
@@ -396,7 +397,7 @@ export default function BookingsPage() {
                         <div className="flex items-center gap-3 text-xs text-slate-500 min-w-0">
                           <div className="flex items-center gap-1.5 min-w-0">
                             {booking.customerPhoto ? (
-                              <img src={optimizeImage(booking.customerPhoto, 20)} alt="" loading="lazy" className="w-5 h-5 rounded-full shrink-0 object-cover" />
+                              <OptimizedImage src={booking.customerPhoto} width={20} className="w-5 h-5 rounded-full shrink-0 object-cover" />
                             ) : (
                               <div className="w-5 h-5 rounded-full bg-[#044b3b]/10 flex items-center justify-center text-[10px] font-bold text-[#044b3b] shrink-0">
                                 {(booking.customerName || "?").charAt(0)}
