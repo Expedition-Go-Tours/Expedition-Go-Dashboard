@@ -28,7 +28,7 @@ export default function SpecialOfferBuilderPage() {
 
   useEffect(() => {
     if (step && stepIndex !== currentStep) setStep(stepIndex);
-  }, [step, stepIndex, currentStep, setStep]);
+  }, [step, stepIndex, setStep]);
 
   useEffect(() => {
     const currentStepId = STEPS[currentStep]?.id;
