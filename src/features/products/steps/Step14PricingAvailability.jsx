@@ -27,7 +27,6 @@ const CATEGORY_TEMPLATES = [
 ]
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'))
 const MINUTES = ['00', '15', '30', '45']
 
 const WIZARD_STEPS = ['Schedule', 'Pricing Categories', 'Capacity', 'Price']
@@ -118,19 +117,34 @@ function useLiveWizardErrors(step) {
 }
 
 function TimeSelect({ value, onChange }) {
-  const [hour, minute] = (value || '08:00').split(':')
+  const [hour24, minute] = (value || '08:00').split(':')
+  const hourNum = parseInt(hour24, 10)
+  const period = hourNum >= 12 ? 'PM' : 'AM'
+  const hour12 = hourNum % 12 || 12
+  const hour12Str = String(hour12).padStart(2, '0')
+
+  const emit = (h12, m, p) => {
+    let h24 = parseInt(h12, 10)
+    if (p === 'AM') {
+      if (h24 === 12) h24 = 0
+    } else {
+      if (h24 !== 12) h24 += 12
+    }
+    onChange(`${String(h24).padStart(2, '0')}:${m}`)
+  }
+
   return (
     <div className="flex items-center gap-0.5">
-      <Select value={hour} onValueChange={(h) => onChange(`${h}:${minute}`)}>
+      <Select value={hour12Str} onValueChange={(h) => emit(h, minute, period)}>
         <SelectTrigger className="h-9 w-14 px-1.5 text-sm border-slate-200 rounded-lg">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          {HOURS.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
+          {['12','01','02','03','04','05','06','07','08','09','10','11'].map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
         </SelectContent>
       </Select>
       <span className="text-slate-400">:</span>
-      <Select value={minute} onValueChange={(m) => onChange(`${hour}:${m}`)}>
+      <Select value={minute} onValueChange={(m) => emit(hour12Str, m, period)}>
         <SelectTrigger className="h-9 w-14 px-1.5 text-sm border-slate-200 rounded-lg">
           <SelectValue />
         </SelectTrigger>
@@ -138,6 +152,22 @@ function TimeSelect({ value, onChange }) {
           {MINUTES.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
         </SelectContent>
       </Select>
+      <div className="flex rounded-lg border border-slate-200 overflow-hidden ml-0.5">
+        {['AM', 'PM'].map((p) => (
+          <button
+            key={p}
+            type="button"
+            onClick={() => emit(hour12Str, minute, p)}
+            className={`h-9 px-2 text-xs font-semibold transition-colors ${
+              p === period
+                ? 'bg-emerald-600 text-white'
+                : 'bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-700'
+            }`}
+          >
+            {p}
+          </button>
+        ))}
+      </div>
     </div>
   )
 }
@@ -885,7 +915,7 @@ function PerGroupPriceStep({ errors = {}, onTouch }) {
     updateGroupSize, removeGroupSize,
   } = useProductBuilderStore()
 
-  const commission = 0.30
+  const commission = 0.15
 
   return (
     <div className="space-y-6">
@@ -966,7 +996,7 @@ function PerPersonPriceStep({ errors = {}, onTouch }) {
     setField, addCategoryTier, updateCategoryTier, removeCategoryTier,
   } = useProductBuilderStore()
 
-  const commission = 0.30
+  const commission = 0.15
 
   const isSameForEveryone = pricingApproach === 'sameForEveryone'
   const categories = isSameForEveryone
@@ -1124,9 +1154,9 @@ function PerPersonPriceStep({ errors = {}, onTouch }) {
                   
                   {/* Commission */}
                   <div>
-                    <label className="block text-xs text-slate-500 mb-1">Commission (30%)</label>
+                    <label className="block text-xs text-slate-500 mb-1">Commission (15%)</label>
                     <div className="h-11 rounded-lg bg-slate-100 flex items-center px-3 text-sm text-slate-500">
-                      {tier.pricePerPerson ? `${(tier.pricePerPerson * 0.3).toFixed(2)} USD` : '-'}
+                      {tier.pricePerPerson ? `${(tier.pricePerPerson * 0.15).toFixed(2)} USD` : '-'}
                     </div>
                   </div>
                   

@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import StatusBadge from "@/components/shared/StatusBadge";
 import { PRODUCT_STATUSES } from "@/lib/constants";
 import { formatCurrency, formatDate, cn } from "@/lib/utils";
-import { listMyProducts, listProducts, deleteProduct } from "@/features/products/api";
+import { deleteProduct, productsListQuery, PRODUCTS_LIST_KEY } from "@/features/products/api";
 import EmptyState from "@/components/shared/EmptyState";
 import { getAuthToken, useAuthStore } from "@/stores/authStore";
 import { transformImage } from "@/lib/image";
@@ -143,14 +143,9 @@ export default function ProductsListPage() {
   const [imgLoaded, setImgLoaded] = useState({});
   const [deleteTarget, setDeleteTarget] = useState(null);
 
+  const useSupplier = Boolean(getAuthToken());
   const { data, isLoading, isError, error, refetch, isRefetching } = useQuery({
-    queryKey: ["products", "list"],
-    queryFn: async () => {
-      const useSupplier = Boolean(getAuthToken());
-      const apiCall = useSupplier ? listMyProducts({ limit: 100 }) : listProducts({ limit: 100 });
-      const res = await apiCall;
-      return { tours: res.data?.data?.tours || [], useSupplier };
-    },
+    ...productsListQuery(useSupplier),
     staleTime: 30_000,
     retry: 1,
   });
@@ -159,7 +154,7 @@ export default function ProductsListPage() {
     mutationFn: (id) => deleteProduct(id),
     onSuccess: (_, id) => {
       toast.success("Product deleted");
-      queryClient.setQueryData(["products", "list"], (old) => {
+      queryClient.setQueryData(PRODUCTS_LIST_KEY(useSupplier), (old) => {
         if (!old) return old;
         return { ...old, tours: old.tours.filter((p) => p.id !== id) };
       });

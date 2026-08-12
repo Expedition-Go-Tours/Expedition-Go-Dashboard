@@ -1,7 +1,7 @@
 import { MapPin, Navigation, Flag, Pencil } from 'lucide-react'
 import { useProductBuilderStore } from '@/features/products/productBuilderStore'
 
-const ADMISSION_LABELS = { yes: 'Admission included', no: 'Pay separately', na: 'Free admission' }
+const ADMISSION_LABELS = { yes: 'Admission included', no: 'Pay separately', passby: 'Pass by', na: 'Pass by' }
 
 const ARRIVAL_LABELS = {
   none: '',
@@ -72,6 +72,8 @@ function NodeDot({ children, tone = 'slate' }) {
 
 export default function Step05ItineraryPreview() {
   const locations = useProductBuilderStore((s) => s.locations)
+  const duration = useProductBuilderStore((s) => s.duration)
+  const durationUnit = useProductBuilderStore((s) => s.durationUnit)
   const meetingMode = useProductBuilderStore((s) => s.meetingMode)
   const meetingPoint = useProductBuilderStore((s) => s.meetingPoint)
   const arrivalTimeType = useProductBuilderStore((s) => s.arrivalTimeType)
@@ -100,10 +102,21 @@ export default function Step05ItineraryPreview() {
     navigateTo('option-setup', 'meeting-point')
   }
 
+  const isMultiDay = durationUnit === 'days' && typeof duration === 'number' && duration > 1
+
   function editStop(index) {
     setPreviewFocus({ step: 'locations', index })
     navigateTo('product-content', 'locations')
   }
+
+  const groupedByDay = isMultiDay
+    ? locations.reduce((acc, loc, idx) => {
+        const d = loc.day ?? 1
+        if (!acc[d]) acc[d] = []
+        acc[d].push({ ...loc, _globalIdx: idx })
+        return acc
+      }, {})
+    : null
 
   const start = (() => {
     if (meetingMode === 'pickup') {
@@ -203,7 +216,49 @@ export default function Step05ItineraryPreview() {
               </TimelineNode>
             )}
 
-            {locations.map((loc, i) => (
+            {isMultiDay && groupedByDay
+              ? Object.keys(groupedByDay).sort((a, b) => Number(a) - Number(b)).map((dayNum) => {
+                  const dayStops = groupedByDay[dayNum]
+                  const isLastDay = Number(dayNum) === Math.max(...Object.keys(groupedByDay).map(Number))
+                  return (
+                    <div key={`day-${dayNum}`} className="mb-2">
+                      <div className="flex items-center gap-2 mb-2 mt-4 first:mt-0">
+                        <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full">
+                          Day {dayNum}
+                        </span>
+                        <span className="text-[11px] text-slate-400">
+                          {dayStops.length} stop{dayStops.length !== 1 ? 's' : ''}
+                        </span>
+                      </div>
+                      {dayStops.map((loc, i) => (
+                        <TimelineNode key={loc._globalIdx} rail={!isLastDay || i < dayStops.length - 1 || !!end}>
+                          <NodeDot>{loc._globalIdx + 1}</NodeDot>
+                          <div className="pt-0.5">
+                            <div className="flex items-start justify-between gap-3">
+                              <p className="text-sm font-bold text-slate-900">{stopTitle(loc)}</p>
+                              <EditButton onClick={() => editStop(loc._globalIdx)} />
+                            </div>
+                            {stopMeta(loc) && (
+                              <p className="mt-0.5 text-[13px] text-slate-500">{stopMeta(loc)}</p>
+                            )}
+                            <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
+                              {formatDuration(loc) && (
+                                <span className="text-[12px] text-slate-600">Duration: {formatDuration(loc)}</span>
+                              )}
+                              {loc.admissionIncluded && (
+                                <span className="text-[12px] text-slate-600">{ADMISSION_LABELS[loc.admissionIncluded]}</span>
+                              )}
+                            </div>
+                            {loc.description && (
+                              <p className="mt-1.5 text-[13px] text-slate-500 leading-relaxed">{loc.description}</p>
+                            )}
+                          </div>
+                        </TimelineNode>
+                      ))}
+                    </div>
+                  )
+                })
+              : locations.map((loc, i) => (
               <TimelineNode key={i} rail={i < locations.length - 1 || !!end}>
                 <NodeDot>{i + 1}</NodeDot>
                 <div className="pt-0.5">

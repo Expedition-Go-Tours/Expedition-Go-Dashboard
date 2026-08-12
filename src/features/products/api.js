@@ -136,3 +136,24 @@ export const requestKeyword = (keyword) => api.post('/keywords/request', { keywo
  */
 export const cleanupMediaUrls = (urls) =>
   api.delete('/media/cleanup', { data: { urls } }).catch(() => {});
+
+/**
+ * Query key for the products list, scoped by whether we're fetching the
+ * supplier's own tours or the public active-only list.
+ */
+export const PRODUCTS_LIST_KEY = (useSupplier) => ['products', 'list', useSupplier ? 'supplier' : 'public'];
+
+/**
+ * Shared query definition for the products list.  Both the list page and any
+ * consumer (prefetch, invalidation) must use this factory so the cached shape
+ * and key are always consistent.
+ */
+export const productsListQuery = (useSupplier) => ({
+  queryKey: PRODUCTS_LIST_KEY(useSupplier),
+  queryFn: async () => {
+    const res = useSupplier
+      ? await listMyProducts({ limit: 100 })
+      : await listProducts({ limit: 100 });
+    return { tours: res.data?.data?.tours || [], useSupplier };
+  },
+});

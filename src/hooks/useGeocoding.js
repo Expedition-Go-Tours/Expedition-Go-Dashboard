@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import config from "@/config";
 
 const cache = new Map();
@@ -28,18 +28,27 @@ function setCached(query, data) {
 
 const apiBase = config.api.baseURL;
 
-export function useGeocoding() {
+export function useGeocoding(minQueryLength = 2) {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [debouncing, setDebouncing] = useState(false);
   const [error, setError] = useState(null);
 
   const abortRef = useRef(null);
   const timerRef = useRef(null);
   const lastQueryRef = useRef("");
+  const minLenRef = useRef(minQueryLength);
+
+  useEffect(() => {
+    minLenRef.current = minQueryLength;
+  }, [minQueryLength]);
 
   const executeSearch = useCallback(async (query) => {
     const controller = new AbortController();
     abortRef.current = controller;
+
+    setDebouncing(false);
+    setLoading(true);
 
     try {
       const res = await fetch(
@@ -70,9 +79,10 @@ export function useGeocoding() {
     const trimmed = query.trim();
     lastQueryRef.current = trimmed;
 
-    if (!trimmed) {
+    if (!trimmed || trimmed.length < minLenRef.current) {
       setResults([]);
       setLoading(false);
+      setDebouncing(false);
       setError(null);
       return;
     }
@@ -81,11 +91,12 @@ export function useGeocoding() {
     if (cached) {
       setResults(cached);
       setLoading(false);
+      setDebouncing(false);
       setError(null);
       return;
     }
 
-    setLoading(true);
+    setDebouncing(true);
     setError(null);
 
     timerRef.current = setTimeout(() => {
@@ -98,6 +109,8 @@ export function useGeocoding() {
     if (!query) return;
     setLoading(true);
     setError(null);
+    setDebouncing(false);
+    if (timerRef.current) clearTimeout(timerRef.current);
     executeSearch(query);
   }, [executeSearch]);
 
@@ -106,9 +119,10 @@ export function useGeocoding() {
     if (timerRef.current) clearTimeout(timerRef.current);
     setResults([]);
     setLoading(false);
+    setDebouncing(false);
     setError(null);
     lastQueryRef.current = "";
   }, []);
 
-  return { search, retry, clear, results, loading, error };
+  return { search, retry, clear, results, loading, debouncing, error };
 }

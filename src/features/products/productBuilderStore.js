@@ -241,7 +241,7 @@ export const useProductBuilderStore = create(
         set((s) => ({ highlights: s.highlights.filter((_, i) => i !== index), isDirty: true })),
 
       addLocation: (loc) =>
-        set((s) => ({ locations: [...s.locations, loc], isDirty: true })),
+        set((s) => ({ locations: [...s.locations, { ...loc, day: loc.day ?? 1 }], isDirty: true })),
       removeLocation: (index) =>
         set((s) => ({ locations: s.locations.filter((_, i) => i !== index), isDirty: true })),
       updateLocation: (index, updates) =>
@@ -254,6 +254,13 @@ export const useProductBuilderStore = create(
           const locations = [...s.locations]
           const [removed] = locations.splice(from, 1)
           locations.splice(to, 0, removed)
+          return { locations, isDirty: true }
+        }),
+      moveLocationToDay: (index, newDay) =>
+        set((s) => {
+          const locations = s.locations.map((loc, i) =>
+            i === index ? { ...loc, day: newDay } : loc
+          )
           return { locations, isDirty: true }
         }),
 
@@ -387,10 +394,7 @@ export const useProductBuilderStore = create(
             audioGuide: false,
             infoBooklet: false,
             maxGroupSize: null,
-            duration: null,
-            durationUnit: null,
-            validityEnabled: false,
-            validityType: 'date_picked',
+            validityType: 'open_ended',
             validity: null,
             validityUnit: null,
             validityStartDate: '',
@@ -1117,9 +1121,14 @@ export const useProductBuilderStore = create(
     }),
     {
       name: 'product-builder-draft',
-      version: 4,
+      version: 5,
       migrate: (persistedState, version) => {
         let state = persistedState
+        if (version < 5) {
+          if (Array.isArray(state.locations)) {
+            state = { ...state, locations: state.locations.map((l) => ({ ...l, day: l.day ?? 1 })) }
+          }
+        }
         if (version < 4) {
           state = {
             ...state,

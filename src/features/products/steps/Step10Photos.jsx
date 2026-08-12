@@ -7,7 +7,7 @@ import { uploadPhotos } from '@/features/products/api'
 import { safeId } from '@/lib/utils'
 import { transformImage } from '@/lib/image'
 
-const MIN_PHOTOS = 4
+const MIN_PHOTOS = 5
 
 export default function Step10Photos() {
   const photos = useProductBuilderStore((s) => s.photos)

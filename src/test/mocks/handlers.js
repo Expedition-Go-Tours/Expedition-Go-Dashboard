@@ -337,7 +337,7 @@ export const handlers = [
     const url = new URL(request.url);
     const q = url.searchParams.get('q') || '';
 
-    if (q.toLowerCase().includes('arusha')) {
+    if ('arusha'.includes(q.toLowerCase())) {
       return HttpResponse.json({
         data: {
           results: [
@@ -355,6 +355,24 @@ export const handlers = [
       });
     }
 
+    if ('dodoma'.includes(q.toLowerCase())) {
+      return HttpResponse.json({
+        data: {
+          results: [
+            {
+              formatted: 'Dodoma, Tanzania',
+              city: 'Dodoma',
+              country: 'Tanzania',
+              region: 'Dodoma Region',
+              latitude: -6.1731,
+              longitude: 35.742,
+              source: 'photon',
+            },
+          ],
+        },
+      });
+    }
+
     return HttpResponse.json({ data: { results: [] } });
   }),
 
@@ -363,7 +381,7 @@ export const handlers = [
     const url = new URL(request.url);
     const text = url.searchParams.get('text') || '';
 
-    if (text.toLowerCase().includes('arusha')) {
+    if ('arusha'.includes(text.toLowerCase())) {
       return HttpResponse.json({
         features: [
           {
@@ -392,7 +410,7 @@ export const handlers = [
     const url = new URL(request.url);
     const q = url.searchParams.get('q') || '';
 
-    if (q.toLowerCase().includes('arusha')) {
+    if ('arusha'.includes(q.toLowerCase())) {
       return HttpResponse.json([
         {
           display_name: 'Arusha, Tanzania',

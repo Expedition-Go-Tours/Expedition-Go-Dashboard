@@ -5,7 +5,7 @@ import { Loader2, AlertCircle, X } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
 import { useProductBuilderStore } from '@/features/products/productBuilderStore'
-import { getMyProduct, getTourDraft, createProduct, updateProduct, listMyProducts, submitProductForReview, withdrawProductForReview, cleanupMediaUrls } from '@/features/products/api'
+import { getMyProduct, getTourDraft, createProduct, updateProduct, submitProductForReview, withdrawProductForReview, cleanupMediaUrls } from '@/features/products/api'
 import { buildPayload, builderSignature, stableStringify, useAutoSave } from '@/features/products/useAutoSave'
 import { GYG_STEPS } from '@/features/products/gygSteps'
 import { normalizePricingCategories } from '@/features/products/tierUtils'
@@ -101,7 +101,7 @@ function tourToProduct(tour) {
     shortDescription: content.shortSummary || '',
     fullDescription: tour.description || '',
     highlights: Array.isArray(content.highlights) ? content.highlights : [],
-    locations: content.locations || [],
+    locations: (content.locations || []).map((l) => ({ ...l, day: l.day ?? 1 })),
     attractions: content.attractions || [],
     keywords: tour.tags || [],
     activitiesIncluded: content.activitiesIncluded || [],
@@ -151,7 +151,7 @@ function tourToProduct(tour) {
     }),
     copyrightConfirmed: !!content.copyrightConfirmed,
     coverPhoto: tour.coverPhoto || '',
-    options: (content.options || []).map((o) => ({ ...o, wheelchairAccessible: false })),
+    options: (content.options || []).map((o) => ({ ...o, wheelchairAccessible: false, validityType: o.validityType || 'open_ended' })),
     meetingMode: content.meetingMode || 'meeting_point',
     meetingPoint: meetingPoint.lat
       ? {
@@ -213,8 +213,8 @@ function tourToProduct(tour) {
      scheduleHasEndDate: !!schedule.hasEndDate,
      scheduleEndDate: schedule.hasEndDate ? (schedule.endDate || '') : '',
      timeSlots: (Array.isArray(schedule.timeSlots) && schedule.timeSlots.length > 0)
-       ? schedule.timeSlots
-       : (Array.isArray(avail.timeSlots) && avail.timeSlots.length > 0 ? avail.timeSlots : []),
+        ? schedule.timeSlots.map((t) => (typeof t === 'string' ? { id: safeId(), startTime: t } : t))
+        : (Array.isArray(avail.timeSlots) && avail.timeSlots.length > 0 ? avail.timeSlots.map((t) => (typeof t === 'string' ? { id: safeId(), startTime: t } : t)) : []),
     operatingHoursStart: avail.operatingHoursStart || '09:00',
     operatingHoursEnd: avail.operatingHoursEnd || '17:00',
     dateExceptions: Array.isArray(schedule.dateExceptions) ? schedule.dateExceptions : [],
@@ -494,6 +494,7 @@ export default function ProductBuilderPage() {
       if (!skipNavigate) {
         if (gygStepNumber === GYG_STEPS.length) {
           useProductBuilderStore.getState().completeStep(GYG_STEPS[gygStepNumber - 1]?.stepId)
+          await queryClient.invalidateQueries({ queryKey: ['products', 'list'] })
           navigate('/products')
         } else if (!savedProductId && newId) {
           const section = GYG_STEPS[0]?.sectionId
@@ -530,12 +531,6 @@ export default function ProductBuilderPage() {
       // Content signature of the EXACT payload being submitted — computed before
       // the request so nothing blocks navigation once the response arrives.
       const signature = stableStringify(payload)
-      // Warm the products list while the submission is in flight so /products
-      // renders from cache the moment the route mounts.
-      void queryClient.prefetchQuery({
-        queryKey: ['products', 'list'],
-        queryFn: () => listMyProducts({ limit: 100 }),
-      })
       const res = await submitProductForReview(currentId, payload)
       const noChanges = res?.data?.data?.noChanges === true
       if (noChanges) {
@@ -550,6 +545,7 @@ export default function ProductBuilderPage() {
         submittedAt: new Date().toISOString(),
         signature,
       })
+      await queryClient.invalidateQueries({ queryKey: ['products', 'list'] })
       navigate('/products')
     } finally {
       setSubmitting(false)
@@ -567,6 +563,7 @@ export default function ProductBuilderPage() {
       useProductBuilderStore.getState().setDraftStatus(null)
       useProductBuilderStore.getState().clearSubmissionMeta(currentId)
       setDraftInfo(null)
+      await queryClient.invalidateQueries({ queryKey: ['products', 'list'] })
       toast.success('Submission withdrawn. You can now edit this product.')
       navigate(`/products/build/${currentId}?section=${GYG_STEPS[0]?.sectionId}&step=${GYG_STEPS[0]?.stepId}`, { replace: true })
     } catch (err) {

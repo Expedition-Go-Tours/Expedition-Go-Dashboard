@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@/test/utils';
+import { render, screen, fireEvent, act } from '@/test/utils';
 import LocationAutocomplete from '@/components/shared/LocationAutocomplete';
+
+function typeInto(input, value) {
+  fireEvent.change(input, { target: { value } });
+}
 
 describe('LocationAutocomplete', () => {
   beforeEach(() => {
@@ -11,71 +15,128 @@ describe('LocationAutocomplete', () => {
     vi.useRealTimers();
   });
 
-  it('renders the location search input', () => {
+  it('renders the location search input with a MapPin icon', () => {
     render(<LocationAutocomplete onSelect={vi.fn()} />);
     expect(screen.getByPlaceholderText(/Start typing a location/i)).toBeInTheDocument();
   });
 
-  it('shows suggestions after typing and selecting auto-fills location data', async () => {
-    const onSelect = vi.fn();
-    render(<LocationAutocomplete onSelect={onSelect} />);
-
+  it('does not search with fewer than minChars characters (default 2)', () => {
+    render(<LocationAutocomplete onSelect={vi.fn()} />);
     const input = screen.getByPlaceholderText(/Start typing a location/i);
-    fireEvent.change(input, { target: { value: 'Arusha' } });
-
-    // Advance past debounce (400ms)
-    vi.advanceTimersByTime(500);
-
-    // Wait for dropdown to appear with mock result
-    const option = await screen.findByText(/Arusha, Tanzania/i);
-    expect(option).toBeInTheDocument();
-
-    fireEvent.click(option);
-
-    await waitFor(() => {
-      expect(onSelect).toHaveBeenCalledWith(
-        expect.objectContaining({
-          formatted: 'Arusha, Tanzania',
-          city: 'Arusha',
-          country: 'Tanzania',
-          region: 'Arusha Region',
-          latitude: -3.3869,
-          longitude: 36.683,
-        }),
-      );
-    });
+    typeInto(input, 'A');
+    expect(screen.queryByRole('listbox')).toBeNull();
   });
 
-  it('clears input when clear button is clicked', () => {
+  it('searches and opens dropdown at exactly minChars', async () => {
     render(<LocationAutocomplete onSelect={vi.fn()} />);
-
     const input = screen.getByPlaceholderText(/Start typing a location/i);
-    fireEvent.change(input, { target: { value: 'Test' } });
+    typeInto(input, 'Ar');
+    expect(screen.getByText(/Typing…/i)).toBeInTheDocument();
+    await act(() => vi.advanceTimersByTime(500));
+    const option = await screen.findByRole('option');
+    expect(option).toBeInTheDocument();
+  });
 
-    expect(input).toHaveValue('Test');
+  it('closes dropdown on Escape', async () => {
+    render(<LocationAutocomplete onSelect={vi.fn()} />);
+    const input = screen.getByPlaceholderText(/Start typing a location/i);
+    typeInto(input, 'Arusha');
+    await act(() => vi.advanceTimersByTime(500));
+    await screen.findByRole('listbox');
+    fireEvent.keyDown(input, { key: 'Escape' });
+    expect(screen.queryByRole('listbox')).toBeNull();
+  });
 
-    const clearBtn = screen.getByLabelText(/Clear location search/i);
-    fireEvent.click(clearBtn);
+  it('highlights result on ArrowDown and selects on Enter', async () => {
+    const onSelect = vi.fn();
+    render(<LocationAutocomplete onSelect={onSelect} />);
+    const input = screen.getByPlaceholderText(/Start typing a location/i);
+    typeInto(input, 'Arusha');
+    await act(() => vi.advanceTimersByTime(500));
+    await screen.findByRole('listbox');
 
+    fireEvent.keyDown(input, { key: 'ArrowDown' });
+    fireEvent.keyDown(input, { key: 'Enter' });
+
+    expect(onSelect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        formatted: 'Arusha, Tanzania',
+        city: 'Arusha',
+        country: 'Tanzania',
+      })
+    );
+  });
+
+  it('selects a result on click', async () => {
+    const onSelect = vi.fn();
+    render(<LocationAutocomplete onSelect={onSelect} />);
+    const input = screen.getByPlaceholderText(/Start typing a location/i);
+    typeInto(input, 'Arusha');
+    await act(() => vi.advanceTimersByTime(500));
+    const option = await screen.findByRole('option');
+    fireEvent.click(option);
+
+    expect(onSelect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        formatted: 'Arusha, Tanzania',
+        latitude: -3.3869,
+        longitude: 36.683,
+      })
+    );
+  });
+
+  it('clears the input when clearOnSelect is set', async () => {
+    const onSelect = vi.fn();
+    render(<LocationAutocomplete onSelect={onSelect} clearOnSelect />);
+    const input = screen.getByPlaceholderText(/Start typing a location/i);
+    typeInto(input, 'Arusha');
+    await act(() => vi.advanceTimersByTime(500));
+    const option = await screen.findByRole('option');
+    fireEvent.click(option);
     expect(input).toHaveValue('');
   });
 
-  it('shows loading state during fetch', async () => {
-    render(<LocationAutocomplete onSelect={vi.fn()} />);
-
+  it('shows "add as custom location" when onAddCustom is supplied and no results', async () => {
+    const onAddCustom = vi.fn();
+    render(<LocationAutocomplete onSelect={vi.fn()} onAddCustom={onAddCustom} />);
     const input = screen.getByPlaceholderText(/Start typing a location/i);
-    // Use a query the previous tests have not cached so a real fetch fires
-    fireEvent.change(input, { target: { value: 'Dodoma' } });
+    typeInto(input, 'Zyzzx');
+    await act(() => vi.advanceTimersByTime(500));
 
-    // Searching is scheduled as soon as a query is typed (debounce pending)
-    expect(screen.getByText(/Searching locations/i)).toBeInTheDocument();
+    const addBtn = await screen.findByText(/Add .*Zyzzx.* as a custom location/i);
+    fireEvent.click(addBtn);
+    expect(onAddCustom).toHaveBeenCalledWith('Zyzzx');
+  });
 
-    // Advance past debounce (400ms) so the fetch fires and resolves
-    vi.advanceTimersByTime(500);
+  it('does not show the add-custom button when onAddCustom is not provided', async () => {
+    render(<LocationAutocomplete onSelect={vi.fn()} />);
+    const input = screen.getByPlaceholderText(/Start typing a location/i);
+    typeInto(input, 'Zyzzx');
+    await act(() => vi.advanceTimersByTime(500));
+    await screen.findByText(/No locations found/i);
+    expect(screen.queryByText(/Add .* as a custom location/i)).toBeNull();
+  });
 
-    // After fetch completes, the loader disappears
-    await waitFor(() => {
-      expect(screen.queryByText(/Searching locations/i)).not.toBeInTheDocument();
-    });
+  it('clears input when clear button is clicked', async () => {
+    render(<LocationAutocomplete onSelect={vi.fn()} />);
+    const input = screen.getByPlaceholderText(/Start typing a location/i);
+    typeInto(input, 'Ar');
+    const clearBtn = screen.getByLabelText(/Clear location search/i);
+    fireEvent.click(clearBtn);
+    expect(input).toHaveValue('');
+  });
+
+  it('supports imperative ref.reset()', async () => {
+    const ref = { current: null };
+    render(
+      <LocationAutocomplete ref={r => { ref.current = r; }} onSelect={vi.fn()} />
+    );
+    const input = screen.getByPlaceholderText(/Start typing a location/i);
+    typeInto(input, 'Arusha');
+    await act(() => vi.advanceTimersByTime(500));
+    await screen.findByRole('listbox');
+    act(() => ref.current.reset());
+    expect(input).toHaveValue('');
+    expect(screen.queryByRole('listbox')).toBeNull();
   });
 });

@@ -1,22 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { Search, MapPin, Loader2, AlertTriangle, RefreshCw, CheckCircle2, X } from "lucide-react";
+import { MapPin, Loader2, AlertTriangle, CheckCircle2, X } from "lucide-react";
 import config from "@/config";
+import LocationAutocomplete from "@/components/shared/LocationAutocomplete";
 
 const defaultCenter = { lng: -0.187, lat: 5.6037 };
 const TILE_STYLE = "https://tiles.openfreemap.org/styles/liberty";
-
-function normalizeResult(raw) {
-  return {
-    formatted: raw.formatted || "",
-    city: raw.city || "",
-    country: raw.country || "",
-    region: raw.region || "",
-    latitude: raw.latitude ?? null,
-    longitude: raw.longitude ?? null,
-  };
-}
 
 function SelectedLocationCard({ result, onClear }) {
   if (!result) return null;
@@ -53,18 +43,12 @@ function SelectedLocationCard({ result, onClear }) {
 }
 
 export default function LocationMapPicker({ onSelect, initialLat, initialLng, label, placeholder }) {
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState([]);
   const [lat, setLat] = useState(initialLat ?? null);
   const [lng, setLng] = useState(initialLng ?? null);
-  const [loading, setLoading] = useState(false);
-  const [searchError, setSearchError] = useState(null);
   const [mapReady, setMapReady] = useState(false);
   const [mapError, setMapError] = useState(false);
   const [selectedResult, setSelectedResult] = useState(null);
-  const [isFocused, setIsFocused] = useState(false);
-  const timerRef = useRef(null);
-  const abortRef = useRef(null);
+  const autocompleteRef = useRef(null);
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
   const markerRef = useRef(null);
@@ -95,14 +79,21 @@ export default function LocationMapPicker({ onSelect, initialLat, initialLng, la
       setLat(clickLat);
       setLng(clickLng);
       updateMarker(map, clickLng, clickLat);
+      autocompleteRef.current?.reset();
 
       try {
         const res = await fetch(`${apiBaseRef.current}/locations/reverse?lat=${clickLat}&lng=${clickLng}`);
         const body = await res.json();
         const data = body?.data?.results?.[0];
         if (data) {
-          const normalized = normalizeResult(data);
-          setQuery(normalized.formatted);
+          const normalized = {
+            formatted: data.formatted || "",
+            city: data.city || "",
+            country: data.country || "",
+            region: data.region || "",
+            latitude: data.latitude ?? null,
+            longitude: data.longitude ?? null,
+          };
           setSelectedResult(normalized);
           onSelectRef.current?.(normalized);
         }
@@ -153,79 +144,20 @@ export default function LocationMapPicker({ onSelect, initialLat, initialLng, la
     updateMarker(mapRef.current, lng, lat);
   }, [lat, lng, mapReady]);
 
-  const doSearch = useRef((value) => {
-    const controller = new AbortController();
-    abortRef.current = controller;
-    const url = `${apiBaseRef.current}/locations/search?q=${encodeURIComponent(value)}&limit=5`;
-    return fetch(url, { signal: controller.signal })
-      .then(res => {
-        if (!res.ok) throw new Error(`Search failed (HTTP ${res.status})`);
-        return res.json();
-      })
-      .then(body => {
-        setResults((body?.data?.results || []).map(normalizeResult));
-        setSearchError(null);
-      });
-  }).current;
-
-  const handleSearchChange = (e) => {
-    const value = e.target.value;
-    setQuery(value);
-    setSearchError(null);
-    setSelectedResult(null);
-    if (abortRef.current) abortRef.current.abort();
-    if (timerRef.current) clearTimeout(timerRef.current);
-    if (!value.trim()) { setResults([]); return; }
-    setLoading(true);
-    timerRef.current = setTimeout(async () => {
-      try {
-        await doSearch(value);
-      } catch (err) {
-        if (err.name !== "AbortError") {
-          setSearchError(err.message);
-          setResults([]);
-        }
-      }
-      setLoading(false);
-    }, 400);
-  };
-
-  const handleRetry = () => {
-    if (!query.trim()) return;
-    setLoading(true);
-    setSearchError(null);
-    if (abortRef.current) abortRef.current.abort();
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(async () => {
-      try {
-        await doSearch(query);
-      } catch (err) {
-        if (err.name !== "AbortError") {
-          setSearchError(err.message);
-          setResults([]);
-        }
-      }
-      setLoading(false);
-    }, 400);
-  };
-
-  const handleSelect = (result) => {
+  const handleLocationSelect = (result) => {
     const outLat = result.latitude;
     const outLng = result.longitude;
     setLat(outLat);
     setLng(outLng);
-    setQuery(result.formatted);
-    setResults([]);
     setSelectedResult(result);
     onSelect?.(result);
   };
 
   const handleClear = () => {
-    setQuery("");
     setLat(null);
     setLng(null);
-    setResults([]);
     setSelectedResult(null);
+    autocompleteRef.current?.reset();
     onSelect?.(null);
   };
 
@@ -238,62 +170,14 @@ export default function LocationMapPicker({ onSelect, initialLat, initialLng, la
             {label || "Search Location"}
           </span>
         </label>
-        <div className={`relative transition-all duration-200 ${isFocused ? 'ring-2 ring-emerald-500/20 rounded-xl' : ''}`}>
-          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            value={query}
-            onChange={handleSearchChange}
-            onFocus={() => setIsFocused(true)}
-            onBlur={() => setTimeout(() => setIsFocused(false), 200)}
-            placeholder={placeholder || "Search for a location..."}
-            className="w-full pl-10 pr-10 py-3 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder:text-slate-400 bg-white focus:outline-none focus:border-emerald-500 transition-colors"
-          />
-          {loading && (
-            <div className="absolute right-3 top-1/2 -translate-y-1/2">
-              <Loader2 size={16} className="animate-spin text-emerald-600" />
-            </div>
-          )}
-          {!loading && query && (
-            <button
-              type="button"
-              onClick={() => { setQuery(""); setResults([]); setSelectedResult(null); }}
-              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
-            >
-              <X size={14} />
-            </button>
-          )}
-        </div>
-        {searchError && (
-          <div className="mt-2 flex items-center gap-2.5 px-3.5 py-2.5 bg-red-50 border border-red-100 rounded-xl">
-            <AlertTriangle size={14} className="text-red-500 shrink-0" />
-            <span className="text-xs text-red-600 flex-1">Could not search locations. Backend may be offline.</span>
-            <button
-              type="button"
-              onClick={handleRetry}
-              className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-red-600 hover:bg-red-100 rounded-lg transition-colors"
-            >
-              <RefreshCw size={12} />
-              Retry
-            </button>
-          </div>
-        )}
-        {results.length > 0 && (
-          <ul className="mt-2 bg-white border border-slate-100 rounded-xl shadow-lg shadow-slate-200/50 max-h-52 overflow-y-auto z-10 relative divide-y divide-slate-50">
-            {results.map((r, i) => (
-              <li
-                key={i}
-                onClick={() => handleSelect(r)}
-                className="px-4 py-3 text-sm text-slate-700 hover:bg-emerald-50/50 cursor-pointer transition-colors group"
-              >
-                <div className="flex items-start gap-2.5">
-                  <MapPin size={14} className="text-slate-400 group-hover:text-emerald-500 shrink-0 mt-0.5 transition-colors" />
-                  <span className="leading-snug">{r.formatted}</span>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
+        <LocationAutocomplete
+          ref={autocompleteRef}
+          onSelect={handleLocationSelect}
+          hideLabel
+          hideAttribution
+          mode="inline"
+          placeholder={placeholder || "Search for a location..."}
+        />
       </div>
 
       <div className="rounded-xl overflow-hidden border border-slate-100 shadow-sm relative">

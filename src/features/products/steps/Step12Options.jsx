@@ -25,9 +25,9 @@ const SKIP_THE_LINE_OPTIONS = [
 ]
 
 const VALIDITY_TYPE_OPTIONS = [
-  { value: 'date_picked', label: 'Valid on date picked' },
-  { value: 'from_activation', label: 'Valid for a specific period of time from first activation' },
-  { value: 'period', label: 'Valid for a period of time' },
+  { value: 'open_ended', label: 'Customer can use their ticket anytime' },
+  { value: 'date_picked', label: 'Valid only on the selected booking date' },
+  { value: 'period', label: 'Valid for a set period from the booking date' },
 ]
 
 function NoYesPill({ value, onChange }) {
@@ -84,112 +84,47 @@ function SkipLinePills({ value, onChange }) {
   )
 }
 
-function DurationValidityBlock({ option, index, updateOption }) {
-  const hasDuration = option.duration !== null && option.duration !== undefined
-  const hasValidity = option.validityEnabled
-
-  function toggleDuration(enabled) {
-    if (enabled) updateOption(index, { duration: 1, durationUnit: 'hours', validityEnabled: false, validityType: 'date_picked', validity: null, validityUnit: null, validityStartDate: '', validityEndDate: '' })
-    else updateOption(index, { duration: null, durationUnit: null })
-  }
-
-  function toggleValidity(enabled) {
-    if (enabled) updateOption(index, { validityEnabled: true, validityType: 'date_picked', duration: null, durationUnit: null })
-    else updateOption(index, { validityEnabled: false, validityType: 'date_picked', validity: null, validityUnit: null, validityStartDate: '', validityEndDate: '' })
-  }
+function TicketValidityBlock({ option, index, updateOption }) {
+  const validityType = option.validityType === 'from_activation' ? 'open_ended' : (option.validityType || 'open_ended')
 
   return (
-    <div className="space-y-4">
-      <p className="text-sm text-slate-500 leading-relaxed">
-        Some activities start and stop at specific times, like a tour. Others allow customers to use their ticket anytime within a certain amount of time, like a 2-day city pass.
-      </p>
-      <p className="text-[13px] font-medium text-slate-700">
-        Which best describes your activity?
-      </p>
+    <div>
+      <h4 className="text-sm font-semibold text-slate-800 mb-1">How long will the ticket be valid?</h4>
+      <p className="text-sm text-slate-500 leading-relaxed mb-4">This determines when and for how long customers can use their ticket after booking. Choose whether it's flexible or tied to a specific date — this affects how your availability and cut-off times work.</p>
+
       <div className="space-y-3">
-        <label className="flex items-start gap-3 cursor-pointer group">
-          <div className="relative mt-0.5">
-            <input
-              type="checkbox"
-              checked={hasDuration}
-              onChange={(e) => toggleDuration(e.target.checked)}
-              className="peer sr-only"
-            />
-            <div className="w-[18px] h-[18px] rounded border-2 border-slate-300 peer-checked:border-emerald-600 peer-checked:bg-emerald-600 transition-all duration-150 grid place-items-center shrink-0">
-              {hasDuration && <Check size={12} strokeWidth={3} className="text-white" />}
-            </div>
-          </div>
-          <div className="flex-1 min-w-0">
-            <span className="text-sm text-slate-700 group-hover:text-slate-900">
-              It lasts for a specific amount of time <span className="text-slate-400 font-normal">(duration). Includes transfer time.</span>
-            </span>
-            <p className="text-[11px] text-slate-400 mt-0.5">Example: 3-hour guided tour</p>
-            {hasDuration && (
-              <div className="flex items-center gap-2 mt-2">
-                <span className="text-[13px] text-slate-500">Lasts</span>
-                <DraftNumberInput
-                  className="w-20 min-h-[34px] rounded-lg border border-slate-200 bg-white px-3 py-1 text-sm transition-all focus-ring text-right"
-                  min={0}
-                  value={option.duration ?? 1}
-                  onCommit={(v) => updateOption(index, { duration: v == null ? 1 : v })}
-                />
-                <Select value={option.durationUnit ?? 'hours'} onValueChange={(v) => updateOption(index, { durationUnit: v })}>
-                  <SelectTrigger className="min-h-[34px] h-9 text-sm px-2 border-slate-200 rounded-lg">
-                    <SelectValue placeholder="Unit" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="minutes">Minute(s)</SelectItem>
-                    <SelectItem value="hours">Hour(s)</SelectItem>
-                    <SelectItem value="days">Day(s)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-          </div>
-        </label>
-
-        <label className="flex items-start gap-3 cursor-pointer group">
-          <div className="relative mt-0.5">
-            <input
-              type="checkbox"
-              checked={hasValidity}
-              onChange={(e) => toggleValidity(e.target.checked)}
-              className="peer sr-only"
-            />
-            <div className="w-[18px] h-[18px] rounded border-2 border-slate-300 peer-checked:border-emerald-600 peer-checked:bg-emerald-600 transition-all duration-150 grid place-items-center shrink-0">
-              {hasValidity && <Check size={12} strokeWidth={3} className="text-white" />}
-            </div>
-          </div>
-          <div className="flex-1 min-w-0">
-            <span className="text-sm text-slate-700 group-hover:text-slate-900">
-              Customers can use their ticket anytime during a certain period <span className="text-slate-400 font-normal">(validity)</span>
-            </span>
-            <p className="text-[11px] text-slate-400 mt-0.5">Example: museum tickets that can be used anytime during opening hours</p>
-            {hasValidity && (
-              <div className="mt-2 space-y-3">
-                <Select value={option.validityType ?? 'date_picked'} onValueChange={(v) => updateOption(index, { validityType: v })}>
-                  <SelectTrigger className="min-h-[38px] h-10 text-sm">
-                    <SelectValue placeholder="Select validity type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {VALIDITY_TYPE_OPTIONS.map((o) => (
-                      <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                {option.validityType === 'from_activation' && (
-                  <div className="flex items-center gap-2">
+        {VALIDITY_TYPE_OPTIONS.map(({ value, label }) => {
+          const selected = validityType === value
+          const needsValidityInput = value === 'period'
+          return (
+            <label key={value} className="flex items-start gap-3 cursor-pointer group">
+              <input
+                type="radio"
+                name={`validityType_${index}`}
+                checked={selected}
+                onChange={() => updateOption(index, {
+                  validityType: value,
+                  validity: needsValidityInput ? (option.validity ?? 1) : null,
+                  validityUnit: needsValidityInput ? (option.validityUnit ?? 'days') : null,
+                  validityStartDate: '',
+                  validityEndDate: '',
+                })}
+                className="mt-0.5 w-4 h-4 text-emerald-600 border-slate-300 focus:ring-emerald-500"
+              />
+              <div className="flex-1 min-w-0">
+                <span className="text-sm text-slate-700">{label}</span>
+                {needsValidityInput && selected && (
+                  <div className="flex items-center gap-2 mt-2">
                     <span className="text-[13px] text-slate-500">Valid for</span>
                     <DraftNumberInput
                       className="w-20 min-h-[34px] rounded-lg border border-slate-200 bg-white px-3 py-1 text-sm transition-all focus-ring text-right"
-                      min={0}
+                      min={1}
                       value={option.validity ?? 1}
                       onCommit={(v) => updateOption(index, { validity: v == null ? 1 : v })}
                     />
                     <Select value={option.validityUnit ?? 'days'} onValueChange={(v) => updateOption(index, { validityUnit: v })}>
                       <SelectTrigger className="min-h-[34px] h-9 text-sm px-2 border-slate-200 rounded-lg">
-                        <SelectValue placeholder="Unit" />
+                        <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="days">Day(s)</SelectItem>
@@ -197,32 +132,13 @@ function DurationValidityBlock({ option, index, updateOption }) {
                         <SelectItem value="months">Month(s)</SelectItem>
                       </SelectContent>
                     </Select>
-                    <span className="text-[13px] text-slate-500">from first activation</span>
-                  </div>
-                )}
-
-                {option.validityType === 'period' && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-[13px] text-slate-500">From</span>
-                    <input
-                      className="flex-1 min-h-[34px] rounded-lg border border-slate-200 bg-white px-3 py-1 text-sm transition-all focus-ring"
-                      type="date"
-                      value={option.validityStartDate ?? ''}
-                      onChange={(e) => updateOption(index, { validityStartDate: e.target.value })}
-                    />
-                    <span className="text-[13px] text-slate-500">To</span>
-                    <input
-                      className="flex-1 min-h-[34px] rounded-lg border border-slate-200 bg-white px-3 py-1 text-sm transition-all focus-ring"
-                      type="date"
-                      value={option.validityEndDate ?? ''}
-                      onChange={(e) => updateOption(index, { validityEndDate: e.target.value })}
-                    />
+                    <span className="text-[13px] text-slate-500">from booking date</span>
                   </div>
                 )}
               </div>
-            )}
-          </div>
-        </label>
+            </label>
+          )
+        })}
       </div>
     </div>
   )
@@ -237,12 +153,12 @@ function OptionSummaryCard({ option, index, onEdit, onDuplicate, onRemove }) {
   if (option.maxGroupSize) featurePills.push({ label: `Max ${option.maxGroupSize} ppl`, type: 'group' })
 
   let durationSummary
-  if (option.duration) {
-    durationSummary = `${option.duration} ${option.durationUnit}`
-  } else if (option.validityEnabled) {
-    durationSummary = 'Valid for a period'
+  if (option.validityType === 'open_ended') {
+    durationSummary = 'Valid anytime'
+  } else if (option.validityType === 'period') {
+    durationSummary = `Valid ${option.validity || 1} ${option.validityUnit || 'days'} from booking`
   } else {
-    durationSummary = 'No duration set'
+    durationSummary = 'Valid on selected date'
   }
 
 
@@ -428,9 +344,9 @@ function OptionEditorScreen({ option, index, updateOption, onBack, onRemove, err
 
         <div className="mb-6">
           <label className="block text-sm font-semibold text-slate-800 mb-3">
-            Duration or validity
+            Ticket validity
           </label>
-          <DurationValidityBlock option={option} index={index} updateOption={updateOption} />
+          <TicketValidityBlock option={option} index={index} updateOption={updateOption} />
         </div>
       </div>
     </motion.div>
@@ -596,7 +512,7 @@ export default function Step12Options() {
                 Options allow you to customize your activity and attract more customers. For example, your options can have different:
               </p>
               <ul className="text-sm text-slate-500 space-y-0.5 mb-3 list-disc pl-5">
-                <li>durations (1 or 2 hours)</li>
+            <li>ticket validity (valid on selected date or for a set period)</li>
                 <li>group sizes (10 or 20 people) or set-ups (private or public)</li>
                 <li>languages (English or Spanish)</li>
                 <li>inclusions (with or without lunch)</li>

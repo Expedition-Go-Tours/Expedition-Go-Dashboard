@@ -1,4 +1,9 @@
 import { stepSchemas } from './productFormSchema'
+import {
+  sumStopMinutes,
+  productDurationMinutes,
+  formatMinutes,
+} from './utils/durationValidation'
 
 const STEP_FIELDS = {
   1: ['language'],
@@ -93,6 +98,19 @@ export function validateStep(stepIndex, formData) {
       const path = issue.path.join('.')
       if (!errors[path]) errors[path] = []
       errors[path].push(issue.message)
+    }
+  }
+
+  // Step 5: stop durations must not exceed the product duration set in
+  // the category step.
+  if (stepIndex === 5 && Array.isArray(formData.locations)) {
+    const productMin = productDurationMinutes(formData.duration, formData.durationUnit)
+    const stopsMin = sumStopMinutes(formData.locations)
+    if (productMin != null && stopsMin > productMin) {
+      const path = 'locations'
+      const message = `Total stop time (${formatMinutes(stopsMin)}) exceeds the product duration (${formatMinutes(productMin)}). Reduce stop times or increase the product duration.`
+      if (!errors[path]) errors[path] = []
+      errors[path].push(message)
     }
   }
 

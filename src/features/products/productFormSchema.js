@@ -20,6 +20,7 @@ export function limitMessage(max) {
 }
 
 export const locationSchema = z.object({
+  day: z.number().optional(),
   name: z.string().min(1, 'Location name is required').max(200),
   address: z.string().max(300).optional(),
   lat: z.coerce.number().min(-90).max(90).nullish(),
@@ -30,7 +31,7 @@ export const locationSchema = z.object({
   description: z.string().max(500).optional(),
   timeSpent: z.number().nullable().optional(),
   timeSpentUnit: z.enum(['minutes', 'hours']).optional(),
-  admissionIncluded: z.enum(['yes', 'no', 'na']).optional(),
+  admissionIncluded: z.enum(['yes', 'no', 'passby']).optional(),
   isDropoff: z.boolean().optional(),
   isPickup: z.boolean().optional(),
 })
@@ -59,10 +60,7 @@ export const productOptionSchema = z.object({
   audioGuide: z.boolean().optional(),
   infoBooklet: z.boolean().optional(),
   maxGroupSize: z.number().nullable().optional(),
-  duration: z.number().nullable(),
-  durationUnit: z.enum(['minutes', 'hours', 'days']).nullable(),
-  validityEnabled: z.boolean().optional(),
-  validityType: z.enum(['date_picked', 'from_activation', 'period']).optional(),
+  validityType: z.enum(['open_ended', 'date_picked', 'period', 'from_activation']).optional(),
   validity: z.number().nullable(),
   validityUnit: z.enum(['days', 'weeks', 'months']).nullable(),
   validityStartDate: z.string().optional(),
@@ -76,7 +74,7 @@ export const attractionSchema = z.object({
   description: z.string().optional(),
   timeSpent: z.number().nullable(),
   timeSpentUnit: z.enum(['minutes', 'hours']),
-  admissionIncluded: z.enum(['yes', 'no', 'na']),
+  admissionIncluded: z.enum(['yes', 'no', 'passby']),
   lat: z.number().nullable().optional(),
   lng: z.number().nullable().optional(),
 })
@@ -177,7 +175,7 @@ export const stepSchemas = {
   11: z.object({
     photos: z
       .array(z.object({ id: z.string(), url: z.string() }))
-      .min(4, 'Upload at least 4 photos'),
+      .min(5, 'Upload at least 5 photos'),
     copyrightConfirmed: z.literal(true, {
       message: 'You must confirm copyright ownership',
     }),
@@ -220,7 +218,7 @@ export const stepSchemas = {
     pricingCategories: z.any().optional(),
     uniformPrice: z.any().nullable().optional(),
     groupSizes: z.any().optional(),
-    timeSlots: z.any().optional(),
+    timeSlots: z.array(z.object({ startTime: z.string(), endTime: z.string().optional() })).optional(),
     minParticipants: z.any().optional(),
     maxParticipants: z.any().optional(),
   }).superRefine((data, ctx) => {
