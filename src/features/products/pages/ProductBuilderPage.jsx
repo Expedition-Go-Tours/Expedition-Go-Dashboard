@@ -150,7 +150,7 @@ function tourToProduct(tour) {
     }),
     copyrightConfirmed: !!content.copyrightConfirmed,
     coverPhoto: tour.coverPhoto || '',
-    options: (content.options || []).map((o) => ({ ...o, wheelchairAccessible: false, validityType: o.validityType || 'open_ended' })),
+    options: (content.options || []).map((o) => ({ ...o, wheelchairAccessible: false, validityType: o.validityType === 'open_ended' ? 'from_activation' : (o.validityType || 'from_activation') })),
     meetingMode: content.meetingMode || 'meeting_point',
     meetingPoint: meetingPoint.lat
       ? {

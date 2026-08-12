@@ -406,7 +406,7 @@ export const useProductBuilderStore = create(
             audioGuide: false,
             infoBooklet: false,
             maxGroupSize: null,
-            validityType: 'open_ended',
+            validityType: 'from_activation',
             validity: null,
             validityUnit: null,
             validityStartDate: '',

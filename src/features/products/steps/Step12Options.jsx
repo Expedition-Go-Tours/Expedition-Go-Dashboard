@@ -103,7 +103,7 @@ function TicketValidityBlock({ option, index, updateOption }) {
                 name={`validityType_${index}`}
                 checked={selected}
                 onChange={() => updateOption(index, {
-                  validityType: value,
+                  validityType: value === 'open_ended' ? 'from_activation' : value,
                   validity: needsValidityInput ? (option.validity ?? 1) : null,
                   validityUnit: needsValidityInput ? (option.validityUnit ?? 'days') : null,
                   validityStartDate: '',
@@ -153,7 +153,7 @@ function OptionSummaryCard({ option, index, onEdit, onDuplicate, onRemove }) {
   if (option.maxGroupSize) featurePills.push({ label: `Max ${option.maxGroupSize} ppl`, type: 'group' })
 
   let durationSummary
-  if (option.validityType === 'open_ended') {
+  if (option.validityType === 'open_ended' || option.validityType === 'from_activation') {
     durationSummary = 'Valid anytime'
   } else if (option.validityType === 'period') {
     durationSummary = `Valid ${option.validity || 1} ${option.validityUnit || 'days'} from booking`
