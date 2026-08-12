@@ -1497,9 +1497,9 @@ export default function ProductDetailPage() {
             {/* INCLUDED / EXCLUDED */}
             {(included.length > 0 || excluded.length > 0 || content.meals?.length > 0 || content.foodProvided || content.drinksIncluded || content.dietaryOptions?.length > 0) && (
               <SectionCard title="What's Included" onEdit={() => handleEditSection("What's Included")}>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-0 divide-y sm:divide-y-0 sm:divide-x divide-slate-100">
+                <div className="space-y-5">
                   {included.length > 0 && (
-                    <div className="pb-4 sm:pb-0 sm:pr-6">
+                    <div>
                       <h3 className="text-xs font-medium text-slate-500 mb-3">Included</h3>
                       <ul className="space-y-2.5">
                         {included.map((item, i) => (
@@ -1507,14 +1507,14 @@ export default function ProductDetailPage() {
                             <div className="w-4 h-4 rounded-full bg-emerald-50 flex items-center justify-center shrink-0 mt-0.5">
                               <Check size={10} className="text-emerald-500" />
                             </div>
-                            <span>{item}</span>
+                            <span className="min-w-0 break-words leading-relaxed">{item}</span>
                           </li>
                         ))}
                       </ul>
                     </div>
                   )}
                   {excluded.length > 0 && (
-                    <div className="pt-4 sm:pt-0 sm:pl-6">
+                    <div>
                       <h3 className="text-xs font-medium text-slate-500 mb-3">Excluded</h3>
                       <ul className="space-y-2.5">
                         {excluded.map((item, i) => (
@@ -1522,40 +1522,20 @@ export default function ProductDetailPage() {
                             <div className="w-4 h-4 rounded-full bg-red-50 flex items-center justify-center shrink-0 mt-0.5">
                               <XIcon size={10} className="text-red-400" />
                             </div>
-                            <span>{item}</span>
+                            <span className="min-w-0 break-words leading-relaxed">{item}</span>
                           </li>
                         ))}
                       </ul>
                     </div>
                   )}
-                </div>
-                {(content.foodProvided || content.meals?.length > 0 || content.drinksIncluded || content.dietaryOptions?.length > 0) && (
-                  <div className="mt-4 pt-4 border-t border-slate-100 space-y-2">
-                    {content.foodProvided && <p className="text-sm text-slate-600"><span className="font-medium">Meals:</span> {content.meals?.map(m => `${m.type} (${m.format})`).join(', ') || 'Provided'}</p>}
-                    {content.drinksIncluded && <p className="text-sm text-slate-600"><span className="font-medium">Drinks:</span> Included</p>}
-                    {content.dietaryOptions?.length > 0 && <p className="text-sm text-slate-600"><span className="font-medium">Dietary options:</span> {content.dietaryOptions.join(', ')}</p>}
-                  </div>
-                )}
-                {content.dayLogistics && Object.keys(content.dayLogistics).length > 0 && (
-                  <div className="mt-4 pt-4 border-t border-slate-100">
-                    <h3 className="text-xs font-medium text-slate-500 mb-3">Day-by-day</h3>
-                    <div className="space-y-2.5">
-                      {Object.keys(content.dayLogistics).sort((a, b) => Number(a) - Number(b)).map((day) => {
-                        const l = content.dayLogistics[day]
-                        return (
-                          <div key={day} className="flex items-start gap-2.5 text-sm text-slate-600">
-                            <span className="shrink-0 text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">Day {day}</span>
-                            <div className="space-y-0.5">
-                              {l.accommodation && <p>Overnight: {ACCOMMODATION_LABELS[l.accommodation] || l.accommodation}</p>}
-                              {l.meals?.length > 0 && <p>Meals: {l.meals.map(m => `${m.type}${m.format ? ` (${m.format})` : ''}`).join(', ')}</p>}
-                              {l.drinksIncluded && <p>Drinks included</p>}
-                            </div>
-                          </div>
-                        )
-                      })}
+                  {(content.foodProvided || content.meals?.length > 0 || content.drinksIncluded || content.dietaryOptions?.length > 0) && (
+                    <div className="pt-4 border-t border-slate-100 space-y-2">
+                      {content.foodProvided && <p className="text-sm text-slate-600"><span className="font-medium">Meals:</span> {content.meals?.map(m => `${m.type} (${m.format})`).join(', ') || 'Provided'}</p>}
+                      {content.drinksIncluded && <p className="text-sm text-slate-600"><span className="font-medium">Drinks:</span> Included</p>}
+                      {content.dietaryOptions?.length > 0 && <p className="text-sm text-slate-600"><span className="font-medium">Dietary options:</span> {content.dietaryOptions.join(', ')}</p>}
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </SectionCard>
             )}
 
