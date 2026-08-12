@@ -916,85 +916,6 @@ export default function ProductDetailPage() {
               );
             })()}
 
-            {/* INCLUDED / EXCLUDED */}
-            {(included.length > 0 || excluded.length > 0 || content.meals?.length > 0 || content.foodProvided || content.drinksIncluded || content.dietaryOptions?.length > 0) && (
-              <SectionCard title="What's Included" onEdit={() => handleEditSection("What's Included")}>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-0 divide-y sm:divide-y-0 sm:divide-x divide-slate-100">
-                  {included.length > 0 && (
-                    <div className="pb-4 sm:pb-0 sm:pr-6">
-                      <h3 className="text-xs font-medium text-slate-500 mb-3">Included</h3>
-                      <ul className="space-y-2.5">
-                        {included.map((item, i) => (
-                          <li key={i} className="flex items-start gap-2.5 text-sm text-slate-600">
-                            <div className="w-4 h-4 rounded-full bg-emerald-50 flex items-center justify-center shrink-0 mt-0.5">
-                              <Check size={10} className="text-emerald-500" />
-                            </div>
-                            <span>{item}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  {excluded.length > 0 && (
-                    <div className="pt-4 sm:pt-0 sm:pl-6">
-                      <h3 className="text-xs font-medium text-slate-500 mb-3">Excluded</h3>
-                      <ul className="space-y-2.5">
-                        {excluded.map((item, i) => (
-                          <li key={i} className="flex items-start gap-2.5 text-sm text-slate-600">
-                            <div className="w-4 h-4 rounded-full bg-red-50 flex items-center justify-center shrink-0 mt-0.5">
-                              <XIcon size={10} className="text-red-400" />
-                            </div>
-                            <span>{item}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-                {(content.foodProvided || content.meals?.length > 0 || content.drinksIncluded || content.dietaryOptions?.length > 0) && (
-                  <div className="mt-4 pt-4 border-t border-slate-100 space-y-2">
-                    {content.foodProvided && <p className="text-sm text-slate-600"><span className="font-medium">Meals:</span> {content.meals?.map(m => `${m.type} (${m.format})`).join(', ') || 'Provided'}</p>}
-                    {content.drinksIncluded && <p className="text-sm text-slate-600"><span className="font-medium">Drinks:</span> Included</p>}
-                    {content.dietaryOptions?.length > 0 && <p className="text-sm text-slate-600"><span className="font-medium">Dietary options:</span> {content.dietaryOptions.join(', ')}</p>}
-                  </div>
-                )}
-                {content.dayLogistics && Object.keys(content.dayLogistics).length > 0 && (
-                  <div className="mt-4 pt-4 border-t border-slate-100">
-                    <h3 className="text-xs font-medium text-slate-500 mb-3">Day-by-day</h3>
-                    <div className="space-y-2.5">
-                      {Object.keys(content.dayLogistics).sort((a, b) => Number(a) - Number(b)).map((day) => {
-                        const l = content.dayLogistics[day]
-                        return (
-                          <div key={day} className="flex items-start gap-2.5 text-sm text-slate-600">
-                            <span className="shrink-0 text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">Day {day}</span>
-                            <div className="space-y-0.5">
-                              {l.accommodation && <p>Overnight: {ACCOMMODATION_LABELS[l.accommodation] || l.accommodation}</p>}
-                              {l.meals?.length > 0 && <p>Meals: {l.meals.map(m => `${m.type}${m.format ? ` (${m.format})` : ''}`).join(', ')}</p>}
-                              {l.drinksIncluded && <p>Drinks included</p>}
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                )}
-              </SectionCard>
-            )}
-
-            {/* WHAT TO BRING */}
-            {content.whatToBring?.length > 0 && (
-              <SectionCard title="What to Bring" onEdit={() => handleEditSection("What to Bring")}>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {content.whatToBring.map((item, i) => (
-                    <div key={i} className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg bg-slate-50 text-sm text-slate-600">
-                      <Check size={12} className="text-emerald-500 shrink-0" />
-                      <span>{item}</span>
-                    </div>
-                  ))}
-                </div>
-              </SectionCard>
-            )}
-
             {/* WHAT TO KNOW / ADDITIONAL INFO */}
             {whatToKnow && (
               <SectionCard title="What to Know" onEdit={() => handleEditSection("What to Know")}>
@@ -1002,51 +923,31 @@ export default function ProductDetailPage() {
               </SectionCard>
             )}
 
-            {/* ACCESSIBILITY & HEALTH */}
-            {(() => {
-              const a = content.accessibility || {};
-              const restrictions = [
-                !a.wheelchairAccessible && "Not wheelchair accessible",
-                !a.strollerAccessible && "Not stroller accessible",
-                !a.serviceAnimalsAllowed && "No service animals",
-                !a.publicTransportation && "No public transportation nearby",
-                !a.infantsOnLaps && "Infants must sit on laps",
-                !a.infantSeatsAvailable && "No infant seats available",
-              ].filter(Boolean);
-              const hasHealth = content.healthRestrictions?.length > 0;
-              const hasPhysical = !!content.physicalDifficulty;
-              const hasAccess = restrictions.length > 0;
-              if (!hasAccess && !hasHealth && !hasPhysical) return null;
-              return (
-                <SectionCard title="Accessibility & Health" onEdit={() => handleEditSection("Accessibility & Health")}>
-                  <div className="space-y-2">
-                    {hasPhysical && (
-                      <div className="flex items-center gap-2 text-sm text-slate-600">
-                        <Activity size={12} className="text-slate-400 shrink-0" />
-                        <span>Physical level: <strong className="text-slate-700 capitalize">{content.physicalDifficulty}</strong></span>
-                      </div>
-                    )}
-                    {restrictions.map((item, i) => (
-                      <div key={i} className="flex items-center gap-2 text-sm text-slate-600">
-                        <XIcon size={12} className="text-amber-400 shrink-0" />
-                        <span>{item}</span>
-                      </div>
-                    ))}
-                    {hasHealth && (
-                      <div className="pt-2 mt-2 border-t border-slate-100">
-                        <p className="text-xs font-medium text-slate-500 mb-1.5">Health Restrictions</p>
-                        {content.healthRestrictions.map((r, i) => (
-                          <div key={i} className="flex items-center gap-2 text-sm text-slate-600 py-0.5">
-                            <AlertCircle size={11} className="text-amber-400 shrink-0" />
-                            <span>{r}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </SectionCard>
-              );
-            })()}
+            {/* LANGUAGES */}
+            {content.languages?.length > 0 && (
+              <SectionCard title="Languages" onEdit={() => handleEditSection("Languages")}>
+                <div className="flex flex-wrap gap-1.5">
+                  {content.languages.map((lang) => (
+                    <span key={lang} className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-md bg-slate-50 text-slate-500 font-medium border border-slate-100">
+                      <Globe size={11} /> {lang}
+                    </span>
+                  ))}
+                </div>
+              </SectionCard>
+            )}
+
+            {/* TAGS */}
+            {tour.tags?.length > 0 && (
+              <SectionCard title="Tags" onEdit={() => handleEditSection("Tags")}>
+                <div className="flex flex-wrap gap-1.5">
+                  {tour.tags.map((tag) => (
+                    <span key={tag} className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-md bg-slate-50 text-slate-500 font-medium border border-slate-100">
+                      <Tag size={11} /> {tag}
+                    </span>
+                  ))}
+                </div>
+              </SectionCard>
+            )}
 
             {/* AVAILABILITY */}
             <motion.div
@@ -1593,69 +1494,130 @@ export default function ProductDetailPage() {
               </div>
             </motion.div>
 
-            {/* LANGUAGES */}
-            {content.languages?.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.35, ease: "easeOut", delay: 0.3 }}
-                className="group bg-white rounded-xl border border-slate-100 shadow-sm shadow-slate-900/5 overflow-hidden hover:shadow-md hover:shadow-slate-900/5 hover:border-slate-200 transition-all duration-200"
-              >
-                  <div className="px-5 py-4 border-b border-slate-100">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-0.5 h-4 bg-linear-to-b from-emerald-500 to-emerald-300 rounded-full shrink-0" />
-                        <h3 className="text-sm font-semibold text-slate-800">Languages</h3>
-                      </div>
-                      <button onClick={() => handleEditSection("Languages")} className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors opacity-0 group-hover:opacity-100" title="Edit Languages">
-                        <Pencil size={13} />
-                      </button>
+            {/* INCLUDED / EXCLUDED */}
+            {(included.length > 0 || excluded.length > 0 || content.meals?.length > 0 || content.foodProvided || content.drinksIncluded || content.dietaryOptions?.length > 0) && (
+              <SectionCard title="What's Included" onEdit={() => handleEditSection("What's Included")}>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-0 divide-y sm:divide-y-0 sm:divide-x divide-slate-100">
+                  {included.length > 0 && (
+                    <div className="pb-4 sm:pb-0 sm:pr-6">
+                      <h3 className="text-xs font-medium text-slate-500 mb-3">Included</h3>
+                      <ul className="space-y-2.5">
+                        {included.map((item, i) => (
+                          <li key={i} className="flex items-start gap-2.5 text-sm text-slate-600">
+                            <div className="w-4 h-4 rounded-full bg-emerald-50 flex items-center justify-center shrink-0 mt-0.5">
+                              <Check size={10} className="text-emerald-500" />
+                            </div>
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {excluded.length > 0 && (
+                    <div className="pt-4 sm:pt-0 sm:pl-6">
+                      <h3 className="text-xs font-medium text-slate-500 mb-3">Excluded</h3>
+                      <ul className="space-y-2.5">
+                        {excluded.map((item, i) => (
+                          <li key={i} className="flex items-start gap-2.5 text-sm text-slate-600">
+                            <div className="w-4 h-4 rounded-full bg-red-50 flex items-center justify-center shrink-0 mt-0.5">
+                              <XIcon size={10} className="text-red-400" />
+                            </div>
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+                {(content.foodProvided || content.meals?.length > 0 || content.drinksIncluded || content.dietaryOptions?.length > 0) && (
+                  <div className="mt-4 pt-4 border-t border-slate-100 space-y-2">
+                    {content.foodProvided && <p className="text-sm text-slate-600"><span className="font-medium">Meals:</span> {content.meals?.map(m => `${m.type} (${m.format})`).join(', ') || 'Provided'}</p>}
+                    {content.drinksIncluded && <p className="text-sm text-slate-600"><span className="font-medium">Drinks:</span> Included</p>}
+                    {content.dietaryOptions?.length > 0 && <p className="text-sm text-slate-600"><span className="font-medium">Dietary options:</span> {content.dietaryOptions.join(', ')}</p>}
+                  </div>
+                )}
+                {content.dayLogistics && Object.keys(content.dayLogistics).length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-slate-100">
+                    <h3 className="text-xs font-medium text-slate-500 mb-3">Day-by-day</h3>
+                    <div className="space-y-2.5">
+                      {Object.keys(content.dayLogistics).sort((a, b) => Number(a) - Number(b)).map((day) => {
+                        const l = content.dayLogistics[day]
+                        return (
+                          <div key={day} className="flex items-start gap-2.5 text-sm text-slate-600">
+                            <span className="shrink-0 text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">Day {day}</span>
+                            <div className="space-y-0.5">
+                              {l.accommodation && <p>Overnight: {ACCOMMODATION_LABELS[l.accommodation] || l.accommodation}</p>}
+                              {l.meals?.length > 0 && <p>Meals: {l.meals.map(m => `${m.type}${m.format ? ` (${m.format})` : ''}`).join(', ')}</p>}
+                              {l.drinksIncluded && <p>Drinks included</p>}
+                            </div>
+                          </div>
+                        )
+                      })}
                     </div>
                   </div>
-                <div className="px-5 py-4">
-                  <div className="flex flex-wrap gap-1.5">
-                    {content.languages.map((lang) => (
-                      <span key={lang} className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-md bg-slate-50 text-slate-500 font-medium border border-slate-100">
-                        <Globe size={11} /> {lang}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </motion.div>
+                )}
+              </SectionCard>
             )}
 
-            {/* TAGS */}
-            {tour.tags?.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.35, ease: "easeOut", delay: 0.35 }}
-                className="group bg-white rounded-xl border border-slate-100 shadow-sm shadow-slate-900/5 overflow-hidden hover:shadow-md hover:shadow-slate-900/5 hover:border-slate-200 transition-all duration-200"
-              >
-                  <div className="px-5 py-4 border-b border-slate-100">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-0.5 h-4 bg-linear-to-b from-emerald-500 to-emerald-300 rounded-full shrink-0" />
-                        <h3 className="text-sm font-semibold text-slate-800">Tags</h3>
+            {/* WHAT TO BRING */}
+            {content.whatToBring?.length > 0 && (
+              <SectionCard title="What to Bring" onEdit={() => handleEditSection("What to Bring")}>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {content.whatToBring.map((item, i) => (
+                    <div key={i} className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg bg-slate-50 text-sm text-slate-600">
+                      <Check size={12} className="text-emerald-500 shrink-0" />
+                      <span>{item}</span>
                     </div>
-                    <button onClick={() => handleEditSection("Tags")} className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors opacity-0 group-hover:opacity-100" title="Edit Tags">
-                      <Pencil size={13} />
-                    </button>
-                  </div>
+                  ))}
                 </div>
-                <div className="px-5 py-4">
-                  <div className="flex flex-wrap gap-1.5">
-                    {tour.tags.map((tag) => (
-                      <span key={tag} className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-md bg-slate-50 text-slate-500 font-medium border border-slate-100">
-                        <Tag size={11} /> {tag}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </motion.div>
+              </SectionCard>
             )}
+
+            {/* ACCESSIBILITY & HEALTH */}
+            {(() => {
+              const a = content.accessibility || {};
+              const restrictions = [
+                !a.wheelchairAccessible && "Not wheelchair accessible",
+                !a.strollerAccessible && "Not stroller accessible",
+                !a.serviceAnimalsAllowed && "No service animals",
+                !a.publicTransportation && "No public transportation nearby",
+                !a.infantsOnLaps && "Infants must sit on laps",
+                !a.infantSeatsAvailable && "No infant seats available",
+              ].filter(Boolean);
+              const hasHealth = content.healthRestrictions?.length > 0;
+              const hasPhysical = !!content.physicalDifficulty;
+              const hasAccess = restrictions.length > 0;
+              if (!hasAccess && !hasHealth && !hasPhysical) return null;
+              return (
+                <SectionCard title="Accessibility & Health" onEdit={() => handleEditSection("Accessibility & Health")}>
+                  <div className="space-y-2">
+                    {hasPhysical && (
+                      <div className="flex items-center gap-2 text-sm text-slate-600">
+                        <Activity size={12} className="text-slate-400 shrink-0" />
+                        <span>Physical level: <strong className="text-slate-700 capitalize">{content.physicalDifficulty}</strong></span>
+                      </div>
+                    )}
+                    {restrictions.map((item, i) => (
+                      <div key={i} className="flex items-center gap-2 text-sm text-slate-600">
+                        <XIcon size={12} className="text-amber-400 shrink-0" />
+                        <span>{item}</span>
+                      </div>
+                    ))}
+                    {hasHealth && (
+                      <div className="pt-2 mt-2 border-t border-slate-100">
+                        <p className="text-xs font-medium text-slate-500 mb-1.5">Health Restrictions</p>
+                        {content.healthRestrictions.map((r, i) => (
+                          <div key={i} className="flex items-center gap-2 text-sm text-slate-600 py-0.5">
+                            <AlertCircle size={11} className="text-amber-400 shrink-0" />
+                            <span>{r}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </SectionCard>
+              );
+            })()}
 
           </div>
         </div>
