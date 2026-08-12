@@ -29,6 +29,7 @@ function KeywordChip({ kw, selected, onClick }) {
 export default function Step06Keywords() {
   const keywords = useProductBuilderStore((s) => s.keywords)
   const addKeyword = useProductBuilderStore((s) => s.addKeyword)
+  const addKeywords = useProductBuilderStore((s) => s.addKeywords)
   const removeKeyword = useProductBuilderStore((s) => s.removeKeyword)
   const errors = useStepErrors(6)
   const [query, setQuery] = useState('')
@@ -40,6 +41,8 @@ export default function Step06Keywords() {
   const [selectedCategory, setSelectedCategory] = useState(null)
   const [categorySearch, setCategorySearch] = useState('')
   const categorySearchRef = useRef(null)
+
+  const [quickCategory, setQuickCategory] = useState(null)
 
   const filteredSuggestions = useMemo(() => {
     if (!query.trim()) return SUGGESTED_KEYWORDS
@@ -123,6 +126,12 @@ export default function Step06Keywords() {
       selectKeyword(kw)
       setQuery('')
     }
+  }
+
+  function addAllFromCategory() {
+    if (!quickCategory) return
+    const catKeywords = KEYWORD_CATEGORIES[quickCategory] || []
+    addKeywords(catKeywords)
   }
 
   return (
@@ -256,21 +265,63 @@ export default function Step06Keywords() {
           Quick add by category
         </p>
         <div className="flex flex-wrap gap-1.5">
-          {CATEGORY_NAMES.map((name) => (
-            <button
-              key={name}
-              type="button"
-              onClick={() => toggleKeyword(name)}
-              className={`px-2.5 py-1 rounded-full text-[12px] font-medium border transition-colors ${
-                keywords.includes(name)
-                  ? 'bg-emerald-50 border-emerald-300 text-emerald-700'
-                  : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'
-              }`}
-            >
-              {name}
-            </button>
-          ))}
+          {CATEGORY_NAMES.map((name) => {
+            const count = KEYWORD_CATEGORIES[name].length
+            const isActive = quickCategory === name
+            return (
+              <button
+                key={name}
+                type="button"
+                onClick={() => setQuickCategory(isActive ? null : name)}
+                className={`px-2.5 py-1 rounded-full text-[12px] font-medium border transition-colors ${
+                  isActive
+                    ? 'bg-emerald-500 border-emerald-500 text-white'
+                    : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'
+                }`}
+              >
+                {name}
+                <span className={`ml-1 text-[10px] ${isActive ? 'text-emerald-100' : 'text-slate-400'}`}>
+                  {count}
+                </span>
+              </button>
+            )
+          })}
         </div>
+
+        {quickCategory && (
+          <div className="mt-3 border border-slate-200 rounded-xl p-3">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-[13px] font-semibold text-slate-700">{quickCategory}</p>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={addAllFromCategory}
+                  disabled={keywords.length >= 15}
+                  className="text-[12px] font-medium text-emerald-600 hover:text-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed bg-transparent border-0 cursor-pointer p-0"
+                >
+                  Add all
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQuickCategory(null)}
+                  className="text-[12px] font-medium text-slate-400 hover:text-slate-600 bg-transparent border-0 cursor-pointer p-0"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-1.5 max-h-[220px] overflow-y-auto pr-1">
+              {KEYWORD_CATEGORIES[quickCategory].map((kw) => (
+                <KeywordChip
+                  key={kw}
+                  kw={kw}
+                  selected={keywords.includes(kw)}
+                  onClick={() => toggleKeyword(kw)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Separator */}

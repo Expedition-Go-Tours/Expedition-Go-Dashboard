@@ -276,6 +276,18 @@ export const useProductBuilderStore = create(
 
       addKeyword: (kw) =>
         set((s) => ({ keywords: [...s.keywords, kw], isDirty: true })),
+      addKeywords: (list) =>
+        set((s) => {
+          const seen = new Set(s.keywords)
+          const next = [...s.keywords]
+          for (const kw of list) {
+            if (next.length >= 15) break
+            if (seen.has(kw)) continue
+            seen.add(kw)
+            next.push(kw)
+          }
+          return { keywords: next, isDirty: true }
+        }),
       removeKeyword: (index) =>
         set((s) => ({ keywords: s.keywords.filter((_, i) => i !== index), isDirty: true })),
 
