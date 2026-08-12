@@ -9,6 +9,7 @@ import {
   cutoffBuffersFrom,
 } from './optionData'
 import { hasAnyWeeklyHours } from './utils/pricingValidation'
+import { safeId } from '@/lib/utils'
 
 function normalizeLocationPoint(loc) {
   if (!loc || typeof loc !== 'object') return null
@@ -62,7 +63,7 @@ function buildSchedulesAndPricing(state) {
               endDate: s.hasEndDate ? (s.endDate || '') : null,
               weeklySchedule,
               dateExceptions: Array.isArray(s.dateExceptions) ? s.dateExceptions : [],
-              timeSlots: (Array.isArray(s.timeSlots) ? s.timeSlots : []).map(t => typeof t === 'string' ? { startTime: t, endTime: '' } : { startTime: t.startTime, endTime: t.endTime || '' }),
+              timeSlots: (Array.isArray(s.timeSlots) ? s.timeSlots : []).map(t => typeof t === 'string' ? { id: safeId(), startTime: t, endTime: '' } : { ...t, startTime: t.startTime, endTime: t.endTime || '' }),
               pricingModel: s.pricingModel || pricing.pricingModel || 'perPerson',
               currency: s.currency || pricing.currency || 'USD',
               pricingApproach: s.pricingApproach || pricing.pricingApproach || 'dependsOnAge',
@@ -83,7 +84,7 @@ function buildSchedulesAndPricing(state) {
       timeSlots: (Array.isArray(availability.timeSlots) && availability.timeSlots.length > 0
         ? availability.timeSlots
         : (Array.isArray(schedules[0]?.timeSlots) ? schedules[0].timeSlots : [])
-      ).map(t => typeof t === 'string' ? { startTime: t, endTime: '' } : { startTime: t.startTime, endTime: t.endTime || '' }),
+      ).map(t => typeof t === 'string' ? { id: safeId(), startTime: t, endTime: '' } : { ...t, startTime: t.startTime, endTime: t.endTime || '' }),
       daysOfWeek: activeDays,
       startDate: schedules.length > 0 ? (schedules[0].startDate || '') : '',
       endDate: schedules.length > 0 && schedules[0].hasEndDate ? (schedules[0].endDate || null) : null,
