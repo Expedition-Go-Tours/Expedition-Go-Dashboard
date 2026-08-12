@@ -49,12 +49,13 @@ export default function Step05Locations() {
   useEffect(() => {
     if (previewFocus?.step === 'locations' && typeof previewFocus.index === 'number') {
       const t = setTimeout(() => {
-        handleOpenModal(previewFocus.index)
+        clearStepErrors(5)
+        setModalIndex(previewFocus.index)
         clearPreviewFocus()
       }, 250)
       return () => clearTimeout(t)
     }
-  }, [previewFocus, clearPreviewFocus])
+  }, [previewFocus, clearPreviewFocus, clearStepErrors])
 
   const handleGlobalDragStart = useCallback((globalIdx) => {
     dragRef.current = globalIdx
@@ -98,8 +99,6 @@ export default function Step05Locations() {
           locations={locations}
           addLocation={addLocation}
           removeLocation={removeLocation}
-          reorderLocations={reorderLocations}
-          updateLocation={updateLocation}
           duration={duration}
           durationUnit={durationUnit}
           onEdit={handleOpenModal}
@@ -132,7 +131,7 @@ export default function Step05Locations() {
   )
 }
 
-function SingleDayItinerary({ locations, addLocation, removeLocation, reorderLocations, duration, durationUnit, onEdit, dragRef, onDragStart, onDrop, errors }) {
+function SingleDayItinerary({ locations, addLocation, removeLocation, duration, durationUnit, onEdit, dragRef, onDragStart, onDrop, errors }) {
   function selectResult(item) {
     const nextIndex = locations.length
     addLocation({
@@ -272,7 +271,7 @@ function MultiDayItinerary({ locations, dayCount, addLocation, removeLocation, m
                 onDragOver={(e) => handleDayDragOver(day, e)}
                 onDragLeave={handleDayDragLeave}
                 onDrop={(e) => handleDayDrop(day, e)}
-                className={`rounded-xl border overflow-hidden transition-all duration-200 ${
+                className={`rounded-xl border transition-all duration-200 ${
                   isDropTarget
                     ? 'border-emerald-400 ring-2 ring-emerald-200 bg-emerald-50/30'
                     : dayLocations.length === 0
@@ -368,7 +367,7 @@ function DayCardHeader({ day, locations, perDayMinutes, isCollapsed, onToggle })
     <button
       type="button"
       onClick={onToggle}
-      className="w-full flex items-center gap-3 px-4 py-3 text-left bg-white hover:bg-slate-50/50 transition-colors border-b border-slate-100"
+      className="w-full flex items-center gap-3 px-4 py-3 text-left bg-white hover:bg-slate-50/50 transition-colors border-b border-slate-100 rounded-t-xl"
     >
       <span className="text-sm font-bold text-slate-800">Day {day}</span>
 

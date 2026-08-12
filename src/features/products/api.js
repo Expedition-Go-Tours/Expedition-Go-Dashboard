@@ -6,7 +6,7 @@ import api from "@/lib/axios";
  * @param {Object|FormData} payload
  * @returns {Promise} Axios response
  */
-export const createProduct = (payload) => api.post("/tours", payload);
+export const createProduct = (payload, config) => api.post("/tours", payload, config);
 
 /**
  * Update an existing product/tour
@@ -15,7 +15,7 @@ export const createProduct = (payload) => api.post("/tours", payload);
  * @param {Object|FormData} payload
  * @returns {Promise} Axios response
  */
-export const updateProduct = (id, payload) => api.patch(`/tours/${id}`, payload);
+export const updateProduct = (id, payload, config) => api.patch(`/tours/${id}`, payload, config);
 
 /**
  * Fetch a single product/tour by ID
@@ -46,11 +46,11 @@ export const listMyProducts = (params = {}) => api.get("/tours/supplier/my-tours
  */
 export const getMyProduct = async (id) => {
   try {
-    const res = await api.get(`/tours/${id}`);
+    const res = await api.get(`/tours/${id}`, { skipGlobalErrorHandler: true });
     return res;
   } catch (err) {
     if (err.response?.status === 404) {
-      const listRes = await api.get(`/tours/supplier/my-tours`, { params: { limit: 100 } });
+      const listRes = await api.get(`/tours/supplier/my-tours`, { params: { limit: 100 }, skipGlobalErrorHandler: true });
       const tours = listRes.data?.data?.tours || [];
       const tour = tours.find((t) => t.id === id);
       if (!tour) throw err;
@@ -67,7 +67,7 @@ export const getMyProduct = async (id) => {
  * @param {string} id - Product ID
  * @returns {Promise} Axios response
  */
-export const getTourDraft = (id) => api.get(`/tours/${id}/draft`);
+export const getTourDraft = (id) => api.get(`/tours/${id}/draft`, { skipGlobalErrorHandler: true });
 
 /**
  * Upload photos to Cloudinary (standalone, no tour creation)
@@ -111,7 +111,7 @@ export const hasVerifiedPayoutMethod = async () => {
  * @returns {Promise} Axios response
  */
 export const submitProductForReview = (id, payload) => {
-  return api.post(`/tours/${id}/submit-for-review`, payload);
+  return api.post(`/tours/${id}/submit-for-review`, payload, { skipGlobalErrorHandler: true });
 };
 
 /**
@@ -120,14 +120,14 @@ export const submitProductForReview = (id, payload) => {
  * @param {string} id - Product ID
  * @returns {Promise} Axios response
  */
-export const withdrawProductForReview = (id) => api.post(`/tours/${id}/withdraw-review`);
+export const withdrawProductForReview = (id) => api.post(`/tours/${id}/withdraw-review`, undefined, { skipGlobalErrorHandler: true });
 
 /**
  * Request a new keyword to be added to the pre-approved list
  * @param {string} keyword
  * @returns {Promise} Axios response
  */
-export const requestKeyword = (keyword) => api.post('/keywords/request', { keyword });
+export const requestKeyword = (keyword) => api.post('/keywords/request', { keyword }, { skipGlobalErrorHandler: true });
 
 /**
  * Clean up uploaded but unsaved media URLs from Cloudinary

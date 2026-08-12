@@ -1,5 +1,4 @@
 import { useState, useMemo, useRef } from 'react'
-import { toast } from 'sonner'
 import { useProductBuilderStore } from '@/features/products/productBuilderStore'
 import { useStepErrors } from '@/features/products/useStepErrors'
 import { requestKeyword as requestKeywordApi } from '@/features/products/api'
@@ -85,13 +84,12 @@ export default function Step06Keywords() {
     requestKeywordApi(kw)
       .then(() => {
         addKeyword(kw)
-        toast.success(`"${kw}" added. It will be reviewed by the team.`)
         setQuery('')
         setShowSuggestions(false)
         if (!advancedMode) inputRef.current?.focus()
       })
-      .catch((err) => {
-        toast.error(err.response?.data?.message || err.message || 'Failed to request keyword')
+      .catch(() => {
+        // Failed to request keyword — no toast in the builder
       })
       .finally(() => {
         setRequesting(false)

@@ -3,7 +3,6 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Loader2, AlertCircle, X } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { toast } from 'sonner'
 import { useProductBuilderStore } from '@/features/products/productBuilderStore'
 import { getMyProduct, getTourDraft, createProduct, updateProduct, submitProductForReview, withdrawProductForReview, cleanupMediaUrls } from '@/features/products/api'
 import { buildPayload, builderSignature, stableStringify, useAutoSave } from '@/features/products/useAutoSave'
@@ -534,9 +533,9 @@ export default function ProductBuilderPage() {
       const res = await submitProductForReview(currentId, payload)
       const noChanges = res?.data?.data?.noChanges === true
       if (noChanges) {
-        toast.info('No changes to submit — the submission was already current')
+        // No changes to submit — the submission was already current
       } else {
-        toast.success('Submit for review successful')
+        // Submit for review successful
       }
       // Record the submission + content signature so the footer can gate the
       // button until the supplier actually changes something again.
@@ -564,10 +563,9 @@ export default function ProductBuilderPage() {
       useProductBuilderStore.getState().clearSubmissionMeta(currentId)
       setDraftInfo(null)
       await queryClient.invalidateQueries({ queryKey: ['products', 'list'] })
-      toast.success('Submission withdrawn. You can now edit this product.')
       navigate(`/products/build/${currentId}?section=${GYG_STEPS[0]?.sectionId}&step=${GYG_STEPS[0]?.stepId}`, { replace: true })
-    } catch (err) {
-      toast.error(err.response?.data?.message || err.message || 'Failed to withdraw submission')
+    } catch {
+      // Failed to withdraw submission — surfaced via the footer/global error handler
     } finally {
       setWithdrawing(false)
     }
