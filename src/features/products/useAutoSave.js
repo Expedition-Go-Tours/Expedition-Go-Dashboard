@@ -205,6 +205,24 @@ export function buildPayload(state) {
   payload.photos = Array.isArray(payload.photos) ? payload.photos : (Array.isArray(payload.existingPhotos) ? payload.existingPhotos : payload.photos)
   // --- END flattening ---
 
+  // Normalize dayLogistics: drop empty meals (no type) so autosave/submit never
+  // persists incomplete meal rows; remove empty day entries entirely.
+  if (payload.dayLogistics && typeof payload.dayLogistics === 'object' && !Array.isArray(payload.dayLogistics)) {
+    const cleaned = {}
+    for (const [day, log] of Object.entries(payload.dayLogistics)) {
+      if (!log || typeof log !== 'object') continue
+      const meals = (Array.isArray(log.meals) ? log.meals : [])
+        .filter((m) => m && (m.type || '').trim())
+        .map((m) => ({ type: m.type || '', format: m.format || '' }))
+      const hasAccommodation = !!log.accommodation
+      const hasDrinks = !!log.drinksIncluded
+      if (hasAccommodation || hasDrinks || meals.length > 0) {
+        cleaned[day] = { ...log, meals }
+      }
+    }
+    payload.dayLogistics = cleaned
+  }
+
   const omit = [
     '_pendingFiles', '_hasHydrated', '_version', '_uploadedUrls',
     'currentStep', 'currentSectionId', 'currentStepId',

@@ -3,6 +3,7 @@ import { Search, ChevronRight, ChevronDown, X, HelpCircle } from 'lucide-react'
 import { useProductBuilderStore } from '@/features/products/productBuilderStore'
 import { useStepErrors } from '@/features/products/useStepErrors'
 import { ACTIVITY_CATEGORIES, TOUR_TRANSPORT_CATEGORIES, TRANSPORT_SERVICE_CATEGORIES } from '@/constants/gygLists'
+import { isMultiDayTour } from '@/features/products/utils/itineraryConstants'
 
 const DURATION_UNITS = ['minutes', 'hours', 'days']
 
@@ -193,11 +194,19 @@ export default function Step02Category() {
   const clearStepErrors = useProductBuilderStore((s) => s.clearStepErrors)
   const errors = useStepErrors(3)
 
-  // Determine if accommodation field should show (duration >= 24 hours)
-  const durationInHours = durationUnit === 'days' ? (duration || 0) * 24
-    : durationUnit === 'hours' ? (duration || 0)
-    : (duration || 0) / 60
-  const showAccommodation = durationInHours >= 24
+  // Accommodation only applies to multi-day tours (per-day overnight stays)
+  const showAccommodation = isMultiDayTour(duration, durationUnit)
+
+  // Debounce: once the supplier finishes editing the duration, prune stale
+  // dayLogistics (and reset accommodationIncluded) so keystrokes like typing
+  // "12" don't transiently clear per-day data on the intermediate "1".
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const s = useProductBuilderStore.getState()
+      s.normalizeDayLogistics(s.duration, s.durationUnit)
+    }, 600)
+    return () => clearTimeout(t)
+  }, [duration, durationUnit])
 
   function addActivity(item) {
     setField('activitiesIncluded', [...activitiesIncluded, item])

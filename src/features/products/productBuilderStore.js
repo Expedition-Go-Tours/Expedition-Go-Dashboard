@@ -5,6 +5,7 @@ import { GYG_STEPS } from './gygSteps'
 import { isStepComplete } from './stepValidation'
 import { getCountryCallingCode } from 'libphonenumber-js'
 import { rederiveTiersFrom } from './tierUtils'
+import { isMultiDayTour, dayCountForDuration } from './utils/itineraryConstants'
 import {
   pricingFromBuffers,
   availabilityFromBuffers,
@@ -330,6 +331,23 @@ export const useProductBuilderStore = create(
           },
           isDirty: true,
         })),
+
+      normalizeDayLogistics: (duration, durationUnit) =>
+        set((s) => {
+          if (!isMultiDayTour(duration, durationUnit)) {
+            const hasData = !!s.accommodationIncluded || Object.keys(s.dayLogistics || {}).length > 0
+            if (!hasData) return {}
+            return { accommodationIncluded: false, dayLogistics: {}, isDirty: true }
+          }
+          const dayCount = dayCountForDuration(duration, durationUnit)
+          const hasExcess = Object.keys(s.dayLogistics || {}).some((d) => Number(d) > dayCount)
+          if (!hasExcess) return {}
+          const pruned = {}
+          for (let d = 1; d <= dayCount; d++) {
+            if (s.dayLogistics[d]) pruned[d] = s.dayLogistics[d]
+          }
+          return { dayLogistics: pruned, isDirty: true }
+        }),
 
       addNotSuitable: (item) =>
         set((s) => ({ notSuitableFor: [...s.notSuitableFor, item], isDirty: true })),

@@ -1,4 +1,4 @@
-import { MapPin, Navigation, Flag, Pencil, Bed, UtensilsCrossed } from 'lucide-react'
+import { MapPin, Navigation, Flag, Pencil, Bed, UtensilsCrossed, Wine } from 'lucide-react'
 import { useProductBuilderStore } from '@/features/products/productBuilderStore'
 import { ACCOMMODATION_LABELS } from '@/features/products/utils/itineraryConstants'
 
@@ -251,7 +251,7 @@ export default function Step05ItineraryPreview() {
                           {dayStops.length} stop{dayStops.length !== 1 ? 's' : ''}
                         </span>
                       </div>
-                      {(dayLogistics?.[dayNum]?.accommodation || dayLogistics?.[dayNum]?.meals?.length > 0) && (
+                      {(dayLogistics?.[dayNum]?.accommodation || dayLogistics?.[dayNum]?.meals?.length > 0 || dayLogistics?.[dayNum]?.drinksIncluded) && (
                         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-2 text-[12px] text-slate-500">
                           {dayLogistics?.[dayNum]?.accommodation && (
                             <span className="flex items-center gap-1">
@@ -263,6 +263,12 @@ export default function Step05ItineraryPreview() {
                             <span className="flex items-center gap-1">
                               <UtensilsCrossed size={12} className="text-slate-400" />
                               {dayLogistics[dayNum].meals.map((m) => `${m.type}${m.format ? ` (${m.format})` : ''}`).join(', ')}
+                            </span>
+                          )}
+                          {dayLogistics?.[dayNum]?.drinksIncluded && (
+                            <span className="flex items-center gap-1">
+                              <Wine size={12} className="text-slate-400" />
+                              Drinks included
                             </span>
                           )}
                         </div>

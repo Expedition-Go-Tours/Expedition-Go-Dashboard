@@ -22,6 +22,8 @@ import {
   ACCOMMODATION_LABELS,
   MEAL_TYPES,
   MEAL_FORMATS_BY_TYPE,
+  isMultiDayTour,
+  dayCountForDuration,
 } from '@/features/products/utils/itineraryConstants'
 import { DIETARY_OPTIONS } from '@/constants/gygLists'
 
@@ -56,8 +58,8 @@ export default function Step05Locations() {
   const clearStepErrors = useProductBuilderStore((s) => s.clearStepErrors)
   const [modalIndex, setModalIndex] = useState(null)
 
-  const isMultiDay = durationUnit === 'days' && typeof duration === 'number' && duration > 1
-  const dayCount = isMultiDay ? Math.ceil(duration) : 1
+  const isMultiDay = isMultiDayTour(duration, durationUnit)
+  const dayCount = dayCountForDuration(duration, durationUnit)
 
   const dragRef = useRef(null)
 
