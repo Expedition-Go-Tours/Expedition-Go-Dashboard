@@ -8,6 +8,7 @@ import { getMyProduct, getTourDraft, createProduct, updateProduct, submitProduct
 import { buildPayload, builderSignature, stableStringify, useAutoSave } from '@/features/products/useAutoSave'
 import { GYG_STEPS } from '@/features/products/gygSteps'
 import { normalizePricingCategories } from '@/features/products/tierUtils'
+import { sortLocationsByDay } from '@/features/products/optionData'
 import { hasAnyWeeklyHours } from '@/features/products/utils/pricingValidation'
 import ErrorBoundary from '@/components/shared/ErrorBoundary'
 import WizardSidebar from '@/features/products/WizardSidebar'
@@ -100,7 +101,7 @@ function tourToProduct(tour) {
     shortDescription: content.shortSummary || '',
     fullDescription: tour.description || '',
     highlights: Array.isArray(content.highlights) ? content.highlights : [],
-    locations: (content.locations || []).map((l) => ({ ...l, day: l.day ?? 1 })).sort((a, b) => (a.day ?? 1) - (b.day ?? 1)),
+    locations: sortLocationsByDay((content.locations || []).map((l) => ({ ...l, day: l.day ?? 1 }))),
     attractions: content.attractions || [],
     keywords: tour.tags || [],
     activitiesIncluded: content.activitiesIncluded || [],

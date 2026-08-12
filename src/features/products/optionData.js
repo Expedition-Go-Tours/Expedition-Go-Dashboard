@@ -21,6 +21,15 @@ export function deepClone(value) {
   return JSON.parse(JSON.stringify(value))
 }
 
+// Stable-sort a locations array by `day` so Day 1 comes first, then Day 2, ...
+// while preserving the relative order of stops within the same day. Applied at
+// the persistence/load boundaries (NOT during editing, where array indices
+// must stay stable so the modal/editor can address stops by index).
+export function sortLocationsByDay(list) {
+  if (!Array.isArray(list)) return list
+  return [...list].sort((a, b) => (a.day ?? 1) - (b.day ?? 1))
+}
+
 export function pricingFromBuffers(s) {
   return {
     pricingModel: s.pricingModel || 'perPerson',

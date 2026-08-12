@@ -7,6 +7,7 @@ import {
   pricingBuffersFrom,
   availabilityBuffersFrom,
   cutoffBuffersFrom,
+  sortLocationsByDay,
 } from './optionData'
 import { hasAnyWeeklyHours } from './utils/pricingValidation'
 import { safeId } from '@/lib/utils'
@@ -118,6 +119,7 @@ export function buildPayload(state) {
     description: state.fullDescription || '',
     shortSummary: state.shortDescription || '',
     highlights: (state.highlights || []).filter(Boolean),
+    locations: sortLocationsByDay(state.locations || []),
     photos: outgoingPhotos,
     ...(outgoingPhotos.length > 0 ? { existingPhotos: outgoingPhotos } : {}),
     meetingPoint: normalizeLocationPoint(state.meetingPoint),
