@@ -321,18 +321,18 @@ function MultiDayItinerary({ locations, dayCount, addLocation, removeLocation, m
 
                 {!isCollapsed && (
                   <>
-                    <DayLogisticsPanel
-                      day={day}
-                      logistics={logistics}
-                      accommodationIncluded={accommodationIncluded}
-                      setDayLogistics={setDayLogistics}
-                    />
-
                     <DayAutocomplete
                       day={day}
                       locations={locations}
                       addLocation={addLocation}
                       onEdit={onEdit}
+                    />
+
+                    <DayLogisticsPanel
+                      day={day}
+                      logistics={logistics}
+                      accommodationIncluded={accommodationIncluded}
+                      setDayLogistics={setDayLogistics}
                     />
 
                     {dayLocations.length === 0 ? (
