@@ -512,25 +512,25 @@ export default function ProductDetailPage() {
             className="relative mb-10"
           >
             <div className="grid grid-cols-1 md:grid-cols-4 md:grid-rows-2 gap-1 rounded-xl overflow-hidden shadow-sm shadow-slate-900/5">
-              {displayPhotos.slice(0, 5).map((photo, i) => (
-                <button key={i} onClick={() => setLightboxIndex(i)} className={cn("relative overflow-hidden bg-slate-100 group cursor-pointer", i === 0 ? "md:col-span-2 md:row-span-2 min-h-[260px] md:min-h-[440px]" : "min-h-[130px] md:min-h-[219px]")}>
-                  <OptimizedImage src={photo} width={i === 0 ? 2400 : 600} alt={`${tour.title} - Photo ${i + 1}`} className="absolute inset-0 w-full h-full object-cover transition-all duration-700 group-hover:scale-105" />
-                  <div className="absolute inset-0 bg-linear-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300" />
-                  {i === 0 && (
-                    <div className="absolute bottom-3 right-3 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-white/10 backdrop-blur-sm border border-white/20 shadow-sm opacity-0 group-hover:opacity-100 transition-all duration-300">
-                      <Camera size={12} /> <span>View all {displayPhotos.length} photos</span>
-                    </div>
-                  )}
-                </button>
-              ))}
-              {displayPhotos.length > 5 && (
-                <button onClick={() => setGalleryOpen(true)} className="relative overflow-hidden bg-slate-100 min-h-[130px] md:min-h-[219px] group cursor-pointer">
-                  <OptimizedImage src={displayPhotos[5]} width={600} alt={`${tour.title} - Photo 6`} className="absolute inset-0 w-full h-full object-cover transition-all duration-500 group-hover:scale-105" />
-                  <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/30 to-transparent flex items-end justify-center pb-4 sm:pb-5 transition-all duration-300 group-hover:from-black/80">
-                    <span className="text-xs font-semibold text-white/90 bg-white/10 backdrop-blur-sm border border-white/20 px-3 py-1.5 rounded-lg">+{displayPhotos.length - 5} more</span>
-                  </div>
-                </button>
-              )}
+              {displayPhotos.slice(0, 5).map((photo, i) => {
+                const hasMore = displayPhotos.length > 5 && i === 4
+                return (
+                  <button key={i} onClick={hasMore ? () => setGalleryOpen(true) : () => setLightboxIndex(i)} className={cn("relative overflow-hidden bg-slate-100 group cursor-pointer", i === 0 ? "md:col-span-2 md:row-span-2 min-h-[260px] md:min-h-[440px]" : "min-h-[130px] md:min-h-[219px]")}>
+                    <OptimizedImage src={photo} width={i === 0 ? 2400 : 600} alt={`${tour.title} - Photo ${i + 1}`} className="absolute inset-0 w-full h-full object-cover transition-all duration-700 group-hover:scale-105" />
+                    <div className="absolute inset-0 bg-linear-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300" />
+                    {i === 0 && (
+                      <div className="absolute bottom-3 right-3 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-white/10 backdrop-blur-sm border border-white/20 shadow-sm opacity-0 group-hover:opacity-100 transition-all duration-300">
+                        <Camera size={12} /> <span>View all {displayPhotos.length} photos</span>
+                      </div>
+                    )}
+                    {hasMore && (
+                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center transition-all duration-300 group-hover:bg-black/60">
+                        <span className="text-xs font-semibold text-white/90 bg-white/10 backdrop-blur-sm border border-white/20 px-3 py-1.5 rounded-lg">+{displayPhotos.length - 5} more</span>
+                      </div>
+                    )}
+                  </button>
+                )
+              })}
             </div>
           </motion.div>
         )}
