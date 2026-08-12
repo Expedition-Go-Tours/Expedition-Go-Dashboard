@@ -7,7 +7,8 @@ import {
   Check, X as XIcon, Camera, ChevronLeft, ChevronRight,
   Eye, Shield, Activity, Navigation, MoreHorizontal,
   Tag, Percent, DollarSign, MessageSquare, Pencil,
-  MapPin, CalendarDays,
+  MapPin, CalendarDays, Bed, UtensilsCrossed, MoonStar,
+  Ticket, Lock, Headphones, BookOpen,
 } from "lucide-react";
 import { toast } from "sonner";
 import { getMyProduct, deleteProduct } from "@/features/products/api";
@@ -42,6 +43,28 @@ function formatDuration(duration) {
   return parts.join(', ') || null;
 }
 
+const ADMISSION_LABELS = { yes: 'Admission included', no: 'Pay separately', passby: 'Pass by' };
+
+function formatStopDuration(loc) {
+  if (loc?.timeSpent == null || loc.timeSpent === '') return null;
+  const n = Number(loc.timeSpent);
+  if (loc.timeSpentUnit === 'hours') return `${n} hour${n === 1 ? '' : 's'}`;
+  return `${n} min`;
+}
+
+function stopTitle(loc) {
+  return (loc.name && String(loc.name).trim()) ? loc.name : (loc.address || 'Stop');
+}
+
+function validityLabel(option) {
+  const v = option?.validityType;
+  if (v === 'open_ended') return 'Valid anytime';
+  if (v === 'from_activation') return `Valid ${option.validity || 1} ${option.validityUnit || 'days'} from first use`;
+  if (v === 'period') return `Valid ${option.validity || 1} ${option.validityUnit || 'days'} from booking`;
+  if (v === 'date_picked') return 'Valid on selected date';
+  return null;
+}
+
 /* ======================================================================
    SUB-COMPONENTS
    ====================================================================== */
@@ -59,6 +82,7 @@ const SECTION_EDIT_MAP = {
   "Traveler Info Required": { section: "booking-and-tickets", step: "traveler-required-info" },
   "Location": { section: "product-content", step: "locations" },
   "Schedule": { section: "schedules-and-pricing", step: "pricing-schedules" },
+  "Booking Options": { section: "option-setup", step: "options" },
   "Booking Rules": { section: "booking-and-tickets", step: "booking-process" },
   "Meeting & Pickup": { section: "booking-and-tickets", step: "meeting-point-pickup" },
   "Languages": { section: "product-content", step: "languages-offered" },
@@ -824,6 +848,74 @@ export default function ProductDetailPage() {
               </SectionCard>
             )}
 
+            {/* ITINERARY */}
+            {Array.isArray(content.locations) && content.locations.length > 0 && (() => {
+              const days = {};
+              content.locations.forEach((loc) => {
+                const d = loc.day ?? 1;
+                if (!days[d]) days[d] = [];
+                days[d].push(loc);
+              });
+              const dayKeys = Object.keys(days).map(Number).sort((a, b) => a - b);
+              const isMultiDay = dayKeys.length > 1 || content.locations.some((l) => (l.day ?? 1) > 1);
+              return (
+                <SectionCard title="Itinerary" onEdit={() => handleEditSection("Location")}>
+                  <div className="space-y-5">
+                    {dayKeys.map((dayNum) => {
+                      const stops = days[dayNum];
+                      const logistics = content.dayLogistics?.[dayNum];
+                      return (
+                        <div key={dayNum}>
+                          {isMultiDay && (
+                            <div className="flex flex-wrap items-center gap-2 mb-3">
+                              <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full">Day {dayNum}</span>
+                              {logistics?.accommodation && (
+                                <span className="flex items-center gap-1 text-xs text-slate-500"><Bed size={12} className="text-slate-400" /> {ACCOMMODATION_LABELS[logistics.accommodation] || logistics.accommodation}</span>
+                              )}
+                              {logistics?.meals?.length > 0 && (
+                                <span className="flex items-center gap-1 text-xs text-slate-500"><UtensilsCrossed size={12} className="text-slate-400" /> {logistics.meals.map((m) => `${m.type}${m.format ? ` (${m.format})` : ''}`).join(', ')}</span>
+                              )}
+                              {logistics?.drinksIncluded && (
+                                <span className="text-xs text-slate-400">· Drinks included</span>
+                              )}
+                            </div>
+                          )}
+                          <div className="space-y-2.5">
+                            {stops.map((loc, i) => (
+                              <div key={i} className="flex items-start gap-3">
+                                <span className="shrink-0 w-6 h-6 rounded-full bg-slate-100 text-slate-600 text-xs font-semibold flex items-center justify-center mt-0.5">{i + 1}</span>
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <p className="text-sm font-semibold text-slate-800">{stopTitle(loc)}</p>
+                                    {formatStopDuration(loc) && <span className="text-xs text-slate-400 shrink-0">{formatStopDuration(loc)}</span>}
+                                  </div>
+                                  {(loc.city || loc.country) && (
+                                    <p className="text-xs text-slate-400 mt-0.5">{[loc.city, loc.country].filter(Boolean).join(', ')}</p>
+                                  )}
+                                  {loc.admissionIncluded && (
+                                    <p className="text-[11px] text-slate-400 mt-0.5">{ADMISSION_LABELS[loc.admissionIncluded]}</p>
+                                  )}
+                                  {loc.description && (
+                                    <p className="text-xs text-slate-500 mt-1 leading-relaxed">{loc.description}</p>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                            {isMultiDay && (
+                              <div className="flex items-center gap-1.5 text-[11px] text-slate-400 pl-9">
+                                <MoonStar size={12} className="text-amber-500" />
+                                Overnight in {stopTitle(stops[stops.length - 1])}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </SectionCard>
+              );
+            })()}
+
             {/* INCLUDED / EXCLUDED */}
             {(included.length > 0 || excluded.length > 0 || content.meals?.length > 0 || content.foodProvided || content.drinksIncluded || content.dietaryOptions?.length > 0) && (
               <SectionCard title="What's Included" onEdit={() => handleEditSection("What's Included")}>
@@ -1198,6 +1290,69 @@ export default function ProductDetailPage() {
                 )}
               </div>
             </motion.div>
+
+            {/* BOOKING OPTIONS */}
+            {Array.isArray(content.options) && content.options.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.35, ease: "easeOut" }}
+                className="group bg-white rounded-xl border border-slate-100 shadow-sm shadow-slate-900/5 overflow-hidden hover:shadow-md hover:shadow-slate-900/5 hover:border-slate-200 transition-all duration-200"
+              >
+                <div className="px-5 py-4 border-b border-slate-100">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-0.5 h-4 bg-linear-to-b from-emerald-500 to-emerald-300 rounded-full shrink-0" />
+                      <h3 className="text-sm font-semibold text-slate-800">Booking Options</h3>
+                    </div>
+                    <button onClick={() => handleEditSection("Booking Options")} className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors opacity-0 group-hover:opacity-100" title="Edit Booking Options">
+                      <Pencil size={13} />
+                    </button>
+                  </div>
+                </div>
+                <div className="p-5 space-y-3">
+                  {content.options.map((opt, i) => {
+                    const vLabel = validityLabel(opt);
+                    return (
+                      <div key={opt.id || i} className="rounded-lg border border-slate-100 p-4 space-y-2 bg-slate-50/40">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-sm font-semibold text-slate-800">{opt.title || `Option ${i + 1}`}</p>
+                          {opt.refCode && opt.refCode !== 'default' && (
+                            <span className="text-[11px] text-slate-400 shrink-0">Ref: {opt.refCode}</span>
+                          )}
+                        </div>
+                        {vLabel && (
+                          <p className="text-xs text-slate-500 flex items-center gap-1.5">
+                            <Ticket size={12} className="text-slate-400 shrink-0" /> {vLabel}
+                          </p>
+                        )}
+                        {opt.description && (
+                          <p className="text-xs text-slate-500 leading-relaxed">{opt.description}</p>
+                        )}
+                        <div className="flex flex-wrap gap-1.5">
+                          {opt.isPrivate && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-violet-50 text-violet-600 border border-violet-200/50"><Lock size={10} /> Private</span>
+                          )}
+                          {opt.skipTheLine && opt.skipTheLine !== 'none' && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-amber-50 text-amber-600 border border-amber-200/50"><Tag size={10} /> Skip the line</span>
+                          )}
+                          {opt.audioGuide && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-50 text-emerald-600 border border-emerald-200/50"><Headphones size={10} /> Audio guide</span>
+                          )}
+                          {opt.infoBooklet && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-teal-50 text-teal-600 border border-teal-200/50"><BookOpen size={10} /> Info booklet</span>
+                          )}
+                          {opt.maxGroupSize && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-orange-50 text-orange-600 border border-orange-200/50"><Users size={10} /> Max {opt.maxGroupSize} ppl</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </motion.div>
+            )}
 
             {/* DETAILS */}
             <motion.div
