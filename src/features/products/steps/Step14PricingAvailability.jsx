@@ -960,7 +960,7 @@ function PerGroupPriceStep({ errors = {}, onTouch }) {
               <div>
                 <label className="block text-xs text-slate-500 mb-1">Commission</label>
                 <div className="h-10 rounded-lg bg-slate-100 flex items-center px-3 text-sm text-slate-500 min-w-[60px]">
-                  30%
+                  15%
                 </div>
               </div>
               <div>
@@ -1100,7 +1100,7 @@ function PerPersonPriceStep({ errors = {}, onTouch }) {
                 <div>
                   <label className="block text-xs text-slate-500 mb-1">Commission</label>
                   <div className="h-11 rounded-lg bg-slate-100 flex items-center px-3 text-sm text-slate-500">
-                    30%
+                    15%
                   </div>
                 </div>
                 <div>
