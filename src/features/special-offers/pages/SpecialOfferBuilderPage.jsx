@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useSpecialOfferBuilderStore, STEPS } from "@/features/special-offers/stores/specialOfferBuilderStore";
 import { createSpecialOffer, updateSpecialOffer, getSpecialOffer } from "@/features/special-offers/api";
+import { getMyProduct } from "@/features/products/api";
 import Step1Products from "@/features/special-offers/components/Step1Products";
 import Step2Details from "@/features/special-offers/components/Step2Details";
 import Step3Discount from "@/features/special-offers/components/Step3Discount";
@@ -68,13 +69,22 @@ export default function SpecialOfferBuilderPage() {
       reset();
       const productId = searchParams.get("productId");
       if (productId) {
-        addTarget({
-          tourId: productId,
-          tourTitle: "",
-          tourPhotos: [],
-          tourOptionKey: null,
-          tourOptionLabel: null,
-        });
+        // Enrich the deep-linked product with title/photos so the selected
+        // chip never renders as a bare "Tour".
+        getMyProduct(productId)
+          .then((res) => {
+            const tour = res.data?.data?.tour;
+            addTarget({
+              tourId: productId,
+              tourTitle: tour?.title || "",
+              tourPhotos: tour?.photos || [],
+              tourOptionKey: null,
+              tourOptionLabel: null,
+            });
+          })
+          .catch(() => {
+            addTarget({ tourId: productId, tourTitle: "", tourPhotos: [], tourOptionKey: null, tourOptionLabel: null });
+          });
       }
     }
   }, [id, hasHydrated, reset, addTarget, searchParams]);

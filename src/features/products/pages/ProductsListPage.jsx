@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Search, Grid3X3, List, Plus, Eye, Edit, Trash2,
-  AlertCircle, RefreshCw, Package, Star, TrendingUp,
+  AlertCircle, RefreshCw, Package, Star, TrendingUp, Percent,
 } from "lucide-react";
 import { toast } from "sonner";
 import StatusBadge from "@/components/shared/StatusBadge";
@@ -503,6 +503,15 @@ export default function ProductsListPage() {
                         )}
                       </div>
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {(product.status === "ACTIVE" || product.status === "PAUSED") && (
+                          <button
+                            onClick={() => navigate(`/special-offers/build/new/products?productId=${product.id}`)}
+                            className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                            title="Create special offer"
+                          >
+                            <Percent size={14} />
+                          </button>
+                        )}
                         <button
                           onClick={() => navigate(`/products/${product.id}`)}
                           className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
@@ -599,6 +608,9 @@ export default function ProductsListPage() {
                       <td className="px-4 py-3 text-xs text-slate-500">{formatDate(product.updatedAt)}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1">
+                          {(product.status === "ACTIVE" || product.status === "PAUSED") && (
+                            <button onClick={() => navigate(`/special-offers/build/new/products?productId=${product.id}`)} className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" title="Create special offer"><Percent size={14} /></button>
+                          )}
                           <button onClick={() => navigate(`/products/${product.id}`)} className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" title="View"><Eye size={14} /></button>
                           {usingSupplierEndpoint && (
                             <>

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { Plus, Search, Edit, Power, Trash2, Package, Percent, Tag, X, TicketCheck, ArrowUp, Clock } from "lucide-react";
+import { Plus, Search, Edit, Power, Trash2, Package, Percent, Tag, X, TicketCheck, ArrowUp, Clock, DollarSign } from "lucide-react";
 import { toast } from "sonner";
 import OptimizedImage from "@/components/shared/OptimizedImage";
 import { fetchSpecialOffers, deleteSpecialOffer, toggleSpecialOffer } from "@/features/special-offers/api";
@@ -97,6 +97,17 @@ export default function SpecialOffersListPage() {
     if (!sched?.[0]?.prices?.[0]?.retailPrice) return null;
     return Number(sched[0].prices[0].retailPrice);
   };
+  // Window-less offers (EARLY_BIRD/LAST_MINUTE with no dates) are open-ended.
+  const formatWindow = (o) => {
+    if (!o.startDate && !o.endDate) return "Available indefinitely";
+    if (o.startDate && !o.endDate) return `From ${formatDate(o.startDate)}`;
+    if (!o.startDate && o.endDate) return `Until ${formatDate(o.endDate)}`;
+    return `${formatDate(o.startDate)} – ${formatDate(o.endDate)}`;
+  };
+  const discountPrice = (price, o) =>
+    o.discountType === "FIXED_AMOUNT"
+      ? Math.max((price || 0) - (o.fixedDiscountValue || 0), 0)
+      : Math.round((price || 0) * (1 - (o.discountPercentage || 0) / 100));
 
   const hasFilters = search || typeFilter || statusFilter;
   const clearFilters = () => { setSearch(""); setTypeFilter(""); setStatusFilter(""); };
@@ -297,7 +308,7 @@ export default function SpecialOffersListPage() {
                         </div>
                         {/* Meta row */}
                         <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] text-slate-500 mt-1">
-                          <span>{formatDate(offer.startDate)} – {formatDate(offer.endDate)}</span>
+                          <span>{formatWindow(offer)}</span>
                           <span className="text-slate-300">·</span>
                           <span>{typeLabel}</span>
                           <span className="text-slate-300">·</span>
@@ -370,7 +381,7 @@ export default function SpecialOffersListPage() {
                               <span className="truncate max-w-[100px] sm:max-w-[140px]">{tData.title || t.tourTitle || "Tour"}</span>
                               {price && (
                                 <span className="text-emerald-600 font-semibold shrink-0">
-                                  ${Math.round(price * (1 - offer.discountPercentage / 100))}
+                                  ${discountPrice(price, offer)}
                                 </span>
                               )}
                             </button>
@@ -387,9 +398,19 @@ export default function SpecialOffersListPage() {
 
                   {/* Discount badge (right side) */}
                   <div className="flex flex-col items-center justify-center px-2 sm:px-3 bg-emerald-50/60 border-l border-emerald-100/60 shrink-0">
-                    <Percent size={11} className="text-emerald-500 mb-0.5" />
-                    <span className="text-base sm:text-lg font-bold text-emerald-700 leading-none">{offer.discountPercentage}</span>
-                    <span className="text-[8px] sm:text-[9px] font-semibold text-emerald-500 uppercase tracking-wide">Off</span>
+                    {offer.discountType === "FIXED_AMOUNT" ? (
+                      <>
+                        <DollarSign size={11} className="text-emerald-500 mb-0.5" />
+                        <span className="text-base sm:text-lg font-bold text-emerald-700 leading-none">${offer.fixedDiscountValue}</span>
+                        <span className="text-[8px] sm:text-[9px] font-semibold text-emerald-500 uppercase tracking-wide">Off</span>
+                      </>
+                    ) : (
+                      <>
+                        <Percent size={11} className="text-emerald-500 mb-0.5" />
+                        <span className="text-base sm:text-lg font-bold text-emerald-700 leading-none">{offer.discountPercentage}</span>
+                        <span className="text-[8px] sm:text-[9px] font-semibold text-emerald-500 uppercase tracking-wide">Off</span>
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -553,7 +574,7 @@ export default function SpecialOffersListPage() {
                   </div>
                   <h2 className="text-lg font-bold leading-tight pr-8">{o.name}</h2>
                   <p className="text-white/80 text-xs mt-1">
-                    {formatDate(o.startDate)} – {formatDate(o.endDate)}
+                    {formatWindow(o)}
                   </p>
                 </div>
 
@@ -659,7 +680,7 @@ export default function SpecialOffersListPage() {
                                 <div className="text-right shrink-0">
                                   <p className="text-xs text-slate-400 line-through">${Math.round(price)}</p>
                                   <p className="text-sm font-bold text-emerald-600">
-                                    ${Math.round(price * (1 - o.discountPercentage / 100))}
+                                    ${discountPrice(price, o)}
                                   </p>
                                 </div>
                               )}

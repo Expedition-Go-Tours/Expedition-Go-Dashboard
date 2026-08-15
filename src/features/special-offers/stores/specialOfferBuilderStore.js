@@ -81,6 +81,21 @@ export const useSpecialOfferBuilderStore = create(
         const targets = state.offer.targets.filter((_, i) => i !== index);
         return { offer: { ...state.offer, targets }, isDirty: true };
       }),
+      // Change the scope of a selected product: whole product (key null) or a
+      // single option. Replaces every other target row for that product so a
+      // product can never be simultaneously "all options" and "this option".
+      setTargetOption: (tourId, tourOptionKey, tourOptionLabel) => set((state) => {
+        const existing = state.offer.targets.find((t) => t.tourId === tourId);
+        const rest = state.offer.targets.filter((t) => t.tourId !== tourId);
+        const row = {
+          tourId,
+          tourTitle: existing?.tourTitle || "",
+          tourPhotos: existing?.tourPhotos || [],
+          tourOptionKey: tourOptionKey || null,
+          tourOptionLabel: tourOptionLabel || null,
+        };
+        return { offer: { ...state.offer, targets: [...rest, row] }, isDirty: true };
+      }),
 
       setSaving: (val) => set({ isSaving: val }),
       markSaved: () => set({ isDirty: false }),
@@ -101,6 +116,8 @@ export const useSpecialOfferBuilderStore = create(
             if (offer.startDate && offer.endDate && new Date(offer.startDate) >= new Date(offer.endDate)) {
               errors.endDate = "End date must be after start date";
             }
+          } else if (offer.startDate && offer.endDate && new Date(offer.startDate) >= new Date(offer.endDate)) {
+            errors.endDate = "End date must be after start date";
           }
         }
         if (stepIndex === 2) {

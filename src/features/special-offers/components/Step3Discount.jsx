@@ -1,18 +1,40 @@
+import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Infinity as InfinityIcon, Target, ChevronRight, DollarSign, Percent } from "lucide-react";
 import { useSpecialOfferBuilderStore } from "@/features/special-offers/stores/specialOfferBuilderStore";
 import { cn } from "@/lib/utils";
+import { fetchPublishedCatalogue, startPriceOf } from "@/features/special-offers/utils/catalogue";
 
 export default function Step3Discount() {
   const { offer, updateOffer, errors } = useSpecialOfferBuilderStore();
+  const [catalogue, setCatalogue] = useState([]);
+  const [browseError, setBrowseError] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    fetchPublishedCatalogue()
+      .then((tours) => { if (mounted) setCatalogue(tours); })
+      .catch(() => { if (mounted) setBrowseError(true); });
+    return () => { mounted = false; };
+  }, []);
 
   const isPercentage = offer.discountType === "PERCENTAGE";
   const discount = offer.discountPercentage || 0;
   const fixedAmount = offer.fixedDiscountValue || 0;
-  const examplePrice = 150;
+
+  // Real price preview: the retail starting price of the first selected
+  // product, falling back to a $150 sample when pricing is unavailable so the
+  // builder still shows a live preview of the math.
+  const firstTarget = offer.targets?.[0];
+  const examplePrice = useMemo(() => {
+    if (!firstTarget) return null;
+    const tour = catalogue.find((t) => t.id === firstTarget.tourId);
+    return tour ? startPriceOf(tour) : null;
+  }, [catalogue, firstTarget]);
+  const priceKnown = examplePrice != null;
   const finalPrice = isPercentage
-    ? Math.round(examplePrice * (1 - discount / 100) * 100) / 100
-    : Math.max(0, examplePrice - fixedAmount);
+    ? Math.round((priceKnown ? examplePrice : 150) * (1 - discount / 100) * 100) / 100
+    : Math.max(0, (priceKnown ? examplePrice : 150) - fixedAmount);
 
   const customerSaves = isPercentage
     ? `${discount}%`
@@ -172,10 +194,13 @@ export default function Step3Discount() {
 
       {/* Price Preview */}
       <div className="bg-linear-to-r from-emerald-50 to-emerald-100/60 rounded-xl border border-emerald-200 p-5">
-        <p className="text-xs font-medium text-emerald-700 uppercase tracking-wider mb-3">Price Preview</p>
+        <p className="text-xs font-medium text-emerald-700 uppercase tracking-wider mb-1.5">Price Preview</p>
+        {firstTarget && (
+          <p className="text-xs text-slate-500 mb-3 truncate">{firstTarget.tourTitle || "Selected product"}</p>
+        )}
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm text-slate-500 line-through">${examplePrice.toFixed(2)}</p>
+            <p className="text-sm text-slate-500 line-through">${(priceKnown ? examplePrice : 150).toFixed(2)}</p>
             <p className="text-2xl font-bold text-emerald-700">${finalPrice.toFixed(2)}</p>
           </div>
           <div className="text-right">
@@ -189,6 +214,13 @@ export default function Step3Discount() {
             <p className="text-xs text-slate-400 mt-1">per person</p>
           </div>
         </div>
+        {!priceKnown && (
+          <p className="text-xs text-amber-600 mt-3">
+            {browseError
+              ? "Couldn't load product pricing — showing a sample price (use the price check on checkout for exact numbers)."
+              : "Product pricing isn't available yet — showing a sample price. Update your product's pricing to see the real discounted total."}
+          </p>
+        )}
       </div>
 
       {/* Capacity */}

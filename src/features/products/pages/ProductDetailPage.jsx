@@ -496,6 +496,15 @@ export default function ProductDetailPage() {
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <StatusBadge status={tour.status} size="sm" />
+              {(tour.status === "ACTIVE" || tour.status === "PAUSED") && (
+                <button
+                  onClick={() => navigate(`/special-offers/build/new/products?productId=${id}`)}
+                  className="flex items-center gap-1.5 px-3.5 h-8 border border-emerald-200 bg-emerald-50 text-emerald-700 rounded-lg text-xs font-medium hover:bg-emerald-100 transition-all"
+                >
+                  <Percent size={13} />
+                  <span>Offer</span>
+                </button>
+              )}
               <button
                 onClick={() => navigate(`/products/build/${id}/type`)}
                 className="flex items-center gap-1.5 px-3.5 h-8 bg-emerald-700 text-white rounded-lg text-xs font-medium hover:bg-emerald-800 transition-all shadow-sm shadow-emerald-200"

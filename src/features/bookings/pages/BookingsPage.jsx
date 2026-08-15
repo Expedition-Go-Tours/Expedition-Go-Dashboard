@@ -14,7 +14,6 @@ import {
   PAGE_SIZE_OPTIONS,
 } from "@/lib/constants";
 import { formatCurrency, formatDate, formatTime, cn } from "@/lib/utils";
-import { optimizeImage } from "@/lib/image";
 import OptimizedImage from "@/components/shared/OptimizedImage";
 import DatePicker from "@/components/forms/DatePicker";
 import { fetchSupplierBookings, updateBookingStatus } from "../api";
@@ -369,7 +368,21 @@ export default function BookingsPage() {
                             </p>
                           )}
                         </div>
-                        <p className="text-sm font-bold text-slate-900 whitespace-nowrap">{formatCurrency(booking.total, booking.currency)}</p>
+                        <div className="text-right shrink-0">
+                          <p className="text-sm font-bold text-slate-900 whitespace-nowrap">{formatCurrency(booking.total, booking.currency)}</p>
+                          {Number(booking.discounts) > 0 && (
+                            <div className="mt-0.5 text-right">
+                              <p className="text-[11px] font-medium text-emerald-600 whitespace-nowrap">
+                                −{formatCurrency(Number(booking.discounts), booking.currency)} saved
+                              </p>
+                              {booking.appliedOffer?.name && (
+                                <p className="text-[10px] text-slate-400 truncate max-w-[160px] ml-auto" title={booking.appliedOffer.name}>
+                                  {booking.appliedOffer.name}
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
 
                       {/* Info grid */}

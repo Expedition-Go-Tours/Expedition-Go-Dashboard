@@ -118,6 +118,47 @@ export default function Step2Details() {
         </div>
       )}
 
+      {/* Date Range — required for LIMITED_TIME, optional availability
+          window for EARLY_BIRD / LAST_MINUTE (open-ended when empty) */}
+      {offer.offerType !== "LIMITED_TIME" && (
+        <div>
+          <div className="flex items-center gap-2 mb-4">
+            <CalendarDays size={16} className="text-emerald-600" />
+            <label className="text-sm font-semibold text-slate-700">Availability Window</label>
+            <span className="text-xs text-slate-400 font-medium">(optional)</span>
+          </div>
+          <div className="bg-white rounded-xl border border-slate-200 p-4">
+            <p className="text-xs text-slate-500 mb-4">
+              Leave empty to keep this offer available indefinitely. Set dates to limit when the offer can be redeemed.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wider">Start Date</label>
+                <DatePicker
+                  selected={offer.startDate}
+                  onChange={(date) => updateOffer({ startDate: date })}
+                  placeholderText="Optional"
+                  minDate={new Date()}
+                  className="w-full"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wider">End Date</label>
+                <DatePicker
+                  selected={offer.endDate}
+                  onChange={(date) => updateOffer({ endDate: date })}
+                  placeholderText="Optional"
+                  minDate={offer.startDate || new Date()}
+                  className="w-full"
+                />
+              </div>
+            </div>
+            {offer.startDate && offer.endDate && new Date(offer.startDate) >= new Date(offer.endDate) && (
+              <p className="mt-2 text-sm text-red-500">End date must be after start date</p>
+            )}
+          </div>
+        </div>
+      )}
       {/* Discount Type */}
       <div>
         <label className="block text-sm font-semibold text-slate-700 mb-3">Discount Type</label>

@@ -5,14 +5,10 @@ import { Link } from "react-router-dom";
 import { useSpecialOfferBuilderStore } from "@/features/special-offers/stores/specialOfferBuilderStore";
 import { cn } from "@/lib/utils";
 import OptimizedImage from "@/components/shared/OptimizedImage";
-import { listMyProducts } from "@/features/products/api";
-
-const PUBLISHED_STATUSES = ["ACTIVE", "PAUSED"];
-const CATALOGUE_PAGE_SIZE = 100;
-const CATALOGUE_MAX_PAGES = 20;
+import { fetchPublishedCatalogue, scheduleOptions } from "@/features/special-offers/utils/catalogue";
 
 export default function Step1Products() {
-  const { offer, addTarget, removeTarget, errors } = useSpecialOfferBuilderStore();
+  const { offer, addTarget, removeTarget, setTargetOption, errors } = useSpecialOfferBuilderStore();
   const [query, setQuery] = useState("");
   const [tours, setTours] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -21,17 +17,8 @@ export default function Step1Products() {
   const ref = useRef(null);
 
   const loadCatalogue = useCallback(async () => {
-    const collected = [];
     try {
-      for (let page = 1; page <= CATALOGUE_MAX_PAGES; page += 1) {
-        const res = await listMyProducts({ page, limit: CATALOGUE_PAGE_SIZE });
-        const data = res.data?.data;
-        const batch = data?.tours || [];
-        collected.push(...batch);
-        const pagination = data?.pagination;
-        if (!pagination || page >= pagination.totalPages) break;
-      }
-      setTours(collected.filter((tour) => PUBLISHED_STATUSES.includes(tour.status)));
+      setTours(await fetchPublishedCatalogue());
     } catch (err) {
       setLoadError(err.response?.data?.message || err.message || "Failed to load your products");
     } finally {
@@ -66,6 +53,14 @@ export default function Step1Products() {
 
   const addedIds = useMemo(() => new Set(offer.targets.map((t) => t.tourId)), [offer.targets]);
   const allAdded = tours.length > 0 && tours.every((tour) => addedIds.has(tour.id));
+  const optionsByTour = useMemo(() => {
+    const map = new Map();
+    for (const tour of tours) {
+      const options = scheduleOptions(tour);
+      if (options.length > 0) map.set(tour.id, options);
+    }
+    return map;
+  }, [tours]);
 
   return (
     <div className="space-y-6">
@@ -273,8 +268,40 @@ export default function Step1Products() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-slate-700 truncate">{target.tourTitle || "Tour"}</p>
-                    {target.tourOptionLabel && (
-                      <p className="text-xs text-emerald-600 mt-0.5">Option: {target.tourOptionLabel}</p>
+                    {optionsByTour.has(target.tourId) ? (
+                      <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setTargetOption(target.tourId, null, null)}
+                          className={cn(
+                            "px-2 py-0.5 rounded-md text-[11px] font-medium border transition-colors",
+                            !target.tourOptionKey
+                              ? "bg-emerald-600 text-white border-emerald-600"
+                              : "bg-white text-slate-500 border-slate-200 hover:border-emerald-300 hover:text-emerald-700"
+                          )}
+                        >
+                          Whole product
+                        </button>
+                        {optionsByTour.get(target.tourId).map((opt) => (
+                          <button
+                            key={opt.key}
+                            type="button"
+                            onClick={() => setTargetOption(target.tourId, opt.key, opt.label)}
+                            className={cn(
+                              "px-2 py-0.5 rounded-md text-[11px] font-medium border transition-colors",
+                              target.tourOptionKey === opt.key
+                                ? "bg-emerald-600 text-white border-emerald-600"
+                                : "bg-white text-slate-500 border-slate-200 hover:border-emerald-300 hover:text-emerald-700"
+                            )}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      target.tourOptionLabel && (
+                        <p className="text-xs text-emerald-600 mt-0.5">Option: {target.tourOptionLabel}</p>
+                      )
                     )}
                   </div>
                   <button
