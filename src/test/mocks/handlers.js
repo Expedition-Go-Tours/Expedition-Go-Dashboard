@@ -48,6 +48,25 @@ const mockUsers = [
   },
 ];
 
+// Supplier's own tours catalogue (paginated, mirrors GET /tours/supplier/my-tours)
+const mockMyTours = [
+  { id: 'tour-1', title: 'Serengeti Safari Adventure', category: 'Safari', status: 'ACTIVE', photos: [], coverPhoto: null, schedulesAndPricing: { pricingSchedules: { schedules: [{ prices: [{ retailPrice: 600 }] }] } }, specialOffers: [{ id: 'so-1', name: 'Safari Week', isActive: true }], specialOfferTargets: [] },
+  { id: 'tour-2', title: 'Ngorongoro Crater Day Trip', category: 'Day Trip', status: 'ACTIVE', photos: [], coverPhoto: null, schedulesAndPricing: { pricingSchedules: { schedules: [{ prices: [{ retailPrice: 250 }] }] } }, specialOffers: [], specialOfferTargets: [] },
+  { id: 'tour-3', title: 'Zanzibar Beach Escape', category: 'Beach', status: 'ACTIVE', photos: [], coverPhoto: null, schedulesAndPricing: { pricingSchedules: { schedules: [{ prices: [{ retailPrice: 320 }] }] } }, specialOffers: [], specialOfferTargets: [] },
+  { id: 'tour-4', title: 'Mount Kilimanjaro Trek', category: 'Adventure', status: 'PAUSED', photos: [], coverPhoto: null, schedulesAndPricing: { pricingSchedules: { schedules: [{ prices: [{ retailPrice: 1800 }] }] } }, specialOffers: [], specialOfferTargets: [] },
+  { id: 'tour-5', title: 'Tarangire National Park Safari', category: 'Safari', status: 'ACTIVE', photos: [], coverPhoto: null, schedulesAndPricing: { pricingSchedules: { schedules: [{ prices: [{ retailPrice: 420 }] }] } }, specialOffers: [], specialOfferTargets: [] },
+  { id: 'tour-6', title: 'Stone Town Walking Tour', category: 'Cultural', status: 'ACTIVE', photos: [], coverPhoto: null, schedulesAndPricing: { pricingSchedules: { schedules: [{ prices: [{ retailPrice: 90 }] }] } }, specialOffers: [], specialOfferTargets: [] },
+  { id: 'tour-7', title: 'Lake Manyara Canoe Safari', category: 'Adventure', status: 'ACTIVE', photos: [], coverPhoto: null, schedulesAndPricing: { pricingSchedules: { schedules: [{ prices: [{ retailPrice: 210 }] }] } }, specialOffers: [], specialOfferTargets: [] },
+  { id: 'tour-8', title: 'Olduvai Gorge Heritage Tour', category: 'Cultural', status: 'PAUSED', photos: [], coverPhoto: null, schedulesAndPricing: { pricingSchedules: { schedules: [{ prices: [{ retailPrice: 150 }] }] } }, specialOffers: [], specialOfferTargets: [] },
+  { id: 'tour-9', title: 'Selous Game Reserve Expedition', category: 'Safari', status: 'ACTIVE', photos: [], coverPhoto: null, schedulesAndPricing: { pricingSchedules: { schedules: [{ prices: [{ retailPrice: 780 }] }] } }, specialOffers: [], specialOfferTargets: [] },
+  { id: 'tour-10', title: 'Ruaha National Park Fly-In', category: 'Safari', status: 'ACTIVE', photos: [], coverPhoto: null, schedulesAndPricing: { pricingSchedules: { schedules: [{ prices: [{ retailPrice: 950 }] }] } }, specialOffers: [], specialOfferTargets: [] },
+  { id: 'tour-11', title: 'Arusha Coffee Farm Experience', category: 'Cultural', status: 'ACTIVE', photos: [], coverPhoto: null, schedulesAndPricing: { pricingSchedules: { schedules: [{ prices: [{ retailPrice: 120 }] }] } }, specialOffers: [], specialOfferTargets: [] },
+  { id: 'tour-12', title: 'Mikumi Safari Lodge Weekend', category: 'Safari', status: 'PAUSED', photos: [], coverPhoto: null, schedulesAndPricing: { pricingSchedules: { schedules: [{ prices: [{ retailPrice: 540 }] }] } }, specialOffers: [], specialOfferTargets: [] },
+  { id: 'tour-13', title: 'Unpublished Draft Product', category: 'Safari', status: 'DRAFT', photos: [], coverPhoto: null, schedulesAndPricing: null, specialOffers: [], specialOfferTargets: [] },
+  { id: 'tour-14', title: 'Rejected Submission Example', category: 'Safari', status: 'REJECTED', photos: [], coverPhoto: null, schedulesAndPricing: null, specialOffers: [], specialOfferTargets: [] },
+  { id: 'tour-15', title: 'Archived Old Product', category: 'Safari', status: 'ARCHIVED', photos: [], coverPhoto: null, schedulesAndPricing: null, specialOffers: [], specialOfferTargets: [] },
+];
+
 // API handlers
 export const handlers = [
   // Auth endpoints
@@ -174,6 +193,26 @@ export const handlers = [
   }),
 
   // Products/Tours endpoints
+  http.get(`${API_BASE_URL}/tours/supplier/my-tours`, ({ request }) => {
+    const url = new URL(request.url);
+    const page = parseInt(url.searchParams.get('page') || '1', 10);
+    const MY_TOURS_PAGE_SIZE = 10;
+    const start = (page - 1) * MY_TOURS_PAGE_SIZE;
+    const tours = mockMyTours.slice(start, start + MY_TOURS_PAGE_SIZE);
+    return HttpResponse.json({
+      status: 'success',
+      data: {
+        tours,
+        pagination: {
+          currentPage: page,
+          totalPages: Math.ceil(mockMyTours.length / MY_TOURS_PAGE_SIZE),
+          totalCount: mockMyTours.length,
+          limit: MY_TOURS_PAGE_SIZE,
+        },
+      },
+    });
+  }),
+
   http.get(`${API_BASE_URL}/tours`, () => {
     return HttpResponse.json({
       data: mockProducts,
