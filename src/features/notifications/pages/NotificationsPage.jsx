@@ -79,7 +79,7 @@ function ReplyBar({ notification }) {
 
   if (sent) {
     return (
-      <div className="flex items-center gap-2 text-xs text-blue-600 font-medium">
+      <div className="flex items-center gap-2 text-xs text-emerald-600 font-medium">
         <Check size={14} />
         Message sent
       </div>
@@ -95,19 +95,19 @@ function ReplyBar({ notification }) {
         onChange={(e) => setText(e.target.value)}
         onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
         placeholder="Quick reply..."
-        className="flex-1 min-w-0 px-3 py-1.5 text-xs border border-blue-200/60 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 placeholder:text-slate-400"
+        className="flex-1 min-w-0 px-3 py-1.5 text-xs border border-emerald-200/60 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 placeholder:text-slate-400"
       />
       <button
         onClick={handleSend}
         disabled={!text.trim() || sending}
-        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-md transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+        className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
         title="Send reply"
       >
         {sending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
       </button>
       <button
         onClick={handleOpenChat}
-        className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+        className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors"
         title="Open chat"
       >
         <MessageSquare size={14} />
@@ -165,11 +165,11 @@ export default function NotificationsPage() {
   return (
     <div className="p-4 md:p-6 max-w-4xl mx-auto">
       {/* Header */}
-      <div className="relative flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6 pb-5 border-b border-blue-100">
+      <div className="relative flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6 pb-5 border-b border-emerald-100/60">
         <div className="relative">
-          <div className="absolute -left-4 top-0 bottom-0 w-1 bg-linear-to-b from-blue-500 to-blue-300 rounded-full hidden sm:block" />
+          <div className="absolute -left-4 top-0 bottom-0 w-1 bg-linear-to-b from-[#044b3b]/70 to-emerald-300 rounded-full hidden sm:block" />
           <h1 className="text-xl md:text-2xl font-bold text-slate-800 flex items-center gap-2.5">
-            <span className="w-2 h-2 rounded-full bg-blue-500 inline-block" />
+            <span className="w-2 h-2 rounded-full bg-[#044b3b] inline-block" />
             Notifications
           </h1>
           <p className="text-sm text-slate-500 mt-1 ml-0 sm:ml-[18px]">
@@ -182,7 +182,7 @@ export default function NotificationsPage() {
           <button
             onClick={handleMarkAllAsRead}
             disabled={unreadCount === 0 || isMutating}
-            className="flex items-center gap-2 px-4 py-2.5 bg-blue-50 border border-blue-200/60 rounded-xl text-sm font-medium text-blue-700 hover:bg-blue-100 hover:border-blue-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+            className="flex items-center gap-2 px-4 py-2.5 bg-emerald-50 border border-emerald-200/60 rounded-xl text-sm font-medium text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
           >
             {markAllAsRead.isPending ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}
             Mark All Read
@@ -209,14 +209,14 @@ export default function NotificationsPage() {
             onClick={() => setFilter(tab.key)}
             className={`px-4 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
               filter === tab.key
-                ? "bg-blue-600 text-white shadow-sm shadow-blue-200"
-                : "bg-white text-slate-500 border border-slate-200 hover:bg-blue-50 hover:border-blue-200 hover:text-slate-700"
+                ? "bg-[#044b3b] text-white shadow-sm"
+                : "bg-white text-slate-500 border border-slate-200 hover:bg-emerald-50 hover:border-emerald-200 hover:text-slate-700"
             }`}
           >
             {tab.label}
             {tab.key === "unread" && unreadCount > 0 && (
               <span className={`ml-1.5 px-1.5 py-0.5 rounded-full text-xs ${
-                filter === "unread" ? "bg-white/20" : "bg-blue-50 text-blue-600"
+                filter === "unread" ? "bg-white/20" : "bg-emerald-50 text-emerald-600"
               }`}>
                 {unreadCount}
               </span>
@@ -230,11 +230,11 @@ export default function NotificationsPage() {
         {isLoading ? (
           <div className="space-y-4">
             {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="flex items-start gap-4 p-4 bg-white border border-blue-100/60 rounded-xl animate-pulse">
-                <div className="w-10 h-10 rounded-full bg-linear-to-br from-blue-100 to-blue-50 shrink-0" />
+              <div key={i} className="flex items-start gap-4 p-4 bg-white border border-emerald-100/60 rounded-xl animate-pulse">
+                <div className="w-10 h-10 rounded-full bg-linear-to-br from-emerald-100 to-emerald-50 shrink-0" />
                 <div className="flex-1 space-y-2.5 pt-1">
-                  <div className="h-4 w-2/5 bg-linear-to-r from-blue-100 to-transparent rounded" />
-                  <div className="h-3 w-4/5 bg-linear-to-r from-blue-50 to-transparent rounded" />
+                  <div className="h-4 w-2/5 bg-linear-to-r from-emerald-100 to-transparent rounded" />
+                  <div className="h-3 w-4/5 bg-linear-to-r from-emerald-50 to-transparent rounded" />
                 </div>
               </div>
             ))}
@@ -248,15 +248,15 @@ export default function NotificationsPage() {
             <p className="text-xs text-slate-400 mb-4">Something went wrong. Please try again.</p>
             <button
               onClick={() => refetch()}
-              className="px-5 py-2.5 bg-linear-to-r from-blue-600 to-blue-500 text-white text-sm font-medium rounded-lg shadow-sm shadow-blue-200 hover:from-blue-700 hover:to-blue-600 transition-all"
+              className="px-5 py-2.5 bg-linear-to-r from-emerald-600 to-emerald-500 text-white text-sm font-medium rounded-lg shadow-sm shadow-emerald-200 hover:from-emerald-700 hover:to-emerald-600 transition-all"
             >
               Try again
             </button>
           </div>
         ) : Object.entries(groupedNotifications).length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 px-5 text-center">
-            <div className="w-16 h-16 rounded-full bg-linear-to-br from-blue-50 to-blue-100 flex items-center justify-center mx-auto mb-4 ring-1 ring-blue-200/60 shadow-sm">
-              <Bell size={24} className="text-blue-400" />
+            <div className="w-16 h-16 rounded-full bg-linear-to-br from-emerald-50 to-emerald-100 flex items-center justify-center mx-auto mb-4 ring-1 ring-emerald-200/60 shadow-sm">
+              <Bell size={24} className="text-emerald-400" />
             </div>
             <p className="text-sm font-semibold text-slate-600">
               {filter === "unread" ? "No unread notifications" : "No notifications yet"}
@@ -270,12 +270,12 @@ export default function NotificationsPage() {
         ) : (
           Object.entries(groupedNotifications).map(([dateLabel, items]) => (
             <div key={dateLabel}>
-              <div className="flex items-center gap-3 mb-3 sticky top-0 bg-white/95 backdrop-blur-sm py-2 px-4 md:px-6 z-10 border-b border-blue-100">
-                <div className="h-px flex-1 bg-linear-to-r from-blue-200 to-transparent" />
-                <span className="text-[11px] font-semibold text-blue-600 uppercase tracking-widest">
+              <div className="flex items-center gap-3 mb-3 sticky top-0 bg-white/95 backdrop-blur-sm py-2 px-4 md:px-6 z-10 border-b border-emerald-100">
+                <div className="h-px flex-1 bg-linear-to-r from-emerald-200 to-transparent" />
+                <span className="text-[11px] font-semibold text-emerald-600 uppercase tracking-widest">
                   {dateLabel}
                 </span>
-                <div className="h-px flex-1 bg-linear-to-l from-blue-200 to-transparent" />
+                <div className="h-px flex-1 bg-linear-to-l from-emerald-200 to-transparent" />
               </div>
               <div className="space-y-2">
                 {items.map((notification) => {
@@ -293,13 +293,13 @@ export default function NotificationsPage() {
                       transition={{ duration: 0.2 }}
                       className={`group relative border rounded-xl transition-all ${
                         isUnread
-                          ? "bg-linear-to-r from-blue-50/50 via-white to-white border-blue-200/60 shadow-sm shadow-blue-100/30"
-                          : "bg-white border-slate-100 hover:border-blue-200 hover:shadow-sm hover:shadow-blue-100/20"
+                          ? "bg-linear-to-r from-emerald-50/50 via-white to-white border-emerald-200/60 shadow-sm shadow-emerald-100/30"
+                          : "bg-white border-slate-100 hover:border-emerald-200 hover:shadow-sm hover:shadow-emerald-100/20"
                       }`}
                     >
                       <div className="flex items-start gap-3.5 p-4 sm:p-5">
                         {isUnread && (
-                          <span className="absolute left-0 top-3 bottom-3 w-1 bg-linear-to-b from-blue-500 to-blue-400 rounded-r-full" />
+                          <span className="absolute left-0 top-3 bottom-3 w-1 bg-linear-to-b from-emerald-500 to-emerald-400 rounded-r-full" />
                         )}
 
                         <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${typeConfig.color} ring-1 ring-black/5`}>
@@ -310,7 +310,7 @@ export default function NotificationsPage() {
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
-                                {isUnread && <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0" />}
+                                {isUnread && <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />}
                                 <h4 className={`text-sm ${isUnread ? "font-semibold text-slate-800" : "font-medium text-slate-700"}`}>
                                   {notification.title}
                                 </h4>
@@ -335,7 +335,7 @@ export default function NotificationsPage() {
                                 {canReply && !isReplying && (
                                   <button
                                     onClick={() => setReplyingId(notification.id)}
-                                    className="text-xs font-medium text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                                    className="text-xs font-medium text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
                                   >
                                     <Send size={11} /> Reply
                                   </button>
@@ -348,7 +348,7 @@ export default function NotificationsPage() {
                                 <button
                                   onClick={(e) => { e.stopPropagation(); handleMarkAsRead(notification.id); }}
                                   disabled={isMutating}
-                                  className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors disabled:opacity-50"
+                                  className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors disabled:opacity-50"
                                   title="Mark as read"
                                 >
                                   <Check size={15} />
@@ -370,7 +370,7 @@ export default function NotificationsPage() {
                               initial={{ height: 0, opacity: 0 }}
                               animate={{ height: "auto", opacity: 1 }}
                               exit={{ height: 0, opacity: 0 }}
-                              className="mt-3 pt-3 border-t border-blue-100/60"
+                              className="mt-3 pt-3 border-t border-emerald-100/60"
                             >
                               <ReplyBar notification={notification} />
                             </motion.div>
@@ -388,7 +388,7 @@ export default function NotificationsPage() {
 
       {isFetching && !isLoading && (
         <div className="flex items-center justify-center gap-2 mt-6">
-          <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
           <p className="text-xs text-slate-400">Syncing notifications...</p>
         </div>
       )}
