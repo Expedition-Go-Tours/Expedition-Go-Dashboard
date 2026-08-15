@@ -499,10 +499,11 @@ export default function ProductDetailPage() {
               {(tour.status === "ACTIVE" || tour.status === "PAUSED") && (
                 <button
                   onClick={() => navigate(`/special-offers/build/new/products?productId=${id}`)}
+                  title="Create special offer"
                   className="flex items-center gap-1.5 px-3.5 h-8 border border-emerald-200 bg-emerald-50 text-emerald-700 rounded-lg text-xs font-medium hover:bg-emerald-100 transition-all"
                 >
                   <Percent size={13} />
-                  <span>Offer</span>
+                  <span>Create special offer</span>
                 </button>
               )}
               <button

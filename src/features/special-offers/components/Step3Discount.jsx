@@ -22,14 +22,20 @@ export default function Step3Discount() {
   const discount = offer.discountPercentage || 0;
   const fixedAmount = offer.fixedDiscountValue || 0;
 
-  // Real price preview: the retail starting price of the first selected
-  // product, falling back to a $150 sample when pricing is unavailable so the
-  // builder still shows a live preview of the math.
+  // Real price preview: the cheapest retail price of the first selected
+  // product (tier-aware, so a "5+ guests" tier quotes its true price),
+  // falling back to a $150 sample when pricing is unavailable so the builder
+  // still shows a live preview of the math.
   const firstTarget = offer.targets?.[0];
   const examplePrice = useMemo(() => {
     if (!firstTarget) return null;
     const tour = catalogue.find((t) => t.id === firstTarget.tourId);
-    return tour ? startPriceOf(tour) : null;
+    return tour ? startPriceOf(tour)?.price ?? null : null;
+  }, [catalogue, firstTarget]);
+  const examplePer = useMemo(() => {
+    if (!firstTarget) return "person";
+    const tour = catalogue.find((t) => t.id === firstTarget.tourId);
+    return startPriceOf(tour)?.per || "person";
   }, [catalogue, firstTarget]);
   const priceKnown = examplePrice != null;
   const finalPrice = isPercentage
@@ -211,7 +217,7 @@ export default function Step3Discount() {
               {isPercentage ? <Percent size={14} /> : <DollarSign size={14} />}
               -{customerSaves}
             </span>
-            <p className="text-xs text-slate-400 mt-1">per person</p>
+            <p className="text-xs text-slate-400 mt-1">{examplePer === "group" ? "per group" : "per person"}</p>
           </div>
         </div>
         {!priceKnown && (

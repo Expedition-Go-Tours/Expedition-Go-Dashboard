@@ -5,6 +5,7 @@ import { Plus, Search, Edit, Power, Trash2, Package, Percent, Tag, X, TicketChec
 import { toast } from "sonner";
 import OptimizedImage from "@/components/shared/OptimizedImage";
 import { fetchSpecialOffers, deleteSpecialOffer, toggleSpecialOffer } from "@/features/special-offers/api";
+import { startPriceOf } from "@/features/special-offers/utils/catalogue";
 import LoadingSkeleton from "@/components/shared/Skeleton";
 import CountdownBadge from "@/components/shared/CountdownBadge";
 import { cn } from "@/lib/utils";
@@ -92,11 +93,9 @@ export default function SpecialOffersListPage() {
   };
 
   const formatDate = (d) => new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-  const getTourPrice = (tour) => {
-    const sched = tour?.schedulesAndPricing?.pricingSchedules?.schedules;
-    if (!sched?.[0]?.prices?.[0]?.retailPrice) return null;
-    return Number(sched[0].prices[0].retailPrice);
-  };
+  // Tier-aware cheapest retail price (falls back to the base price when the
+  // tour has no tiers), so offer chips quote what a real checkout charges.
+  const getTourPrice = (tour) => startPriceOf(tour)?.price ?? null;
   // Window-less offers (EARLY_BIRD/LAST_MINUTE with no dates) are open-ended.
   const formatWindow = (o) => {
     if (!o.startDate && !o.endDate) return "Available indefinitely";
