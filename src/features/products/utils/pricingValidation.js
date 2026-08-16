@@ -15,6 +15,33 @@ export function hasAnyWeeklyHours(weeklySchedule) {
   return Object.values(weeklySchedule || {}).some((hours) => Array.isArray(hours) && hours.length > 0)
 }
 
+/**
+ * True when the availability buffers hold any schedule data (opening hours,
+ * time slots, date exceptions, or saved schedules) that a mode switch would
+ * destroy. Shared by the schedule-type and pricing-model confirm flows.
+ */
+export function hasScheduleData(state) {
+  if (Array.isArray(state?.schedules) && state.schedules.length > 0) return true
+  if (hasAnyWeeklyHours(state?.weeklySchedule)) return true
+  if (Array.isArray(state?.timeSlots) && state.timeSlots.length > 0) return true
+  if (Array.isArray(state?.dateExceptions) && state.dateExceptions.length > 0) return true
+  return false
+}
+
+/**
+ * True when any pricing (or saved-schedule) data exists that a mode switch
+ * would destroy. Mirrors GetYourGuide's per-option pricing decisions: per
+ * person uses uniform/category prices, per group uses group-size prices.
+ */
+export function hasPricingData(state) {
+  if (Array.isArray(state?.schedules) && state.schedules.length > 0) return true
+  if (state?.pricingModel === 'perGroup') {
+    return Array.isArray(state.groupSizes) && state.groupSizes.some((g) => g?.price != null)
+  }
+  if (state?.uniformPrice != null) return true
+  return Array.isArray(state?.pricingCategories) && state.pricingCategories.some((c) => c?.price != null)
+}
+
 function overlaps(a, b) {
   return a.minAge <= b.maxAge && b.minAge <= a.maxAge
 }

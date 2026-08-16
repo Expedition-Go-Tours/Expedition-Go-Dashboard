@@ -22,6 +22,8 @@ function getSectionStep(index) {
   return { sectionId: step.sectionId, stepId: step.stepId }
 }
 
+const EMPTY_WEEKLY_SCHEDULE = { Monday: [], Tuesday: [], Wednesday: [], Thursday: [], Friday: [], Saturday: [], Sunday: [] }
+
 const SCHEDULE_WIZARD_RESET = {
   currentScheduleStep: 1,
   editingScheduleIndex: null,
@@ -30,7 +32,7 @@ const SCHEDULE_WIZARD_RESET = {
   scheduleHasEndDate: false,
   scheduleEndDate: '',
   timeSlots: [],
-  weeklySchedule: { Monday: [], Tuesday: [], Wednesday: [], Thursday: [], Friday: [], Saturday: [], Sunday: [] },
+  weeklySchedule: EMPTY_WEEKLY_SCHEDULE,
   dateExceptions: [],
 }
 
@@ -973,6 +975,41 @@ export const useProductBuilderStore = create(
           groupSizes: [],
           additionalPersonsEnabled: false,
           additionalPersonPrice: null,
+        })),
+
+      confirmPricingModelChange: (nextModel) =>
+        set((s) => ({
+          schedules: [],
+          groupSizes: [],
+          uniformPrice: null,
+          pricingCategories: (s.pricingCategories || []).map((c) => ({ ...c, price: null, tiers: [] })),
+          minParticipants: 1,
+          maxParticipants: 10,
+          maxGroupsPerTimeSlot: 1,
+          additionalPersonsEnabled: false,
+          additionalPersonPrice: null,
+          pricingModel: nextModel,
+          isDirty: true,
+          autosaveError: null,
+        })),
+
+      confirmScheduleTypeChange: (nextType) =>
+        set((s) => ({
+          scheduleType: nextType,
+          schedules: [],
+          ...(nextType === 'fixedTimeSlot'
+            ? { weeklySchedule: { ...EMPTY_WEEKLY_SCHEDULE }, dateExceptions: [] }
+            : { timeSlots: [] }),
+          groupSizes: [],
+          uniformPrice: null,
+          pricingCategories: (s.pricingCategories || []).map((c) => ({ ...c, price: null, tiers: [] })),
+          minParticipants: 1,
+          maxParticipants: 10,
+          maxGroupsPerTimeSlot: 1,
+          additionalPersonsEnabled: false,
+          additionalPersonPrice: null,
+          isDirty: true,
+          autosaveError: null,
         })),
 
       addPickupArea: (area) =>

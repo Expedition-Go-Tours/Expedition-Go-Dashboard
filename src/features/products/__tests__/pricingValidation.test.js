@@ -6,6 +6,8 @@ import {
   validateGroupSizes,
   validateCapacity,
   validateScheduleBasics,
+  hasScheduleData,
+  hasPricingData,
 } from '../utils/pricingValidation'
 
 const cat = (over = {}) => ({
@@ -137,5 +139,45 @@ describe('validateScheduleBasics', () => {
       weeklySchedule: { Monday: [{ startTime: '09:00', endTime: '17:00' }] },
     })
     expect(issues).toHaveLength(0)
+  })
+})
+
+describe('hasScheduleData', () => {
+  it('is false for an empty schedule state', () => {
+    expect(hasScheduleData({})).toBe(false)
+    expect(hasScheduleData({ schedules: [], weeklySchedule: {}, timeSlots: [], dateExceptions: [] })).toBe(false)
+  })
+
+  it('detects weekly opening hours', () => {
+    expect(hasScheduleData({ weeklySchedule: { Monday: [{ startTime: '09:00', endTime: '17:00' }] } })).toBe(true)
+  })
+
+  it('detects time slots', () => {
+    expect(hasScheduleData({ timeSlots: [{ id: 's1', startTime: '09:00' }] })).toBe(true)
+  })
+
+  it('detects date exceptions and saved schedules', () => {
+    expect(hasScheduleData({ dateExceptions: [{ date: '2026-12-25' }] })).toBe(true)
+    expect(hasScheduleData({ schedules: [{ name: 'Summer' }] })).toBe(true)
+  })
+})
+
+describe('hasPricingData', () => {
+  it('is false when nothing is priced', () => {
+    expect(hasPricingData({ pricingModel: 'perPerson', uniformPrice: null, pricingCategories: [cat({ price: null })], groupSizes: [] })).toBe(false)
+  })
+
+  it('detects a uniform price or category prices for per-person', () => {
+    expect(hasPricingData({ pricingModel: 'perPerson', uniformPrice: 50, groupSizes: [] })).toBe(true)
+    expect(hasPricingData({ pricingModel: 'perPerson', pricingCategories: [cat({ price: 100 })] })).toBe(true)
+  })
+
+  it('detects group-size prices for per-group', () => {
+    expect(hasPricingData({ pricingModel: 'perGroup', groupSizes: [{ from: 1, to: 5, price: 300 }] })).toBe(true)
+    expect(hasPricingData({ pricingModel: 'perGroup', groupSizes: [{ from: 1, to: 5, price: null }], uniformPrice: 50 })).toBe(false)
+  })
+
+  it('treats saved schedules as pricing data to protect', () => {
+    expect(hasPricingData({ pricingModel: 'perPerson', schedules: [{ name: 'Summer' }], pricingCategories: [] })).toBe(true)
   })
 })

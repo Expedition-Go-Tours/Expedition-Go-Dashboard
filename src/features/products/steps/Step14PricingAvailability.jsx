@@ -15,9 +15,12 @@ import {
   validatePricingCategories,
   validateGroupSizes,
   validateCapacity,
+  hasScheduleData,
+  hasPricingData,
 } from '@/features/products/utils/pricingValidation'
 import DraftNumberInput from '@/components/ui/DraftNumberInput'
 import OptionPicker from '@/features/products/OptionPicker'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
 
 const CATEGORY_TEMPLATES = [
   { name: 'Child', minAge: 0, maxAge: 17 },
@@ -1443,12 +1446,13 @@ function ScheduleCard({ schedule, index, onEdit }) {
 export default function Step14PricingAvailability() {
   const {
     scheduleType, pricingModel, schedules, groupSizes, pricingCategories, uniformPrice,
+    weeklySchedule, timeSlots, dateExceptions,
     setField, resetScheduleForm, clearStepErrors,
   } = useProductBuilderStore()
   const errors = useStepErrors(15)
   const [showWizard, setShowWizard] = useState(false)
   const [, setEditingIndex] = useState(null)
-  const [pricingModelConfirm, setPricingModelConfirm] = useState(null)
+  const [confirmDialog, setConfirmDialog] = useState(null)
 
   useEffect(() => {
     const s = useProductBuilderStore.getState()
@@ -1458,40 +1462,36 @@ export default function Step14PricingAvailability() {
     }
   }, [])
 
-  function hasPricingData() {
-    if (schedules.length > 0) return true
-    if (pricingModel === 'perPerson') {
-      if (uniformPrice != null) return true
-      if (pricingCategories.some(c => c.price != null)) return true
-    }
-    if (pricingModel === 'perGroup') {
-      if (groupSizes.some(g => g.price != null)) return true
-    }
-    return false
-  }
-
   function handlePricingModelChange(nextModel) {
     if (nextModel === pricingModel) return
-    if (hasPricingData()) {
-      setPricingModelConfirm(nextModel)
+    const state = { schedules, pricingModel, groupSizes, uniformPrice, pricingCategories }
+    if (hasPricingData(state)) {
+      setConfirmDialog({ kind: 'pricingModel', nextModel })
     } else {
       setField('pricingModel', nextModel)
     }
   }
 
-  function confirmPricingModelChange() {
-    const nextModel = pricingModelConfirm
-    setField('schedules', [])
-    setField('groupSizes', [])
-    setField('uniformPrice', null)
-    setField('pricingCategories', pricingCategories.map(c => ({ ...c, price: null, tiers: [] })))
-    setField('minParticipants', 1)
-    setField('maxParticipants', 10)
-    setField('maxGroupsPerTimeSlot', 1)
-    setField('additionalPersonsEnabled', false)
-    setField('additionalPersonPrice', null)
-    setField('pricingModel', nextModel)
-    setPricingModelConfirm(null)
+  function handleScheduleTypeChange(nextType) {
+    if (nextType === scheduleType) return
+    const state = { schedules, weeklySchedule, timeSlots, dateExceptions, pricingModel, groupSizes, uniformPrice, pricingCategories }
+    if (hasScheduleData(state) || hasPricingData(state)) {
+      setConfirmDialog({ kind: 'scheduleType', nextType })
+    } else {
+      setField('scheduleType', nextType)
+    }
+  }
+
+  function confirmChange() {
+    const command = confirmDialog
+    if (!command) return
+    const { confirmPricingModelChange, confirmScheduleTypeChange } = useProductBuilderStore.getState()
+    if (command.kind === 'scheduleType') {
+      confirmScheduleTypeChange(command.nextType)
+    } else {
+      confirmPricingModelChange(command.nextModel)
+    }
+    setConfirmDialog(null)
   }
 
   const handleAddSchedule = () => {
@@ -1560,18 +1560,18 @@ export default function Step14PricingAvailability() {
 
       {/* Availability type */}
       <div data-field="scheduleType">
-        <label className="block text-sm font-bold text-slate-900 mb-3">How do you set your availability?</label>
+        <label className="block text-sm font-bold text-slate-900 mb-3">Select how you run your activity</label>
         <div className="space-y-3">
           <label className="flex items-start gap-3 cursor-pointer">
             <input
               type="radio"
               name="scheduleType"
               checked={scheduleType === 'fixedTimeSlot'}
-              onChange={() => setField('scheduleType', 'fixedTimeSlot')}
+              onChange={() => handleScheduleTypeChange('fixedTimeSlot')}
               className="mt-0.5 w-4 h-4 text-emerald-600 border-slate-300 focus:ring-emerald-500"
             />
             <div>
-              <span className="text-sm font-medium text-slate-700">Time slots</span>
+              <span className="text-sm font-medium text-slate-700">Fixed time slot</span>
               <p className="text-xs text-slate-500 mt-0.5">Example: walking tour starting at 9:00 AM, 11:00 AM, and 2:00 PM</p>
             </div>
           </label>
@@ -1580,21 +1580,22 @@ export default function Step14PricingAvailability() {
               type="radio"
               name="scheduleType"
               checked={scheduleType === 'operatingHours'}
-              onChange={() => setField('scheduleType', 'operatingHours')}
+              onChange={() => handleScheduleTypeChange('operatingHours')}
               className="mt-0.5 w-4 h-4 text-emerald-600 border-slate-300 focus:ring-emerald-500"
             />
             <div>
-              <span className="text-sm font-medium text-slate-700">Opening hours</span>
+              <span className="text-sm font-medium text-slate-700">Operating hours</span>
               <p className="text-xs text-slate-500 mt-0.5">Example: museum open from Mon to Sat, between 9:00 AM and 7:00 PM</p>
             </div>
           </label>
         </div>
+        <p className="text-xs text-slate-400 mt-3">You cannot mix fixed time slots with operating hours in the same option.</p>
         {errors.scheduleType && <span className="text-[13px] text-red-600 font-medium mt-1">{errors.scheduleType[0]}</span>}
       </div>
 
       {/* Pricing model */}
       <div>
-        <label className="block text-sm font-bold text-slate-900 mb-3">How do you set your prices?</label>
+        <label className="block text-sm font-bold text-slate-900 mb-3">Select how you price your activity</label>
         <div className="space-y-3">
           <label className="flex items-start gap-3 cursor-pointer">
             <input
@@ -1625,38 +1626,22 @@ export default function Step14PricingAvailability() {
             </div>
           </label>
         </div>
+        <p className="text-xs text-slate-400 mt-3">You can't select both price per group and price per person in the same option.</p>
         {errors.pricingModel && <span className="text-[13px] text-red-600 font-medium mt-1">{errors.pricingModel[0]}</span>}
       </div>
 
-      {pricingModelConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 p-6">
-            <h3 className="text-lg font-bold text-slate-900 mb-3">Delete schedule</h3>
-            <p className="text-sm text-slate-600 leading-relaxed mb-6">
-              This change will delete all your live schedule, capacity and price settings. You'll need to set this up again.
-            </p>
-            <p className="text-sm text-slate-700 font-medium mb-6">
-              Are you sure you want to make this change?
-            </p>
-            <div className="flex items-center justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setPricingModelConfirm(null)}
-                className="px-5 py-2.5 border border-slate-300 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={confirmPricingModelChange}
-                className="px-5 py-2.5 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        isOpen={!!confirmDialog}
+        title={confirmDialog?.kind === 'scheduleType' ? 'Change availability type' : 'Change pricing model'}
+        description={
+          confirmDialog?.kind === 'scheduleType'
+            ? `This change will delete your ${confirmDialog.nextType === 'fixedTimeSlot' ? 'operating hours' : 'time slots'}, pricing categories and price settings. You'll need to set this up again. Are you sure you want to make this change?`
+            : "This change will delete all your live schedule, capacity and price settings. You'll need to set this up again. Are you sure you want to make this change?"
+        }
+        confirmLabel={confirmDialog?.kind === 'scheduleType' ? 'Change availability type' : 'Change pricing model'}
+        onConfirm={confirmChange}
+        onClose={() => setConfirmDialog(null)}
+      />
 
       {/* Saved schedules */}
       {errors.schedules && <span className="text-[13px] text-red-600 font-medium mb-2 block">{errors.schedules[0]}</span>}
