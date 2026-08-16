@@ -7,6 +7,7 @@ import RootLayout, { ProductBuilderRedirect } from "./RootLayout";
 
 import DashboardPage from "@/features/dashboard/pages/DashboardPage";
 import BookingsPage from "@/features/bookings/pages/BookingsPage";
+import PickupPlannerPage from "@/features/bookings/pages/PickupPlannerPage";
 import AvailabilityPage from "@/features/availability/pages/AvailabilityPage";
 import ProductsListPage from "@/features/products/pages/ProductsListPage";
 import ProductDetailPage from "@/features/products/pages/ProductDetailPage";
@@ -61,6 +62,7 @@ export const router = createBrowserRouter([
             children: [
               { index: true, element: <DashboardPage /> },
               { path: "bookings", element: <BookingsPage /> },
+              { path: "pickup-planner", element: <PickupPlannerPage /> },
               { path: "availability", element: <AvailabilityPage /> },
               { path: "products", element: <ProductsListPage /> },
               { path: "products/:id", element: <ProductDetailPage /> },

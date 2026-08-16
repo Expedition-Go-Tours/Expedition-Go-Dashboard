@@ -1014,7 +1014,18 @@ export const useProductBuilderStore = create(
 
       addPickupArea: (area) =>
         set((s) => ({
-          pickupAreas: [...s.pickupAreas, { name: area.name || '', time: area.time || '', address: area.address || '', lat: area.lat ?? null, lng: area.lng ?? null }],
+          pickupAreas: [
+            ...s.pickupAreas,
+            {
+              name: area.name || '',
+              time: area.time || '',
+              address: area.address || '',
+              lat: area.lat ?? null,
+              lng: area.lng ?? null,
+              ...(Array.isArray(area.polygon) ? { polygon: area.polygon } : {}),
+              ...(Array.isArray(area.exclusions) ? { exclusions: area.exclusions } : {}),
+            },
+          ],
           isDirty: true,
         })),
       updatePickupArea: (index, updates) =>

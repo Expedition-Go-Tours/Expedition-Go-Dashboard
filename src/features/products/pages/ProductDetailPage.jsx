@@ -17,6 +17,7 @@ import StatusBadge from "@/components/shared/StatusBadge";
 import { PRODUCT_STATUSES } from "@/lib/constants";
 import { formatCurrency, formatDate, formatTime, cn } from "@/lib/utils";
 import OptimizedImage from "@/components/shared/OptimizedImage";
+import { PickupGeoshapePreview } from "@/components/shared/PickupGeoshapeDrawer";
 import { getUniqueCities } from "@/features/products/utils/getUniqueCities";
 import { ACCOMMODATION_LABELS } from "@/features/products/utils/itineraryConstants";
 import DeleteModal from "@/components/ui/DeleteModal";
@@ -812,12 +813,16 @@ export default function ProductDetailPage() {
                         </span>
                       )}
                     </div>
-                    {content.pickupGeoshape && (
-                      <div className="mb-2 p-3 bg-slate-50 rounded-lg border border-dashed border-slate-200">
-                        <p className="text-[11px] text-slate-400 uppercase tracking-wider font-medium mb-1">Pickup Zone</p>
-                        <p className="text-xs text-slate-500">Geographic zone mapped</p>
-                      </div>
-                    )}
+                    {(() => {
+                      const drawnAreas = (content.pickupAreas || []).filter((a) => Array.isArray(a?.polygon) && a.polygon.length >= 3)
+                      if (drawnAreas.length === 0) return null
+                      return (
+                        <div className="mb-3">
+                          <p className="text-[11px] text-slate-400 uppercase tracking-wider font-medium mb-1.5">Pickup Zone</p>
+                          <PickupGeoshapePreview areas={drawnAreas} height={220} />
+                        </div>
+                      )
+                    })()}
                     {content.pickupDescription && (
                       <p className="text-sm text-slate-600 leading-relaxed">{content.pickupDescription}</p>
                     )}

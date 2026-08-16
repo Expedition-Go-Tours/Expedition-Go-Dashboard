@@ -30,6 +30,7 @@ export function mapBookingRow(booking) {
     supplierNotes: booking.supplierNotes || "",
     specialRequests: booking.specialRequests || "",
     selectedTime: booking.selectedTime || "",
+    pickup: booking.pickup || null,
   };
 }
 
@@ -60,4 +61,24 @@ export async function fetchCustomerBookings(customerId) {
   });
   const payload = response.data?.data || {};
   return (payload.bookings || []).map(mapBookingRow);
+}
+
+export async function fetchPickupPlanner(params = {}) {
+  const response = await api.get("/bookings/supplier/pickup-planner", {
+    params,
+    skipGlobalErrorHandler: true,
+  });
+  const payload = response.data?.data || {};
+  return {
+    bookings: (payload.bookings || []).map(mapBookingRow),
+    pagination: payload.pagination || null,
+  };
+}
+
+export function updateBookingPickup(id, payload) {
+  return api.patch(
+    `/bookings/supplier/pickup-planner/${id}`,
+    payload,
+    { skipGlobalErrorHandler: true }
+  );
 }

@@ -6,10 +6,11 @@ import {
   SelectContent,
   SelectItem,
 } from '@/components/ui/select'
-import { HelpCircle, Info, Upload, X, ChevronDown, Image, MapPin, Loader2 } from 'lucide-react'
+import { HelpCircle, Info, Upload, X, Image, MapPin, Loader2, Shapes, Trash2 } from 'lucide-react'
 import { useProductBuilderStore } from '@/features/products/productBuilderStore'
 import { useStepErrors } from '@/features/products/useStepErrors'
 import LocationMapPicker from '@/components/shared/LocationMapPicker'
+import PickupGeoshapeDrawer from '@/components/shared/PickupGeoshapeDrawer'
 import AmPmTimePicker from '@/components/shared/AmPmTimePicker'
 import { uploadPhotos } from '@/features/products/api'
 
@@ -308,6 +309,8 @@ function PickupSection({ errors }) {
   const [editingIdx, setEditingIdx] = useState(null)
   const [showAreaMapModal, setShowAreaMapModal] = useState(false)
   const [editingAreaIdx, setEditingAreaIdx] = useState(null)
+  const [showGeoshapeModal, setShowGeoshapeModal] = useState(false)
+  const [geoshapeAreaIdx, setGeoshapeAreaIdx] = useState(null)
 
   useEffect(() => {
     if (previewFocus?.step === 'meeting-point' && previewFocus.section === 'pickup') {
@@ -352,6 +355,35 @@ function PickupSection({ errors }) {
     }
     setShowAddModal(false)
     setEditingIdx(null)
+  }
+
+  const handleGeoshapeSave = ({ polygon, exclusions }) => {
+    if (!polygon || polygon.length < 3) return
+    if (geoshapeAreaIdx !== null && pickupAreas[geoshapeAreaIdx]) {
+      updatePickupArea(geoshapeAreaIdx, {
+        polygon,
+        exclusions: exclusions || [],
+        lat: polygon[0][0],
+        lng: polygon[0][1],
+        address: pickupAreas[geoshapeAreaIdx].address || '',
+      })
+    } else {
+      addPickupArea({
+        name: '',
+        time: '',
+        address: '',
+        lat: polygon[0][0],
+        lng: polygon[0][1],
+        polygon,
+        exclusions: exclusions || [],
+      })
+    }
+    setShowGeoshapeModal(false)
+    setGeoshapeAreaIdx(null)
+  }
+
+  const clearAreaZone = (i) => {
+    updatePickupArea(i, { polygon: undefined, exclusions: [] })
   }
 
   return (
@@ -524,7 +556,10 @@ function PickupSection({ errors }) {
         {/* Area mode — simple list */}
         {pickupType === 'area' && (
           <div className="space-y-2 mb-3" data-field="pickupAreas">
-            {pickupAreas.map((area, i) => (
+            {pickupAreas.map((area, i) => {
+              const hasZone = Array.isArray(area.polygon) && area.polygon.length >= 3
+              const exclusionCount = Array.isArray(area.exclusions) ? area.exclusions.length : 0
+              return (
               <div key={i} className="p-3 rounded-lg border border-slate-200 bg-white" data-field={`pickupAreas.${i}`}>
                 <div className="flex items-center gap-2">
                   <div className="flex-1">
@@ -538,6 +573,16 @@ function PickupSection({ errors }) {
                     />
                     {errors[`pickupAreas.${i}.name`] && <span className="text-[13px] text-red-600 font-medium mt-1">{errors[`pickupAreas.${i}.name`][0]}</span>}
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => { setGeoshapeAreaIdx(i); setShowGeoshapeModal(true) }}
+                    className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-colors border ${
+                      hasZone ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-white border-slate-200 text-slate-400 hover:border-emerald-300'
+                    }`}
+                    title={hasZone ? 'Edit pickup zone on map' : 'Draw pickup zone on map'}
+                  >
+                    <Shapes className="w-4 h-4" />
+                  </button>
                   <button
                     type="button"
                     onClick={() => { setEditingAreaIdx(i); setShowAreaMapModal(true) }}
@@ -566,9 +611,33 @@ function PickupSection({ errors }) {
                 {area.address && (
                   <p className="text-[12px] text-slate-400 mt-1.5 ml-0.5 truncate">{area.address}</p>
                 )}
+                {(hasZone || exclusionCount > 0) && (
+                  <div className="flex items-center gap-2 mt-2">
+                    {hasZone && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-[11px] font-semibold text-emerald-700">
+                        <Shapes className="w-3 h-3" /> Zone drawn ({area.polygon.length} pts)
+                      </span>
+                    )}
+                    {exclusionCount > 0 && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-50 border border-rose-200 text-[11px] font-semibold text-rose-600">
+                        {exclusionCount} exclusion zone{exclusionCount === 1 ? '' : 's'}
+                      </span>
+                    )}
+                    {hasZone && (
+                      <button
+                        type="button"
+                        onClick={() => clearAreaZone(i)}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-medium text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-colors"
+                      >
+                        <Trash2 className="w-3 h-3" /> Clear zone
+                      </button>
+                    )}
+                  </div>
+                )}
                 {pickupAtSpecificTime && errors[`pickupAreas.${i}.time`] && <span className="text-[13px] text-red-600 font-medium mt-1">{errors[`pickupAreas.${i}.time`][0]}</span>}
               </div>
-            ))}
+              )
+            })}
           </div>
         )}
 
@@ -697,13 +766,26 @@ function PickupSection({ errors }) {
 
         {/* Add pickup area button (for area mode) */}
         {pickupType === 'area' && (
-          <button
-            type="button"
-            onClick={() => { setEditingAreaIdx(null); setShowAreaMapModal(true) }}
-            className="px-4 py-2.5 border-2 border-emerald-600 text-emerald-600 rounded-lg text-sm font-medium hover:bg-emerald-50 transition-colors"
-          >
-            + Add pickup area
-          </button>
+          <>
+            <button
+              type="button"
+              onClick={() => { setEditingAreaIdx(null); setShowAreaMapModal(true) }}
+              className="px-4 py-2.5 border-2 border-emerald-600 text-emerald-600 rounded-lg text-sm font-medium hover:bg-emerald-50 transition-colors"
+            >
+              + Add pickup area
+            </button>
+            <button
+              type="button"
+              onClick={() => { setGeoshapeAreaIdx(null); setShowGeoshapeModal(true) }}
+              className="inline-flex items-center gap-2 px-4 py-2.5 border-2 border-emerald-600 text-emerald-600 rounded-lg text-sm font-medium hover:bg-emerald-50 transition-colors"
+            >
+              <Shapes className="w-4 h-4" />
+              Draw pickup zone on map
+            </button>
+            <p className="w-full text-xs text-slate-500 mt-1">
+              Draw the exact boundary of your pickup area. Customers whose address is inside the zone can book pickup; add exclusion zones for streets you can't reach.
+            </p>
+          </>
         )}
 
         {/* AddressModal for area mode — set location on map */}
@@ -714,6 +796,22 @@ function PickupSection({ errors }) {
             onSave={handleAreaSaveLocation}
             onCancel={() => { setShowAreaMapModal(false); setEditingAreaIdx(null) }}
             initialValues={editingAreaIdx !== null ? pickupAreas[editingAreaIdx] : null}
+          />
+        )}
+
+        {/* Pickup geoshape drawer — draw the service zone + exclusion zones */}
+        {showGeoshapeModal && (
+          <PickupGeoshapeDrawer
+            title={geoshapeAreaIdx !== null ? 'Edit pickup zone' : 'Draw pickup zone'}
+            description={
+              geoshapeAreaIdx !== null
+                ? 'Redraw the boundary of your pickup area and adjust exclusion zones.'
+                : 'Click on the map to trace the exact boundary of where you pick up customers. Customers with addresses inside your zone can book pickup; addresses outside cannot.'
+            }
+            initialZone={geoshapeAreaIdx !== null && pickupAreas[geoshapeAreaIdx] ? pickupAreas[geoshapeAreaIdx].polygon : undefined}
+            initialExclusions={geoshapeAreaIdx !== null && pickupAreas[geoshapeAreaIdx] ? pickupAreas[geoshapeAreaIdx].exclusions : undefined}
+            onSave={handleGeoshapeSave}
+            onCancel={() => { setShowGeoshapeModal(false); setGeoshapeAreaIdx(null) }}
           />
         )}
 
