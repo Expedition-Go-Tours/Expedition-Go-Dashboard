@@ -28,7 +28,7 @@ export default function MessageBubble({ message, isOwn, status, showAvatar, send
   const attRadius = compact ? "rounded-t-[14px]" : "rounded-t-[18px]";
   const tsSize = compact ? "text-[9px]" : "text-[10px]";
   const maxW = compact ? "max-w-[72%]" : "max-w-[65%]";
-  const avatarColor = avatarIcon ? "bg-[#2563eb]" : "bg-emerald-600";
+  const avatarColor = "bg-emerald-600";
 
   return (
       <div className={`flex gap-1 ${isOwn ? "flex-row-reverse" : "flex-row"}`}>

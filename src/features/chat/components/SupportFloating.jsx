@@ -439,7 +439,7 @@ export default function SupportFloating() {
       <button
         onClick={() => openStore()}
         className={cn(
-          "group fixed bottom-6 right-6 z-50 flex h-14 items-center rounded-full bg-[#2563eb] text-white shadow-lg transition-[width,box-shadow,transform] duration-300 ease-out hover:shadow-xl active:scale-95",
+          "group fixed bottom-6 right-6 z-50 flex h-14 items-center rounded-full bg-emerald-600 text-white shadow-lg transition-[width,box-shadow,transform] duration-300 ease-out hover:shadow-xl active:scale-95",
           "w-14 hover:w-[180px]",
           isOpen && "hidden"
         )}
@@ -480,7 +480,7 @@ export default function SupportFloating() {
             >
               <div className="flex flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl" style={{ height: "528px", maxHeight: "calc(100vh-120px)" }}>
                 {/* Header */}
-                <div className="flex shrink-0 items-center justify-between rounded-t-2xl bg-[#2563eb] px-4 py-3 text-white">
+                <div className="flex shrink-0 items-center justify-between rounded-t-2xl bg-emerald-600 px-4 py-3 text-white">
                   <div className="flex items-center gap-2.5 min-w-0">
                     {selectedConv && (
                       <button onClick={() => { setSelectedConv(null); setMessages([]); setMessageStatuses({}); setWelcomePage("main"); }} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white/70 transition-colors hover:bg-white/20 hover:text-white">
@@ -544,7 +544,7 @@ export default function SupportFloating() {
                             <button
                               onClick={handleLoadMore}
                               disabled={loadingMore}
-                              className="rounded-full bg-white px-3 py-1 text-[10px] font-medium text-[#2563eb] shadow-sm transition-colors hover:bg-gray-50 disabled:opacity-50"
+                              className="rounded-full bg-white px-3 py-1 text-[10px] font-medium text-emerald-600 shadow-sm transition-colors hover:bg-gray-50 disabled:opacity-50"
                             >
                               {loadingMore ? "Loading..." : "Load older messages"}
                             </button>
@@ -582,7 +582,7 @@ export default function SupportFloating() {
                           })}
                           {adminTyping && (
                             <div className="flex items-start gap-2 py-0.5">
-                              <div className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#2563eb] text-[10px] font-bold text-white">
+                              <div className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-[10px] font-bold text-white">
                                 <span>A</span>
                               </div>
                               <div className="flex items-center gap-1.5 rounded-[18px] rounded-bl-[4px] border border-gray-200 bg-white px-4 py-3 shadow-sm">
@@ -590,7 +590,7 @@ export default function SupportFloating() {
                                   {[0, 1, 2].map((i) => (
                                     <motion.span
                                       key={i}
-                                      className="h-2 w-2 rounded-full bg-[#2563eb]"
+                                      className="h-2 w-2 rounded-full bg-emerald-600"
                                       animate={{ y: [0, -5, 0] }}
                                       transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.15, ease: "easeInOut" }}
                                     />
@@ -621,7 +621,7 @@ export default function SupportFloating() {
                                 initial={{ scale: 0.8, opacity: 0 }}
                                 animate={{ scale: 1, opacity: 1 }}
                                 transition={{ delay: 0.05, duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-                                className="flex h-16 w-16 items-center justify-center rounded-2xl bg-linear-to-br from-[#2563eb] to-[#1d4ed8] shadow-lg shadow-[#2563eb]/20"
+                                className="flex h-16 w-16 items-center justify-center rounded-2xl bg-linear-to-br from-emerald-600 to-emerald-700 shadow-lg shadow-emerald-600/20"
                               >
                                 <MessageCircle className="h-8 w-8 text-white" />
                               </motion.div>
@@ -632,16 +632,16 @@ export default function SupportFloating() {
                               <div className="mt-6 w-full max-w-[280px] space-y-2.5">
                                 <button
                                   onClick={showContactPage}
-                                  className="group flex w-full items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 text-left shadow-sm transition-all duration-200 hover:border-[#2563eb]/30 hover:shadow-md hover:-translate-y-0.5"
+                                  className="group flex w-full items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 text-left shadow-sm transition-all duration-200 hover:border-emerald-600/30 hover:shadow-md hover:-translate-y-0.5"
                                 >
-                                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#2563eb]/10 transition-colors group-hover:bg-[#2563eb]/15">
-                                    <Phone className="h-4 w-4 text-[#2563eb]" />
+                                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-600/10 transition-colors group-hover:bg-emerald-600/15">
+                                    <Phone className="h-4 w-4 text-emerald-600" />
                                   </div>
                                   <div className="min-w-0 flex-1">
                                     <p className="text-sm font-medium text-gray-900">Contact Us</p>
                                     <p className="truncate text-[11px] text-gray-500">Call or email our support team</p>
                                   </div>
-                                  <ChevronRight className="h-4 w-4 shrink-0 text-gray-300 transition-transform group-hover:translate-x-0.5 group-hover:text-[#2563eb]" />
+                                  <ChevronRight className="h-4 w-4 shrink-0 text-gray-300 transition-transform group-hover:translate-x-0.5 group-hover:text-emerald-600" />
                                 </button>
                                 <button
                                   onClick={async () => {
@@ -659,16 +659,16 @@ export default function SupportFloating() {
                                       loadAndSetMessages(conv.id);
                                     } catch { toast.error("Failed to start conversation"); }
                                   }}
-                                  className="group flex w-full items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 text-left shadow-sm transition-all duration-200 hover:border-[#2563eb]/30 hover:shadow-md hover:-translate-y-0.5"
+                                  className="group flex w-full items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 text-left shadow-sm transition-all duration-200 hover:border-emerald-600/30 hover:shadow-md hover:-translate-y-0.5"
                                 >
-                                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#2563eb]/10 transition-colors group-hover:bg-[#2563eb]/15">
-                                    <MessageCircle className="h-4 w-4 text-[#2563eb]" />
+                                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-600/10 transition-colors group-hover:bg-emerald-600/15">
+                                    <MessageCircle className="h-4 w-4 text-emerald-600" />
                                   </div>
                                   <div className="min-w-0 flex-1">
                                     <p className="text-sm font-medium text-gray-900">Chat with us</p>
                                     <p className="truncate text-[11px] text-gray-500">Send a message in real-time</p>
                                   </div>
-                                  <ChevronRight className="h-4 w-4 shrink-0 text-gray-300 transition-transform group-hover:translate-x-0.5 group-hover:text-[#2563eb]" />
+                                  <ChevronRight className="h-4 w-4 shrink-0 text-gray-300 transition-transform group-hover:translate-x-0.5 group-hover:text-emerald-600" />
                                 </button>
                               </div>
                             </div>
@@ -678,14 +678,14 @@ export default function SupportFloating() {
                             <div className="flex-1 overflow-y-auto px-5 py-4">
                               <button
                                 onClick={showMainPage}
-                                className="flex items-center gap-1.5 text-xs font-medium text-gray-400 transition-colors hover:text-[#2563eb] mb-5"
+                                className="flex items-center gap-1.5 text-xs font-medium text-gray-400 transition-colors hover:text-emerald-600 mb-5"
                               >
                                 <ChevronLeft className="h-3.5 w-3.5" />
                                 Back
                               </button>
 
                               <div className="flex flex-col items-center text-center mb-5">
-                                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-linear-to-br from-[#2563eb] to-[#1d4ed8] shadow-lg shadow-[#2563eb]/20 mb-3">
+                                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-linear-to-br from-emerald-600 to-emerald-700 shadow-lg shadow-emerald-600/20 mb-3">
                                   <Headphones className="h-6 w-6 text-white" />
                                 </div>
                                 <h3 className="text-base font-bold text-gray-900">Get in Touch</h3>
@@ -711,14 +711,14 @@ export default function SupportFloating() {
                                 <a href={`mailto:${SUPPORT_EMAIL}`}
                                   className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3.5 shadow-sm"
                                 >
-                                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-linear-to-br from-blue-50 to-blue-100">
-                                    <Mail className="h-4 w-4 text-blue-600" />
+                                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-linear-to-br from-emerald-50 to-emerald-100">
+                                    <Mail className="h-4 w-4 text-emerald-600" />
                                   </div>
                                   <div className="min-w-0 flex-1">
                                     <p className="text-[11px] font-medium text-gray-400">Email us</p>
                                     <p className="mt-0.5 text-xs text-gray-900">{SUPPORT_EMAIL}</p>
                                   </div>
-                                  <span className="shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-600">Email</span>
+                                  <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-600">Email</span>
                                 </a>
                               </div>
 
@@ -739,9 +739,9 @@ export default function SupportFloating() {
                                 </div>
                               </div>
 
-                              <div className="mt-5 rounded-xl bg-linear-to-r from-[#2563eb]/5 to-[#1d4ed8]/5 border border-[#2563eb]/10 p-4 text-center">
+                              <div className="mt-5 rounded-xl bg-linear-to-r from-emerald-600/5 to-emerald-700/5 border border-emerald-600/10 p-4 text-center">
                                 <p className="text-xs font-medium text-gray-700">Prefer instant messaging?</p>
-                                <button onClick={showMainPage} className="mt-2 text-xs font-semibold text-[#2563eb] hover:text-[#1d4ed8] transition-colors">
+                                <button onClick={showMainPage} className="mt-2 text-xs font-semibold text-emerald-600 hover:text-emerald-700 transition-colors">
                                   Go back & start a chat →
                                 </button>
                               </div>
@@ -769,7 +769,7 @@ function InputBar({ value, onChange, onSend, onKeyDown, onFileChange, sending, f
       <div className="flex items-end gap-1.5">
         <button
           onClick={() => fileInputRef.current?.click()}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-400 transition-colors hover:text-[#2563eb]"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-400 transition-colors hover:text-emerald-600"
           type="button"
         >
           <Paperclip className="h-4 w-4" />
@@ -784,14 +784,14 @@ function InputBar({ value, onChange, onSend, onKeyDown, onFileChange, sending, f
             placeholder="Type a message..."
             rows={1}
             disabled={sending}
-            className="w-full resize-none rounded-2xl border border-gray-200 bg-gray-50 px-3.5 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus-visible:outline-none focus-visible:border-[#2563eb] focus-visible:bg-white transition-colors disabled:opacity-60"
+            className="w-full resize-none rounded-2xl border border-gray-200 bg-gray-50 px-3.5 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus-visible:outline-none focus-visible:border-emerald-600 focus-visible:bg-white transition-colors disabled:opacity-60"
             style={{ maxHeight: "80px" }}
           />
         </div>
         <button
           onClick={onSend}
           disabled={!value.trim() || sending}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#2563eb] text-white shadow-sm transition-all hover:bg-[#1d4ed8] disabled:cursor-not-allowed disabled:opacity-40"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white shadow-sm transition-all hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
           type="button"
         >
           {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
