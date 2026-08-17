@@ -741,7 +741,7 @@ export default function PickupGeoshapeDrawer({
       lng: point.lng,
     });
   };
-  const canPreview = zone.length >= 3 || exclusions.length > 0;
+  const canPreview = zone.length >= 3;
   const verdict = previewPoint ? resolvePickupVerdict(zone, exclusions, [previewPoint.lat, previewPoint.lng]) : null;
   const hintText = preview
     ? "Customer view — search an address or click the map to check pickup availability."
@@ -847,18 +847,23 @@ export default function PickupGeoshapeDrawer({
                 </button>
               </div>
 
-              {/* Location search */}
-              <div className="mt-3">
-                <LocationAutocomplete
-                  hideLabel
-                  placeholder="Search a location to focus the map (e.g., Osu, Accra)"
-                  minChars={2}
-                  clearOnSelect
-                  onSelect={handleLocationSelect}
-                />
-              </div>
-            </>
+              </>
           )}
+
+          {/* Location search — edit mode sets the area point; preview mode tests an address */}
+          <div className={preview ? "mt-4" : "mt-3"}>
+            <LocationAutocomplete
+              hideLabel
+              placeholder={
+                preview
+                  ? "Search an address to test pickup (e.g., Osu, Accra)"
+                  : "Search a location to focus the map (e.g., Osu, Accra)"
+              }
+              minChars={2}
+              clearOnSelect
+              onSelect={handleLocationSelect}
+            />
+          </div>
 
           {/* Map */}
           <div className="rounded-xl overflow-hidden border border-slate-100 shadow-sm relative mt-4">
@@ -878,7 +883,7 @@ export default function PickupGeoshapeDrawer({
             )}
             {preview && previewPoint && verdict && (
               <div
-                className="absolute top-3 right-3 z-10 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold shadow-sm text-white"
+                className="absolute top-3 left-3 z-10 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold shadow-sm text-white"
                 style={{ backgroundColor: VERDICT_COLOR[verdict] }}
               >
                 <MapPinned className="w-3.5 h-3.5" />
@@ -1087,6 +1092,7 @@ export function PickupGeoshapePreview({ areas = [], height = 260, className = ""
   const initializedRef = useRef(false);
   const mapReadyRef = useRef(false);
   const failTimerRef = useRef(null);
+  const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
 
   const zones = areas.filter((a) => Array.isArray(a.polygon) && a.polygon.length >= 3);
@@ -1117,6 +1123,7 @@ export function PickupGeoshapePreview({ areas = [], height = 260, className = ""
         failTimerRef.current = null;
       }
       mapReadyRef.current = true;
+      setReady(true);
       map.addSource("pv-zones", { type: "geojson", data: { type: "FeatureCollection", features: zones.map((a) => polygonFeature(a.polygon)) } });
       map.addLayer({ id: "pv-zones-fill", type: "fill", source: "pv-zones", paint: { "fill-color": ZONE_FILL } });
       map.addLayer({ id: "pv-zones-line", type: "line", source: "pv-zones", paint: { "line-color": ZONE_LINE, "line-width": 2 } });
@@ -1154,11 +1161,27 @@ export function PickupGeoshapePreview({ areas = [], height = 260, className = ""
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Keep the map sized when the preview container resizes.
+  useEffect(() => {
+    const el = containerRef.current;
+    const map = mapRef.current;
+    if (!el || !map || !ready) return undefined;
+    const observer = new ResizeObserver(() => map.resize());
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [ready]);
+
   if (zones.length === 0) return null;
 
   return (
     <div className={`rounded-xl overflow-hidden border border-slate-200 relative ${className}`}>
       <div ref={containerRef} style={{ height }} className="w-full" />
+      {!ready && !failed && (
+        <div className="absolute inset-0 bg-slate-50 flex items-center justify-center gap-2 text-sm text-slate-500">
+          <Loader2 size={16} className="animate-spin text-emerald-600" />
+          Loading map...
+        </div>
+      )}
       {failed && (
         <div className="absolute inset-0 bg-white bg-opacity-90 flex items-center justify-center gap-2 text-sm text-red-500">
           <AlertTriangle size={16} className="text-red-400" />
