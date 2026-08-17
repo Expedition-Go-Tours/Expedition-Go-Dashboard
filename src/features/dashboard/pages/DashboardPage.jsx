@@ -352,19 +352,48 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Cancellation Gauge */}
+          {/* Cancellation Rate Card */}
           <div onClick={() => navigate("/cancellation-rate")} className="bg-white border border-emerald-100/60 rounded-xl p-5 hover:border-emerald-200 transition-all cursor-pointer">
-            <div className="flex items-center gap-2 mb-1">
-              <CalendarX2 size={18} className="text-slate-700" />
-              <h3 className="text-base font-bold text-slate-800">Cancellations</h3>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-xl bg-red-50 border border-red-200 flex items-center justify-center">
+                  <CalendarX2 size={18} className="text-red-500" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-800">Cancellation rate</h3>
+                  <p className="text-xs text-slate-500">Last 30 days</p>
+                </div>
+              </div>
+              <span className="text-xs font-medium text-emerald-600 flex items-center gap-1">
+                View details <ArrowUpRight size={11} />
+              </span>
             </div>
-            <p className="text-sm text-slate-500 mb-3 leading-relaxed">
-              Percentage of canceled bookings across all products in the last 90 days:
-            </p>
-            <CancellationGauge
-              value={cancellationSummary?.cancellationRate ?? cancellationRate}
-              label={cancellationSummary?.status || gaugeLabel}
-            />
+
+            <div className="flex items-end gap-4 mb-4">
+              <div className="text-4xl font-bold text-slate-800 tracking-tight">
+                {cancellationSummary?.cancellationRate ?? 0}%
+              </div>
+              <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold border ${
+                (cancellationSummary?.status) === "Excellent" ? "bg-green-100 text-green-800 border-green-200" :
+                (cancellationSummary?.status) === "Good" ? "bg-green-50 text-green-700 border-green-100" :
+                (cancellationSummary?.status) === "Needs attention" ? "bg-amber-100 text-amber-800 border-amber-200" :
+                (cancellationSummary?.status) === "High" ? "bg-red-100 text-red-800 border-red-200" :
+                "bg-blue-100 text-blue-800 border-blue-200"
+              }`}>
+                {(cancellationSummary?.status) === "Excellent" && "★"}
+                {(cancellationSummary?.status) === "Good" && "✓"}
+                {(cancellationSummary?.status) === "Needs attention" && "⚠"}
+                {(cancellationSummary?.status) === "High" && "✗"}
+                {(cancellationSummary?.status) === "Building performance record" && "📊"}
+                {" "}{cancellationSummary?.status || "Building performance record"}
+              </div>
+            </div>
+
+            <div className="flex gap-4 text-xs text-slate-500">
+              <span><span className="font-semibold text-slate-700">{cancellationSummary?.confirmed ?? 0}</span> confirmed</span>
+              <span><span className="font-semibold text-slate-700">{cancellationSummary?.cancelled ?? 0}</span> cancelled</span>
+              <span><span className="font-semibold text-slate-700">{cancellationSummary?.completed ?? 0}</span> completed</span>
+            </div>
           </div>
         </div>
       </div>

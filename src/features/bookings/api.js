@@ -1,9 +1,5 @@
 import api from "@/lib/axios";
-
-export function getTravelerCount(travelers) {
-  if (!travelers || typeof travelers !== "object") return 0;
-  return (travelers.adults || 0) + (travelers.children || 0) + (travelers.infants || 0);
-}
+import { getTravelerCount } from "./lib/formatTravelers";
 
 export function mapBookingRow(booking) {
   const travelers = booking.travelers || {};
@@ -26,11 +22,12 @@ export function mapBookingRow(booking) {
     subtotal: Number(booking.subtotal) || 0,
     status: booking.status,
     paymentStatus: booking.paymentStatus,
+    paymentTiming: booking.paymentTiming || "now",
     currency: booking.currency || "USD",
     supplierNotes: booking.supplierNotes || "",
     specialRequests: booking.specialRequests || "",
     selectedTime: booking.selectedTime || "",
-    pickup: booking.pickup || null,
+    pickup: typeof booking.pickup === 'string' ? (() => { try { return JSON.parse(booking.pickup); } catch { return null; } })() : booking.pickup || null,
   };
 }
 
