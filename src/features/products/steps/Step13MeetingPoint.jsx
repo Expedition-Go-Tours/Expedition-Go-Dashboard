@@ -200,6 +200,7 @@ function MeetingPointSection({ errors }) {
         <textarea
           className="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 resize-vertical"
           rows={4}
+          maxLength={1000}
           value={meetingPointDescription}
           onChange={(e) => setField('meetingPointDescription', e.target.value)}
           placeholder="Please insert your text in English"

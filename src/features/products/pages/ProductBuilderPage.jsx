@@ -74,6 +74,21 @@ function getGygStepIndex(sectionId, stepId) {
   return idx >= 0 ? idx : 0
 }
 
+function flattenTransportModeObject(value) {
+  if (Array.isArray(value) || typeof value !== 'object' || value === null) return []
+  const modes = []
+  for (const items of Object.values(value)) {
+    if (Array.isArray(items)) {
+      for (const item of items) {
+        if (typeof item === 'string' && item.trim() && !modes.includes(item.trim())) modes.push(item.trim())
+      }
+    } else if (typeof items === 'string' && items.trim() && !modes.includes(items.trim())) {
+      modes.push(items.trim())
+    }
+  }
+  return modes
+}
+
 function tourToProduct(tour) {
   if (!tour) return null
   const content = tour.productContent || {}
@@ -92,7 +107,7 @@ function tourToProduct(tour) {
     subcategory: categorization.subcategory || '',
     activityType: categorization.activityType || '',
     difficulty: categorization.difficulty || '',
-    transportMode: categorization.transportMode || '',
+    transportMode: typeof categorization.transportMode === 'object' ? '' : (categorization.transportMode || ''),
     duration: categorization.duration?.value ?? categorization.duration?.hours ?? null,
     durationUnit: categorization.duration?.unit || 'hours',
     accommodationIncluded: categorization.accommodationIncluded ?? false,
@@ -105,7 +120,9 @@ function tourToProduct(tour) {
     attractions: content.attractions || [],
     keywords: tour.tags || [],
     activitiesIncluded: content.activitiesIncluded || [],
-    transportModes: categorization.transportModes || [],
+    transportModes: Array.isArray(categorization.transportModes) && categorization.transportModes.length > 0
+      ? categorization.transportModes
+      : flattenTransportModeObject(categorization.transportMode),
     transportServices: categorization.transportServices || [],
     whatsIncluded: content.included || [],
     whatsNotIncluded: content.excluded || [],
@@ -185,7 +202,9 @@ function tourToProduct(tour) {
     dropoffLocation: content.dropoffLocation || null,
     dropoffDescription: content.dropoffDescription || '',
     cutoffHours: booking.cancellationPolicy?.cutoffHours ?? 0,
-    cancellationType: booking.cancellationPolicy?.type || 'standard',
+    cancellationType: (booking.cancellationPolicy?.type === 'standard' || booking.cancellationPolicy?.type === 'all_sales_final')
+      ? booking.cancellationPolicy.type
+      : 'standard',
     supplierCanCancelBadWeather: !!booking.cancellationPolicy?.supplierCanCancelBadWeather,
     supplierCanCancelNotEnoughTravelers: !!booking.cancellationPolicy?.supplierCanCancelNotEnoughTravelers,
     pricingModel: td.pricingModel || 'perPerson',

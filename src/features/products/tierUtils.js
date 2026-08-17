@@ -148,6 +148,7 @@ export function normalizePricingCategories(categories, maxParticipants) {
   if (!Array.isArray(categories)) return []
   return categories.map((c) => ({
     ...c,
+    name: (c && (c.name || c.label)) || '',
     tiers: normalizeCategoryTiers(c && c.tiers, maxParticipants),
   }))
 }
