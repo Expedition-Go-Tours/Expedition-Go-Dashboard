@@ -126,6 +126,21 @@ export const VERDICTS = {
 };
 
 /**
+ * GeoJSON Feature for a [lat, lng] vertex list (Polygon ring, vertex order
+ * converted to GeoJSON's [lng, lat]).
+ */
+export function polygonFeature(coordinates) {
+  return {
+    type: "Feature",
+    properties: {},
+    geometry: {
+      type: "Polygon",
+      coordinates: [coordinates.map(([lat, lng]) => [lng, lat])],
+    },
+  };
+}
+
+/**
  * Customer-facing pickup verdict for a [lat, lng] point, mirroring the backend
  * geoUtils resolution order: no zone → NO_ZONE, inside zone → exclusion check →
  * EXCLUDED or INSIDE, otherwise OUTSIDE.

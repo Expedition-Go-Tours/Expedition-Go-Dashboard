@@ -28,6 +28,7 @@ import {
   distanceMeters,
   pointInPolygon,
   polygonExtentMeters,
+  polygonFeature,
   resolvePickupVerdict,
   VERDICTS,
 } from "@/lib/pickupShapeTools";
@@ -58,14 +59,6 @@ const SHAPE_TOOLS = [
   { id: "circle", label: "Circle", Icon: Circle, factory: circleFromCenter, radial: true },
   { id: "triangle", label: "Triangle", Icon: Triangle, factory: triangleFromCenter, radial: true },
 ];
-
-function polygonFeature(coordinates) {
-  return {
-    type: "Feature",
-    properties: {},
-    geometry: { type: "Polygon", coordinates: [coordinates] },
-  };
-}
 
 function pointFeature(lng, lat) {
   return { type: "Feature", properties: {}, geometry: { type: "Point", coordinates: [lng, lat] } };
