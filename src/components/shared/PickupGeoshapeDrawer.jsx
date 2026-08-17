@@ -129,11 +129,13 @@ export default function PickupGeoshapeDrawer({
   description,
   initialZone,
   initialExclusions,
+  initialLocation,
   onSave,
   onCancel,
 }) {
   const [zone, setZone] = useState(() => (Array.isArray(initialZone) && initialZone.length >= 3 ? initialZone.map((v) => [...v]) : []));
   const [exclusions, setExclusions] = useState(() => (Array.isArray(initialExclusions) ? initialExclusions.map((e) => [...e]) : []));
+  const [location, setLocation] = useState(() => (initialLocation && initialLocation.lat != null ? { ...initialLocation } : null));
   const [working, setWorking] = useState([]);
   const [mode, setMode] = useState("zone");
   const [tool, setTool] = useState("freehand");
@@ -161,8 +163,8 @@ export default function PickupGeoshapeDrawer({
   const shapeAnchorRef = useRef(null);
   const shapeCursorRef = useRef(null);
   const dragRef = useRef(null);
-  const draggedRef = useRef(false);
-  const lastClickRef = useRef(null);
+  const pointerDownRef = useRef(null);
+  const lastTapRef = useRef(null);
   const handlersRef = useRef({});
 
   useEffect(() => {
@@ -238,6 +240,17 @@ export default function PickupGeoshapeDrawer({
     return exclusionsRef.current[shape.index] || null;
   }, []);
 
+  const removeVertexAt = useCallback((shape, index) => {
+    if (!shape) return;
+    if (shape.kind === "zone") {
+      setZone((v) => (v.length > 3 ? v.filter((_, i) => i !== index) : v));
+    } else {
+      setExclusions((list) =>
+        list.map((ex, i) => (i === shape.index ? (ex.length > 3 ? ex.filter((_, j) => j !== index) : ex) : ex))
+      );
+    }
+  }, []);
+
   const sameShape = useCallback((a, b) => {
     if (a === b) return true;
     return !!a && !!b && a.kind === b.kind && a.index === b.index;
@@ -265,16 +278,16 @@ export default function PickupGeoshapeDrawer({
   );
 
   const findShapeAt = useCallback(
-    (e) => {
-      const vertexHit = findShapeVertex(e.point);
+    (point, lngLat) => {
+      const vertexHit = findShapeVertex(point);
       if (vertexHit) return vertexHit;
-      const point = [e.lngLat.lat, e.lngLat.lng];
+      const pt = [lngLat.lat, lngLat.lng];
       for (let i = exclusionsRef.current.length - 1; i >= 0; i -= 1) {
-        if (pointInPolygon(point, exclusionsRef.current[i])) {
+        if (pointInPolygon(pt, exclusionsRef.current[i])) {
           return { shape: { kind: "exclusion", index: i }, vertexIndex: null };
         }
       }
-      if (pointInPolygon(point, zoneRef.current)) {
+      if (pointInPolygon(pt, zoneRef.current)) {
         return { shape: { kind: "zone", index: 0 }, vertexIndex: null };
       }
       return null;
@@ -283,7 +296,7 @@ export default function PickupGeoshapeDrawer({
   );
 
   const updateCursor = useCallback(
-    (e) => {
+    (point, lngLat) => {
       const map = mapRef.current;
       if (!map) return;
       if (previewRef.current) {
@@ -291,12 +304,12 @@ export default function PickupGeoshapeDrawer({
         return;
       }
       if (toolRef.current === "edit") {
-        const hit = findShapeVertex(e.point);
+        const hit = findShapeVertex(point);
         if (hit) {
           map.getCanvas().style.cursor = "pointer";
           return;
         }
-        map.getCanvas().style.cursor = findShapeAt(e) ? "move" : "default";
+        map.getCanvas().style.cursor = findShapeAt(point, lngLat) ? "move" : "default";
         return;
       }
       map.getCanvas().style.cursor = "crosshair";
@@ -304,139 +317,188 @@ export default function PickupGeoshapeDrawer({
     [findShapeAt, findShapeVertex]
   );
 
+  const canvasPoint = useCallback((clientX, clientY) => {
+    const canvas = mapRef.current?.getCanvas();
+    if (!canvas) return null;
+    const rect = canvas.getBoundingClientRect();
+    return { x: clientX - rect.left, y: clientY - rect.top };
+  }, []);
+
   useEffect(() => {
     handlersRef.current = {
-      onClick(e) {
-        if (previewRef.current) {
-          setPreviewPoint({ lat: e.lngLat.lat, lng: e.lngLat.lng });
-          return;
-        }
-        if (toolRef.current === "edit") {
-          if (!editingRef.current || draggedRef.current) return;
-          const hit = findShapeVertex(e.point);
-          if (!hit || !sameShape(hit.shape, editingRef.current) || hit.vertexIndex == null) return;
-          const verts = getShapeVerts(hit.shape);
-          if (!verts || verts.length <= 3) return;
-          if (hit.shape.kind === "zone") {
-            setZone((v) => v.filter((_, i) => i !== hit.vertexIndex));
-          } else {
-            setExclusions((list) => list.map((ex, i) => (i === hit.shape.index ? ex.filter((_, j) => j !== hit.vertexIndex) : ex)));
-          }
-          return;
-        }
-        if (toolRef.current !== "freehand") return;
-        const w = workingRef.current;
+      onPointerDown(e) {
+        if (e.button !== 0 || !e.isPrimary) return;
         const map = mapRef.current;
-        if (w.length >= 3) {
-          const first = map.project([w[0][1], w[0][0]]);
-          if (first && Math.hypot(first.x - e.point.x, first.y - e.point.y) <= CLOSE_HIT_PX) {
-            finalizeWorking();
-            return;
-          }
-        }
-        const last = lastClickRef.current;
-        const now = Date.now();
-        if (last && now - last.t < 300 && Math.hypot(last.x - e.point.x, last.y - e.point.y) <= 6) return;
-        lastClickRef.current = { t: now, x: e.point.x, y: e.point.y };
-        setWorking((v) => [...v, [e.lngLat.lat, e.lngLat.lng]]);
-      },
-      onDblClick() {
-        if (toolRef.current !== "freehand" || previewRef.current || editingRef.current) return;
-        finalizeWorking();
-      },
-      onMouseDown(e) {
-        if (e.originalEvent?.button !== 0) return;
-        const map = mapRef.current;
-        if (!map) return;
-        draggedRef.current = false;
+        const pt = canvasPoint(e.clientX, e.clientY);
+        if (!map || !pt) return;
+        const lngLat = map.unproject(pt);
+        pointerDownRef.current = { x: e.clientX, y: e.clientY, t: Date.now(), moved: false };
         if (previewRef.current) return;
         if (toolRef.current === "edit") {
-          const hit = findShapeAt(e);
+          const hit = findShapeAt(pt, lngLat);
           if (!hit) {
             setEditing(null);
             return;
           }
-          if (sameShape(hit.shape, editingRef.current)) {
-            const verts = getShapeVerts(hit.shape);
-            if (!verts) return;
-            dragRef.current =
-              hit.vertexIndex != null
-                ? {
-                    kind: "vertex",
-                    shape: hit.shape,
-                    vertexIndex: hit.vertexIndex,
-                    lastLat: e.lngLat.lat,
-                    lastLng: e.lngLat.lng,
-                    verts: verts.map((v) => [...v]),
-                  }
-                : {
-                    kind: "move",
-                    shape: hit.shape,
-                    startLat: e.lngLat.lat,
-                    startLng: e.lngLat.lng,
-                    verts: verts.map((v) => [...v]),
-                    origVerts: verts.map((v) => [...v]),
-                  };
-            map.dragPan.disable();
-            map.getCanvas().style.cursor = "grabbing";
-          } else {
-            setEditing(hit.shape);
-          }
+          const verts = getShapeVerts(hit.shape);
+          if (!verts) return;
+          setEditing(hit.shape);
+          dragRef.current =
+            hit.vertexIndex != null
+              ? {
+                  kind: "vertex",
+                  shape: hit.shape,
+                  vertexIndex: hit.vertexIndex,
+                  lastLat: lngLat.lat,
+                  lastLng: lngLat.lng,
+                  verts: verts.map((v) => [...v]),
+                }
+              : {
+                  kind: "move",
+                  shape: hit.shape,
+                  startLat: lngLat.lat,
+                  startLng: lngLat.lng,
+                  verts: verts.map((v) => [...v]),
+                  origVerts: verts.map((v) => [...v]),
+                };
+          map.dragPan.disable();
+          map.getCanvas().setPointerCapture(e.pointerId);
+          map.getCanvas().style.cursor = "grabbing";
           return;
         }
         if (toolRef.current !== "freehand") {
-          shapeAnchorRef.current = { lat: e.lngLat.lat, lng: e.lngLat.lng };
-          shapeCursorRef.current = { lat: e.lngLat.lat, lng: e.lngLat.lng };
+          shapeAnchorRef.current = { lat: lngLat.lat, lng: lngLat.lng };
+          shapeCursorRef.current = { lat: lngLat.lat, lng: lngLat.lng };
           setShapeAnchor(shapeAnchorRef.current);
           setShapeCursor(shapeCursorRef.current);
           map.dragPan.disable();
+          map.getCanvas().setPointerCapture(e.pointerId);
         }
       },
-      onMouseMove(e) {
+      onPointerMove(e) {
+        const map = mapRef.current;
+        const pt = canvasPoint(e.clientX, e.clientY);
+        if (!map || !pt) return;
+        const lngLat = map.unproject(pt);
+        const down = pointerDownRef.current;
+        if (down && Math.hypot(e.clientX - down.x, e.clientY - down.y) > 6) {
+          down.moved = true;
+        }
         if (dragRef.current) {
           const d = dragRef.current;
-          draggedRef.current = true;
           if (d.kind === "vertex") {
-            const dLat = e.lngLat.lat - d.lastLat;
-            const dLng = e.lngLat.lng - d.lastLng;
-            d.lastLat = e.lngLat.lat;
-            d.lastLng = e.lngLat.lng;
+            const dLat = lngLat.lat - d.lastLat;
+            const dLng = lngLat.lng - d.lastLng;
+            d.lastLat = lngLat.lat;
+            d.lastLng = lngLat.lng;
             d.verts[d.vertexIndex] = [d.verts[d.vertexIndex][0] + dLat, d.verts[d.vertexIndex][1] + dLng];
           } else {
-            const dLat = e.lngLat.lat - d.startLat;
-            const dLng = e.lngLat.lng - d.startLng;
+            const dLat = lngLat.lat - d.startLat;
+            const dLng = lngLat.lng - d.startLng;
             d.verts = d.origVerts.map(([lat, lng]) => [lat + dLat, lng + dLng]);
           }
           commitVertsToState(d.shape, d.verts);
           return;
         }
         if (shapeAnchorRef.current && toolRef.current !== "freehand") {
-          shapeCursorRef.current = { lat: e.lngLat.lat, lng: e.lngLat.lng };
+          shapeCursorRef.current = { lat: lngLat.lat, lng: lngLat.lng };
           setShapeCursor(shapeCursorRef.current);
           return;
         }
         if (toolRef.current === "freehand" && workingRef.current.length > 0 && !previewRef.current) {
-          setHoverPos({ lat: e.lngLat.lat, lng: e.lngLat.lng });
+          setHoverPos({ lat: lngLat.lat, lng: lngLat.lng });
         }
-        updateCursor(e);
+        updateCursor(pt, lngLat);
+      },
+      onPointerUp(e) {
+        const map = mapRef.current;
+        const pt = canvasPoint(e.clientX, e.clientY);
+        if (!map || !pt) return;
+        const lngLat = map.unproject(pt);
+        const down = pointerDownRef.current;
+        pointerDownRef.current = null;
+        const moved = down ? down.moved : true;
+        const canvas = map.getCanvas();
+        if (dragRef.current) {
+          const d = dragRef.current;
+          dragRef.current = null;
+          if (canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
+          if (!moved && d.kind === "vertex") {
+            const verts = getShapeVerts(d.shape);
+            if (verts && verts.length > 3) removeVertexAt(d.shape, d.vertexIndex);
+          }
+        }
+        if (shapeAnchorRef.current && toolRef.current !== "freehand") {
+          const anchor = shapeAnchorRef.current;
+          const cursor = shapeCursorRef.current;
+          if (moved) {
+            commitShapeDrag();
+          } else {
+            cancelShapeDrag();
+          }
+          if (canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
+          if (!moved && cursor && anchor) {
+            setEditing({ kind: modeRef.current, index: modeRef.current === "zone" ? 0 : exclusionsRef.current.length });
+          }
+        }
+        if (moved) {
+          canvas.style.cursor = editingRef.current ? "default" : "crosshair";
+          return;
+        }
+        if (previewRef.current) {
+          setPreviewPoint({ lat: lngLat.lat, lng: lngLat.lng });
+          return;
+        }
+        if (toolRef.current === "edit") {
+          if (editingRef.current) return;
+          return;
+        }
+        if (toolRef.current !== "freehand") return;
+        const w = workingRef.current;
+        if (w.length >= 3) {
+          const first = map.project([w[0][1], w[0][0]]);
+          if (first && Math.hypot(first.x - pt.x, first.y - pt.y) <= CLOSE_HIT_PX) {
+            finalizeWorking();
+            return;
+          }
+        }
+        const last = lastTapRef.current;
+        const now = Date.now();
+        if (last && now - last.t < 300 && Math.hypot(last.x - pt.x, last.y - pt.y) <= 6) {
+          lastTapRef.current = null;
+          if (w.length >= 3) finalizeWorking();
+          return;
+        }
+        lastTapRef.current = { t: now, x: pt.x, y: pt.y };
+        setWorking((v) => [...v, [lngLat.lat, lngLat.lng]]);
+      },
+      onPointerCancel(e) {
+        const map = mapRef.current;
+        if (map) {
+          const canvas = map.getCanvas();
+          if (canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
+          canvas.style.cursor = editingRef.current ? "default" : "crosshair";
+        }
+        dragRef.current = null;
+        if (shapeAnchorRef.current) cancelShapeDrag();
       },
       onMouseLeave() {
         setHoverPos(null);
       },
-      onMouseUp() {
-        if (dragRef.current) {
-          dragRef.current = null;
-          const map = mapRef.current;
-          if (map) map.getCanvas().style.cursor = editingRef.current ? "default" : "crosshair";
-        }
-        if (shapeAnchorRef.current && toolRef.current !== "freehand") {
-          commitShapeDrag();
-          const map = mapRef.current;
-          if (map) map.getCanvas().style.cursor = "crosshair";
-        }
-      },
     };
-  }, [commitShapeDrag, commitVertsToState, finalizeWorking, findShapeAt, findShapeVertex, getShapeVerts, sameShape, updateCursor]);
+  }, [
+    cancelShapeDrag,
+    canvasPoint,
+    commitShapeDrag,
+    commitVertsToState,
+    finalizeWorking,
+    findShapeAt,
+    findShapeVertex,
+    getShapeVerts,
+    removeVertexAt,
+    sameShape,
+    updateCursor,
+  ]);
 
   useEffect(() => {
     if (!mapContainerRef.current || initializedRef.current) return;
@@ -498,12 +560,17 @@ export default function PickupGeoshapeDrawer({
       map.addSource("gz-preview-marker", { type: "geojson", data: emptyCollection() });
       map.addLayer({ id: "gz-preview-marker-dot", type: "circle", source: "gz-preview-marker", paint: { "circle-radius": 9, "circle-color": "#64748b", "circle-stroke-color": "#fff", "circle-stroke-width": 3 } });
 
+      map.addSource("gz-location-marker", { type: "geojson", data: emptyCollection() });
+      map.addLayer({ id: "gz-location-marker-dot", type: "circle", source: "gz-location-marker", paint: { "circle-radius": 8, "circle-color": "#10b981", "circle-stroke-color": "#fff", "circle-stroke-width": 2.5 } });
+
       map.getCanvas().style.cursor = "crosshair";
 
       if (zoneRef.current.length >= 3) {
         const bounds = new maplibregl.LngLatBounds();
         zoneRef.current.forEach(([lat, lng]) => bounds.extend([lng, lat]));
         map.fitBounds(bounds, { padding: 60, maxZoom: 15, duration: 0 });
+      } else if (initialLocation && initialLocation.lat != null) {
+        map.jumpTo({ center: [initialLocation.lng, initialLocation.lat], zoom: 12 });
       }
     });
 
@@ -519,13 +586,10 @@ export default function PickupGeoshapeDrawer({
     const canvas = map.getCanvas();
     const onCanvasLeave = () => handlersRef.current.onMouseLeave();
     canvas.addEventListener("mouseleave", onCanvasLeave);
-
-    map.on("click", (e) => handlersRef.current.onClick(e));
-    map.on("dblclick", (e) => handlersRef.current.onDblClick(e));
-    map.on("mousedown", (e) => handlersRef.current.onMouseDown(e));
-    map.on("mousemove", (e) => handlersRef.current.onMouseMove(e));
-    const onWindowMouseUp = () => handlersRef.current.onMouseUp();
-    window.addEventListener("mouseup", onWindowMouseUp);
+    canvas.addEventListener("pointerdown", (e) => handlersRef.current.onPointerDown(e));
+    canvas.addEventListener("pointermove", (e) => handlersRef.current.onPointerMove(e));
+    canvas.addEventListener("pointerup", (e) => handlersRef.current.onPointerUp(e));
+    canvas.addEventListener("pointercancel", (e) => handlersRef.current.onPointerCancel(e));
 
     mapRef.current = map;
     return () => {
@@ -534,11 +598,15 @@ export default function PickupGeoshapeDrawer({
         failTimerRef.current = null;
       }
       canvas.removeEventListener("mouseleave", onCanvasLeave);
-      window.removeEventListener("mouseup", onWindowMouseUp);
+      canvas.removeEventListener("pointerdown", handlersRef.current.onPointerDown);
+      canvas.removeEventListener("pointermove", handlersRef.current.onPointerMove);
+      canvas.removeEventListener("pointerup", handlersRef.current.onPointerUp);
+      canvas.removeEventListener("pointercancel", handlersRef.current.onPointerCancel);
       mapReadyRef.current = false;
       map.remove();
       mapRef.current = null;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function polygonFeatureForExclusions(list) {
@@ -593,6 +661,16 @@ export default function PickupGeoshapeDrawer({
       map.setPaintProperty("gz-preview-marker-dot", "circle-color", VERDICT_COLOR[verdict]);
     }
   }, [previewPoint, zone, exclusions, mapReady]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+    if (map.getSource("gz-location-marker")) {
+      map
+        .getSource("gz-location-marker")
+        .setData(location ? { type: "FeatureCollection", features: [pointFeature(location.lng, location.lat)] } : emptyCollection());
+    }
+  }, [location, mapReady]);
 
   // Pan lock while drafting, sizing a shape, or editing a saved shape.
   useEffect(() => {
@@ -652,8 +730,18 @@ export default function PickupGeoshapeDrawer({
     if (!result?.latitude || !result?.longitude) return;
     const point = { lat: result.latitude, lng: result.longitude };
     mapRef.current?.flyTo({ center: [point.lng, point.lat], zoom: 12, duration: 800 });
-    if (previewRef.current) setPreviewPoint(point);
-  };  const canPreview = zone.length >= 3 || exclusions.length > 0;
+    if (previewRef.current) {
+      setPreviewPoint(point);
+      return;
+    }
+    setLocation({
+      name: result.formatted || "",
+      address: result.formatted || "",
+      lat: point.lat,
+      lng: point.lng,
+    });
+  };
+  const canPreview = zone.length >= 3 || exclusions.length > 0;
   const verdict = previewPoint ? resolvePickupVerdict(zone, exclusions, [previewPoint.lat, previewPoint.lng]) : null;
   const hintText = preview
     ? "Customer view — search an address or click the map to check pickup availability."
@@ -877,8 +965,20 @@ export default function PickupGeoshapeDrawer({
                     <p className="text-xs text-emerald-700/70">
                       {zone.length >= 3
                         ? `Drawn (${zone.length} points) — customers inside this area can select pickup`
-                        : "Not drawn yet — customers would match this area by name only"}
+                        : location
+                          ? "Not drawn — customers within the named area can select pickup"
+                          : "Not drawn yet — customers would match this area by name only"}
                     </p>
+                    {location && zone.length < 3 && (
+                      <button
+                        type="button"
+                        onClick={() => setLocation(null)}
+                        className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 hover:text-emerald-800 transition-colors"
+                      >
+                        <X className="w-3 h-3" />
+                        {location.name || location.address || "Location point"} — remove point
+                      </button>
+                    )}
                   </div>
                 </div>
                 {zone.length >= 3 && (
@@ -953,14 +1053,22 @@ export default function PickupGeoshapeDrawer({
                 onSave?.({
                   polygon: zone.length >= 3 ? zone.map(([lat, lng]) => [Number(lat.toFixed(6)), Number(lng.toFixed(6))]) : null,
                   exclusions: exclusions.map((e) => e.map(([lat, lng]) => [Number(lat.toFixed(6)), Number(lng.toFixed(6))])),
+                  location: location
+                    ? {
+                        name: location.name || "",
+                        address: location.address || "",
+                        lat: Number(location.lat.toFixed(6)),
+                        lng: Number(location.lng.toFixed(6)),
+                      }
+                    : null,
                 })
               }
-              disabled={zone.length < 3}
+              disabled={zone.length < 3 && !location}
               className={`px-5 py-2.5 text-sm font-medium rounded-lg transition-colors ${
-                zone.length >= 3 ? "text-white bg-emerald-600 hover:bg-emerald-700" : "text-slate-400 bg-slate-100 cursor-not-allowed"
+                zone.length >= 3 || location ? "text-white bg-emerald-600 hover:bg-emerald-700" : "text-slate-400 bg-slate-100 cursor-not-allowed"
               }`}
             >
-              Save zone
+              {zone.length >= 3 ? "Save zone" : "Save area"}
             </button>
           </div>
         </div>
