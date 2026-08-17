@@ -30,7 +30,6 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import StatusBadge from "@/components/shared/StatusBadge";
 import { formatDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
-import { optimizeImage } from "@/lib/image";
 import OptimizedImage from "@/components/shared/OptimizedImage";
 import { REVIEW_STATUSES } from "@/lib/constants";
 import {

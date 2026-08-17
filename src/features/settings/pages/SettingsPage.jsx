@@ -13,7 +13,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem
 } from "@/components/ui/select";
-import { optimizeImage } from "@/lib/image";
 import OptimizedImage from "@/components/shared/OptimizedImage";
 import {
   fetchCurrentUser, updateCurrentUser, uploadSupplierLogo,

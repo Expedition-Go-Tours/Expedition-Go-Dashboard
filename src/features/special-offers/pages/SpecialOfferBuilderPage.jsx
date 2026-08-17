@@ -29,7 +29,7 @@ export default function SpecialOfferBuilderPage() {
 
   useEffect(() => {
     if (step && stepIndex !== currentStep) setStep(stepIndex);
-  }, [step, stepIndex, setStep]);
+  }, [step, stepIndex, currentStep, setStep]);
 
   useEffect(() => {
     const currentStepId = STEPS[currentStep]?.id;
