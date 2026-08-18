@@ -9,10 +9,15 @@ import {
 import { HelpCircle, Info, Upload, X, Image, Loader2, Shapes, Trash2 } from 'lucide-react'
 import { useProductBuilderStore } from '@/features/products/productBuilderStore'
 import { useStepErrors } from '@/features/products/useStepErrors'
+import {
+  MEETING_POINT_DESCRIPTION_MAX_CHARS,
+  PICKUP_DESCRIPTION_MAX_CHARS,
+} from '@/features/products/productFormSchema'
 import LocationMapPicker from '@/components/shared/LocationMapPicker'
 import PickupGeoshapeDrawer from '@/components/shared/PickupGeoshapeDrawer'
 import AmPmTimePicker from '@/components/shared/AmPmTimePicker'
 import { uploadPhotos } from '@/features/products/api'
+import { warmMapResources } from '@/lib/mapConfig'
 
 const ARRIVAL_OPTIONS = [
   { value: 'none', label: 'Not relevant for this activity' },
@@ -200,14 +205,14 @@ function MeetingPointSection({ errors }) {
         <textarea
           className="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 resize-vertical"
           rows={4}
-          maxLength={1000}
+          maxLength={MEETING_POINT_DESCRIPTION_MAX_CHARS}
           value={meetingPointDescription}
           onChange={(e) => setField('meetingPointDescription', e.target.value)}
           placeholder="Please insert your text in English"
           data-field="meetingPointDescription"
         />
         <div className="flex justify-end mt-1">
-          <span className="text-xs text-slate-400">{meetingPointDescription.length} / 1000</span>
+          <span className="text-xs text-slate-400">{meetingPointDescription.length} / {MEETING_POINT_DESCRIPTION_MAX_CHARS}</span>
         </div>
         {errors.meetingPointDescription && <span className="text-[13px] text-red-600 font-medium mt-1">{errors.meetingPointDescription[0]}</span>}
       </div>
@@ -310,6 +315,12 @@ function PickupSection({ errors }) {
   const [editingIdx, setEditingIdx] = useState(null)
   const [showGeoshapeModal, setShowGeoshapeModal] = useState(false)
   const [geoshapeAreaIdx, setGeoshapeAreaIdx] = useState(null)
+
+  // Start warming the map tiles/style as soon as the supplier is likely to
+  // open the pickup-area drawer, so the first open paints fast.
+  useEffect(() => {
+    if (pickupType === 'area') warmMapResources()
+  }, [pickupType])
 
   useEffect(() => {
     if (previewFocus?.step === 'meeting-point' && previewFocus.section === 'pickup') {
@@ -755,31 +766,31 @@ function PickupSection({ errors }) {
           </>
         )}
 
-        {/* Pickup geoshape drawer — draw the service zone or set a location point */}
-        {showGeoshapeModal && (
-          <PickupGeoshapeDrawer
-            title={geoshapeAreaIdx !== null ? 'Edit pickup area' : 'Add pickup area'}
-            description={
-              geoshapeAreaIdx !== null
-                ? 'Redraw the boundary of your pickup area, adjust exclusion zones, or update its location point.'
-                : 'Trace the exact boundary of where you pick up customers, or search a location to save the area by name. Customers with addresses inside your zone can book pickup; addresses outside cannot.'
-            }
-            initialZone={geoshapeAreaIdx !== null && pickupAreas[geoshapeAreaIdx] ? pickupAreas[geoshapeAreaIdx].polygon : undefined}
-            initialExclusions={geoshapeAreaIdx !== null && pickupAreas[geoshapeAreaIdx] ? pickupAreas[geoshapeAreaIdx].exclusions : undefined}
-            initialLocation={
-              geoshapeAreaIdx !== null && pickupAreas[geoshapeAreaIdx]?.lat != null
-                ? {
-                    name: pickupAreas[geoshapeAreaIdx].name || '',
-                    address: pickupAreas[geoshapeAreaIdx].address || '',
-                    lat: pickupAreas[geoshapeAreaIdx].lat,
-                    lng: pickupAreas[geoshapeAreaIdx].lng,
-                  }
-                : undefined
-            }
-            onSave={handleGeoshapeSave}
-            onCancel={() => { setShowGeoshapeModal(false); setGeoshapeAreaIdx(null) }}
-          />
-        )}
+        {/* Pickup geoshape drawer — draw the service zone or set a location point. Kept
+        mounted across opens (open flag toggles visibility) so the map reopens instantly. */}
+        <PickupGeoshapeDrawer
+          open={showGeoshapeModal}
+          title={geoshapeAreaIdx !== null ? 'Edit pickup area' : 'Add pickup area'}
+          description={
+            geoshapeAreaIdx !== null
+              ? 'Redraw the boundary of your pickup area, adjust exclusion zones, or update its location point.'
+              : 'Trace the exact boundary of where you pick up customers, or search a location to save the area by name. Customers with addresses inside your zone can book pickup; addresses outside cannot.'
+          }
+          initialZone={geoshapeAreaIdx !== null && pickupAreas[geoshapeAreaIdx] ? pickupAreas[geoshapeAreaIdx].polygon : undefined}
+          initialExclusions={geoshapeAreaIdx !== null && pickupAreas[geoshapeAreaIdx] ? pickupAreas[geoshapeAreaIdx].exclusions : undefined}
+          initialLocation={
+            geoshapeAreaIdx !== null && pickupAreas[geoshapeAreaIdx]?.lat != null
+              ? {
+                  name: pickupAreas[geoshapeAreaIdx].name || '',
+                  address: pickupAreas[geoshapeAreaIdx].address || '',
+                  lat: pickupAreas[geoshapeAreaIdx].lat,
+                  lng: pickupAreas[geoshapeAreaIdx].lng,
+                }
+              : undefined
+          }
+          onSave={handleGeoshapeSave}
+          onCancel={() => { setShowGeoshapeModal(false); setGeoshapeAreaIdx(null) }}
+        />
 
         {/* AddressModal for adding/editing pickup locations */}
         {showAddModal && (
@@ -820,13 +831,14 @@ function PickupSection({ errors }) {
         <textarea
           className="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 resize-vertical"
           rows={4}
+          maxLength={PICKUP_DESCRIPTION_MAX_CHARS}
           value={pickupDescription}
           onChange={(e) => setField('pickupDescription', e.target.value)}
           placeholder="Please insert your text in English"
           data-field="pickupDescription"
         />
         <div className="flex justify-end mt-1">
-          <span className="text-xs text-slate-400">{pickupDescription.length} / 1000</span>
+          <span className="text-xs text-slate-400">{pickupDescription.length} / {PICKUP_DESCRIPTION_MAX_CHARS}</span>
         </div>
         {errors.pickupDescription && <span className="text-[13px] text-red-600 font-medium mt-1">{errors.pickupDescription[0]}</span>}
       </div>

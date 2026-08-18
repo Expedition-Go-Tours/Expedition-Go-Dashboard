@@ -2,8 +2,7 @@ import { useRef, useEffect, useState } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { MapPin } from "lucide-react";
-
-const TILE_STYLE = "https://tiles.openfreemap.org/styles/liberty";
+import { TILE_STYLE } from "@/lib/mapConfig";
 
 export default function PickupMapPreview({ lat, lng, address, className = "" }) {
   const containerRef = useRef(null);
@@ -30,6 +29,7 @@ export default function PickupMapPreview({ lat, lng, address, className = "" }) 
         scrollZoom: false,
         boxZoom: false,
         keyboard: false,
+        localIdeographFontFamily: "sans-serif",
       });
 
       map.on("load", () => {
@@ -43,7 +43,7 @@ export default function PickupMapPreview({ lat, lng, address, className = "" }) 
 
       mapRef.current = map;
     } catch {
-      setError(true);
+      window.setTimeout(() => setError(true), 0);
     }
 
     return () => {

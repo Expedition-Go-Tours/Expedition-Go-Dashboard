@@ -47,16 +47,6 @@ export function squareFromCenter(center, radiusMeters) {
   ];
 }
 
-/** Regular polygon approximation of a circle centered on `center`. */
-export function circleFromCenter(center, radiusMeters, segments = 32) {
-  const pts = [];
-  for (let i = 0; i < segments; i += 1) {
-    const angle = (i / segments) * 2 * Math.PI;
-    pts.push(offsetMeters(center, radiusMeters * Math.cos(angle), radiusMeters * Math.sin(angle)));
-  }
-  return pts;
-}
-
 /** Equilateral triangle with one vertex pointing north, circumradius `radiusMeters`. */
 export function triangleFromCenter(center, radiusMeters) {
   const angles = [Math.PI / 2, (7 * Math.PI) / 6, (11 * Math.PI) / 6];
@@ -116,6 +106,44 @@ export function polygonExtentMeters(vertices) {
   const xs = pts.map((p) => p[0]);
   const ys = pts.map((p) => p[1]);
   return { width: Math.max(...xs) - Math.min(...xs), height: Math.max(...ys) - Math.min(...ys) };
+}
+
+/**
+ * Polygon area in square meters via the shoelace formula in a local
+ * equirectangular projection around the polygon's centroid. Accurate to a few
+ * percent for pickup-sized zones — plenty for a display metric.
+ */
+export function polygonAreaMetersSq(vertices) {
+  if (!Array.isArray(vertices) || vertices.length < 3) return 0;
+  const bounds = polygonBounds(vertices);
+  if (!bounds) return 0;
+  const cLat = (bounds.minLat + bounds.maxLat) / 2;
+  const cLng = (bounds.minLng + bounds.maxLng) / 2;
+  const toMeters = ([lat, lng]) => [
+    (lng - cLng) * (EARTH_RADIUS_M * Math.cos(toRad(cLat)) * toRad(1)),
+    (lat - cLat) * (EARTH_RADIUS_M * toRad(1)),
+  ];
+  const pts = vertices.map(toMeters);
+  let area = 0;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i, i += 1) {
+    area += pts[j][0] * pts[i][1] - pts[i][0] * pts[j][1];
+  }
+  return Math.abs(area) / 2;
+}
+
+/** Polygon area in square kilometers. */
+export function polygonAreaKm2(vertices) {
+  return polygonAreaMetersSq(vertices) / 1e6;
+}
+
+/** Ring perimeter in kilometers, summing great-circle edge lengths. */
+export function polygonPerimeterKm(vertices) {
+  if (!Array.isArray(vertices) || vertices.length < 3) return 0;
+  let meters = 0;
+  for (let i = 0; i < vertices.length; i += 1) {
+    meters += distanceMeters(vertices[i], vertices[(i + 1) % vertices.length]);
+  }
+  return meters / 1000;
 }
 
 export const VERDICTS = {

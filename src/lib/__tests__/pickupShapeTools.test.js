@@ -4,11 +4,12 @@ import {
   distanceMeters,
   rectFromCorners,
   squareFromCenter,
-  circleFromCenter,
   triangleFromCenter,
   polygonBounds,
   pointInPolygon,
   polygonExtentMeters,
+  polygonAreaKm2,
+  polygonPerimeterKm,
   resolvePickupVerdict,
   VERDICTS,
 } from "../pickupShapeTools";
@@ -69,22 +70,6 @@ describe("pickupShapeTools", () => {
       const extent = polygonExtentMeters(sq);
       expect(extent.width).toBeCloseTo(2 * r, 1);
       expect(extent.height).toBeCloseTo(2 * r, 1);
-    });
-  });
-
-  describe("circleFromCenter", () => {
-    it("builds a 32-gon with all vertices at radius r", () => {
-      const r = 300;
-      const circle = circleFromCenter(CENTER, r);
-      expect(circle).toHaveLength(32);
-      for (const v of circle) {
-        expect(distanceMeters(CENTER, v)).toBeCloseTo(r, 1);
-      }
-    });
-
-    it("honors a custom segment count", () => {
-      expect(circleFromCenter(CENTER, 100, 24)).toHaveLength(24);
-      expect(circleFromCenter(CENTER, 100, 48)).toHaveLength(48);
     });
   });
 
@@ -153,6 +138,41 @@ describe("pickupShapeTools", () => {
     it("returns false for degenerate inputs", () => {
       expect(pointInPolygon([5.65, -0.15], [[5.6, -0.2], [5.7, -0.2]])).toBe(false);
       expect(pointInPolygon([5.65, -0.15], [])).toBe(false);
+    });
+  });
+
+  describe("polygonAreaKm2 / polygonPerimeterKm", () => {
+    // Exactly 1 km × 1 km square built from meter offsets around Accra.
+    const center = [5.6, -0.195];
+    const squareKm = [
+      offsetMeters(center, -500, 500),
+      offsetMeters(center, 500, 500),
+      offsetMeters(center, 500, -500),
+      offsetMeters(center, -500, -500),
+    ];
+
+    it("approximates the area of a 1 km² square", () => {
+      const area = polygonAreaKm2(squareKm);
+      expect(area).toBeGreaterThan(0.9);
+      expect(area).toBeLessThan(1.1);
+    });
+
+    it("returns a finite, positive area for dense traced polygons", () => {
+      const dense = squareKm.map(([lat, lng]) => [lat, lng]);
+      expect(Number.isFinite(polygonAreaKm2(dense))).toBe(true);
+      expect(polygonAreaKm2(dense)).toBeGreaterThan(0);
+    });
+
+    it("computes the perimeter of a 1 km square ≈ 4 km", () => {
+      const perim = polygonPerimeterKm(squareKm);
+      expect(perim).toBeGreaterThan(3.95);
+      expect(perim).toBeLessThan(4.05);
+    });
+
+    it("returns 0 for degenerate or empty inputs", () => {
+      expect(polygonAreaKm2([])).toBe(0);
+      expect(polygonAreaKm2([[5.6, -0.2], [5.7, -0.2]])).toBe(0);
+      expect(polygonPerimeterKm([])).toBe(0);
     });
   });
 

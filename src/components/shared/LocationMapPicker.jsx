@@ -4,9 +4,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { MapPin, Loader2, AlertTriangle, CheckCircle2, X } from "lucide-react";
 import config from "@/config";
 import LocationAutocomplete from "@/components/shared/LocationAutocomplete";
-
-const defaultCenter = { lng: -0.187, lat: 5.6037 };
-const TILE_STYLE = "https://tiles.openfreemap.org/styles/liberty";
+import { DEFAULT_CENTER, TILE_STYLE, warmMapResources } from "@/lib/mapConfig";
 
 function SelectedLocationCard({ result, onClear }) {
   if (!result) return null;
@@ -58,15 +56,23 @@ export default function LocationMapPicker({ onSelect, initialLat, initialLng, la
 
   useEffect(() => {
     if (!mapContainerRef.current) return;
-    const { lng: initLng, lat: initLat } = defaultCenter;
+    warmMapResources();
+    const { lng: initLng, lat: initLat } = DEFAULT_CENTER;
 
     const center = initialLat && initialLng ? [initialLng, initialLat] : [initLng, initLat];
-    const map = new maplibregl.Map({
-      container: mapContainerRef.current,
-      style: TILE_STYLE,
-      center,
-      zoom: initialLat && initialLng ? 15 : 6,
-    });
+    let map;
+    try {
+      map = new maplibregl.Map({
+        container: mapContainerRef.current,
+        style: TILE_STYLE,
+        center,
+        zoom: initialLat && initialLng ? 15 : 6,
+        localIdeographFontFamily: "sans-serif",
+      });
+    } catch {
+      window.setTimeout(() => setMapError(true), 0);
+      return;
+    }
 
     map.addControl(new maplibregl.NavigationControl(), "top-right");
 
