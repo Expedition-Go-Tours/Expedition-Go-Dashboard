@@ -27,7 +27,15 @@ export default function SpecialOfferBuilderPage() {
   const foundIndex = STEPS.findIndex((s) => s.id === step);
   const stepIndex = foundIndex !== -1 ? foundIndex : 0;
 
+  // Sync the store from the URL ONLY when the URL step actually changes
+  // (browser back/forward, direct links). Guarding against same-render
+  // changes stops the wizard from flickering: `nextStep()` moves the store
+  // first, and without this guard the still-stale URL would yank it back
+  // before the navigation lands (1 → 0 → 1 flashing).
+  const lastUrlStepRef = useRef(step);
   useEffect(() => {
+    if (step === lastUrlStepRef.current) return;
+    lastUrlStepRef.current = step;
     if (step && stepIndex !== currentStep) setStep(stepIndex);
   }, [step, stepIndex, currentStep, setStep]);
 
