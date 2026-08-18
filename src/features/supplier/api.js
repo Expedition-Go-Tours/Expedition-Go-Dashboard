@@ -16,6 +16,19 @@ export async function replaceDocument(docId, file) {
   return response.data?.data || null;
 }
 
+/** Upload an additional document for review. */
+export async function addDocument({ type, file, expiryDate }) {
+  const formData = new FormData();
+  formData.append("document", file);
+  formData.append("type", type);
+  if (expiryDate) formData.append("expiryDate", expiryDate);
+  const response = await api.post("/suppliers/documents", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+    skipGlobalErrorHandler: true,
+  });
+  return response.data?.data || null;
+}
+
 /** Add a vehicle with its documents and photos (multipart). */
 export async function addVehicle({ data, documents, vehiclePhotos }) {
   const formData = new FormData();
