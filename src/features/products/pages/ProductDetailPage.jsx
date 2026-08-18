@@ -746,6 +746,8 @@ export default function ProductDetailPage() {
                             '5min': '5 minutes before',
                             '10min': '10 minutes before',
                             '15min': '15 minutes before',
+                            '20min': '20 minutes before',
+                            '25min': '25 minutes before',
                             '30min': '30 minutes before',
                             'notified': 'when notified',
                             'custom': content.arrivalTimeCustom || 'custom time',

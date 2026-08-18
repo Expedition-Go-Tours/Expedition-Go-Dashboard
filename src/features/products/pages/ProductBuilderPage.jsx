@@ -180,11 +180,11 @@ function tourToProduct(tour) {
         }
       : null,
     meetingPointPicture: content.meetingPointPicture || '',
-    meetingPointDescription: content.meetingInstructions || '',
+    meetingPointDescription: (content.meetingInstructions || '').slice(0, 200),
     arrivalTimeType: content.arrivalTimeType || 'none',
     arrivalTimeCustom: content.arrivalTimeCustom || '',
     pickupType: content.pickupType || 'area',
-    pickupDescription: content.pickupDescription || '',
+    pickupDescription: (content.pickupDescription || '').slice(0, 200),
     pickupTiming: content.pickupTiming || 'at_start',
     pickupAtSpecificTime: content.pickupAtSpecificTime !== undefined
       ? !!content.pickupAtSpecificTime

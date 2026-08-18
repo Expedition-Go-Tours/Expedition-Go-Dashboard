@@ -1017,7 +1017,7 @@ export const useProductBuilderStore = create(
           pickupAreas: [
             ...s.pickupAreas,
             {
-              name: area.name || '',
+              name: area.name || `Pickup area ${s.pickupAreas.length + 1}`,
               time: area.time || '',
               address: area.address || '',
               lat: area.lat ?? null,

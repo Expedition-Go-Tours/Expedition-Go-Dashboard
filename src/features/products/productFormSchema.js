@@ -14,6 +14,8 @@ export const INCLUSION_ITEM_MAX_CHARS = 100
 export const EXTRA_INFO_TAG_MAX_CHARS = 50
 export const KNOW_BEFORE_YOU_GO_MAX_CHARS = 2000
 export const VOUCHER_INFO_MAX_CHARS = 500
+export const MEETING_POINT_DESCRIPTION_MAX_CHARS = 200
+export const PICKUP_DESCRIPTION_MAX_CHARS = 200
 
 export function limitMessage(max) {
   return `You've reached the ${max} character limit.`
@@ -189,11 +191,11 @@ export const stepSchemas = {
     meetingMode: z.enum(['meeting_point', 'pickup', 'none']),
     meetingPoint: locationPointSchema.nullable().optional(),
     meetingPointPicture: z.string().optional(),
-    meetingPointDescription: z.string().optional(),
-    arrivalTimeType: z.enum(['none', '5min', '10min', '15min', '30min', 'notified', 'custom']).optional(),
+    meetingPointDescription: z.string().max(MEETING_POINT_DESCRIPTION_MAX_CHARS, limitMessage(MEETING_POINT_DESCRIPTION_MAX_CHARS)).optional(),
+    arrivalTimeType: z.enum(['none', '5min', '10min', '15min', '20min', '25min', '30min', 'notified', 'custom']).optional(),
     arrivalTimeCustom: z.string().optional(),
     pickupType: z.enum(['area', 'address']).optional(),
-    pickupDescription: z.string().optional(),
+    pickupDescription: z.string().max(PICKUP_DESCRIPTION_MAX_CHARS, limitMessage(PICKUP_DESCRIPTION_MAX_CHARS)).optional(),
     pickupTiming: z.enum(['at_start', 'before_start']).optional(),
     pickupFinalLocationTiming: z.enum(['day_before', 'after_selection']).optional(),
     referenceStartTime: z.string().optional(),
