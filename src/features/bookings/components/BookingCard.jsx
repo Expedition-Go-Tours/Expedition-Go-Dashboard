@@ -115,7 +115,12 @@ export default function BookingCard({
   onMessageCustomer,
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const actions = STATUS_ACTIONS[booking.status] || [];
+  const isPayLater = booking.paymentTiming === 'later';
+  // Reserve-now-pay-later bookings are PENDING until the deferred charge lands;
+  // payment is the gate, so don't offer a manual "Accept booking" on them.
+  const actions = (STATUS_ACTIONS[booking.status] || []).filter(
+    (a) => !(isPayLater && booking.status === 'PENDING' && a.value === 'CONFIRMED')
+  );
   const pickup = booking.pickup || {};
   const partySummary = formatPartySummary(booking.travelersRaw);
   const travelerNames = formatTravelerDetails(booking.travelersRaw);
