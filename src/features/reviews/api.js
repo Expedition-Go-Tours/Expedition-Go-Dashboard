@@ -22,6 +22,10 @@ export function mapReviewRow(review) {
     bookingId: review.bookingId,
     supplierResponse: review.supplierResponse || null,
     supplierResponseAt: review.supplierResponseAt || null,
+    flagReason: review.flagReason || null,
+    flagComment: review.flagComment || null,
+    flaggedAt: review.flaggedAt || null,
+    flagged: review.status?.toUpperCase() === "FLAGGED",
   };
 }
 
@@ -48,4 +52,8 @@ export function updateReviewResponse(id, response) {
 
 export function deleteReviewResponse(id) {
   return api.delete(`/reviews/${id}/response`, { skipGlobalErrorHandler: true });
+}
+
+export function flagReview(id, { reason, comment }) {
+  return api.post(`/reviews/${id}/flag`, { reason, comment }, { skipGlobalErrorHandler: true });
 }

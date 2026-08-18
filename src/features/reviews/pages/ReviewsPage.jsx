@@ -23,19 +23,19 @@ import {
   TrendingUp,
   Users,
   X,
+  Flag,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import StatusBadge from "@/components/shared/StatusBadge";
 import { formatDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import OptimizedImage from "@/components/shared/OptimizedImage";
-import { REVIEW_STATUSES } from "@/lib/constants";
 import {
   addReviewResponse,
   deleteReviewResponse,
   fetchSupplierReviews,
+  flagReview,
   updateReviewResponse,
 } from "../api";
 import { getAuthToken } from "@/stores/authStore";
@@ -43,10 +43,23 @@ import { fetchCustomerBookings } from "@/features/bookings/api";
 
 const REVIEW_TABS = [
   { key: "all", label: "All Reviews", status: undefined },
-  { key: "approved", label: "Approved", status: "APPROVED" },
-  { key: "pending", label: "Pending", status: "PENDING" },
   { key: "replied", label: "Replied", clientFilter: "replied" },
   { key: "unreplied", label: "Unreplied", clientFilter: "unreplied" },
+];
+
+const FLAG_REASONS = [
+  "Inappropriate content (abusive, hateful, or sexual)",
+  "Not appropriate or family-friendly",
+  "Spam or self-promotion",
+  "Off-topic / not about this tour",
+  "Reviewer did not take this tour / did not experience this business",
+  "Posted to the wrong business",
+  "Describes an experience from more than a year ago",
+  "Written by a competitor or their employee",
+  "Privacy violation",
+  "Contains false or misleading information",
+  "Duplicate review",
+  "Conflict of interest (incentivized or unverified)",
 ];
 
 const STAT_ACCENTS = {
@@ -275,8 +288,118 @@ function ReplyModal({ review, onClose, onSubmit, submitting }) {
   );
 }
 
-function ReviewPhotoLightbox({ photos, index, onClose, onIndexChange }) {
+function FlagModal({ review, onClose, onSubmit, submitting }) {
+  const [reason, setReason] = useState("");
+  const [comment, setComment] = useState("");
+
+  const handleSubmit = () => {
+    if (!reason) {
+      toast.error("Select a reason for flagging this review");
+      return;
+    }
+    onSubmit(review, { reason, comment: comment.trim() || undefined });
+  };
+
   return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.92, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.92, y: 20 }}
+        transition={{ type: "spring", stiffness: 300, damping: 28 }}
+        className="w-full max-w-lg bg-white rounded-2xl border border-slate-200 shadow-2xl shadow-slate-900/10 overflow-hidden"
+      >
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-amber-50 flex items-center justify-center">
+              <Flag size={16} className="text-amber-600" />
+            </div>
+            <div>
+              <h2 className="text-base font-semibold text-slate-800">Flag this review</h2>
+              <p className="text-xs text-slate-500 mt-0.5">{review.customerName} · {review.tourName}</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-xl transition-colors"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="px-6 py-4 max-h-[60vh] overflow-y-auto">
+          <div className="mb-4 p-4 bg-slate-50 rounded-xl border border-slate-100">
+            <div className="flex items-center gap-2 mb-2">
+              <StarRating rating={review.rating} />
+              <span className="text-xs font-medium text-slate-400">{review.rating}/5</span>
+            </div>
+            {review.comment && (
+              <p className="text-sm text-slate-600 leading-relaxed line-clamp-3">
+                "{review.comment}"
+              </p>
+            )}
+          </div>
+
+          <p className="text-sm font-semibold text-slate-700 mb-3">Why are you flagging this review?</p>
+          <div className="space-y-1.5">
+            {FLAG_REASONS.map((r) => (
+              <label
+                key={r}
+                className={`flex items-start gap-2.5 px-3 py-2.5 rounded-xl border cursor-pointer transition-all ${reason === r ? "border-amber-300 bg-amber-50/60" : "border-slate-200 hover:border-slate-300"}`}
+              >
+                <input
+                  type="radio"
+                  name="flag-reason"
+                  checked={reason === r}
+                  onChange={() => setReason(r)}
+                  className="mt-0.5 h-4 w-4 accent-amber-500"
+                />
+                <span className="text-sm text-slate-700 leading-snug">{r}</span>
+              </label>
+            ))}
+          </div>
+
+          <label className="block text-sm font-semibold text-slate-700 mt-4 mb-2">
+            Anything else we should know? <span className="text-slate-400 font-normal">(optional)</span>
+          </label>
+          <textarea
+            value={comment}
+            onChange={(e) => setComment(e.target.value.slice(0, 1000))}
+            rows={3}
+            placeholder="Add context to help our team review this quickly..."
+            className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-300 resize-none placeholder:text-slate-400 transition-all"
+          />
+        </div>
+
+        <div className="flex items-center justify-end gap-3 px-6 py-4 bg-slate-50/60 border-t border-slate-100">
+          <button
+            onClick={onClose}
+            className="px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-white hover:text-slate-700 rounded-xl transition-all"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={submitting || !reason}
+            className="flex items-center gap-2 px-5 py-2.5 bg-amber-500 text-white rounded-xl text-sm font-semibold hover:bg-amber-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm shadow-amber-200"
+          >
+            {submitting ? <Loader2 size={16} className="animate-spin" /> : <Flag size={16} className="-ml-0.5" />}
+            Submit flag
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+function ReviewPhotoLightbox({ photos, index, onClose, onIndexChange }) {  return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -359,6 +482,8 @@ export default function ReviewsPage() {
   const [lightboxPhotos, setLightboxPhotos] = useState(null);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [replyTarget, setReplyTarget] = useState(null);
+  const [flagTarget, setFlagTarget] = useState(null);
+  const [flagSaving, setFlagSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [customerBookings, setCustomerBookings] = useState([]);
@@ -432,6 +557,22 @@ export default function ReviewsPage() {
   }, [highlightId, reviews, setSearchParams]);
 
   const handleOpenReply = (review) => setReplyTarget(review);
+
+  const handleOpenFlag = (review) => setFlagTarget(review);
+
+  const handleSubmitFlag = async (review, { reason, comment }) => {
+    setFlagSaving(true);
+    try {
+      await flagReview(review.id, { reason, comment });
+      toast.success("Review flagged for our team to review");
+      setFlagTarget(null);
+      await loadReviews();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to flag review");
+    } finally {
+      setFlagSaving(false);
+    }
+  };
 
   const handleSubmitReply = async (review, text) => {
     setSubmitting(true);
@@ -705,13 +846,9 @@ export default function ReviewsPage() {
                 {/* Status accent bar */}
                 <div className={cn(
                   "absolute left-0 top-3 bottom-3 w-1 rounded-r-full transition-all duration-300",
-                  !review.supplierResponse && review.status === "pending"
-                    ? "bg-linear-to-b from-amber-400 to-amber-300"
-                    : review.supplierResponse
-                      ? "bg-linear-to-b from-emerald-400 to-emerald-300"
-                      : review.status === "approved"
-                        ? "bg-linear-to-b from-emerald-400 to-emerald-300"
-                        : "bg-linear-to-b from-slate-300 to-slate-200"
+                  review.supplierResponse
+                    ? "bg-linear-to-b from-emerald-400 to-emerald-300"
+                    : "bg-linear-to-b from-amber-400 to-amber-300"
                 )} />
 
                 <div className="pl-5 pr-5 py-5">
@@ -759,11 +896,23 @@ export default function ReviewsPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <StatusBadge
-                        status={review.status.toUpperCase()}
-                        label={REVIEW_STATUSES[review.status.toUpperCase()]?.label || review.status}
-                        size="sm"
-                      />
+                      {review.flagged ? (
+                        <span
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium bg-amber-50 text-amber-700 border border-amber-200/60"
+                          title={review.flagReason ? `Flagged: ${review.flagReason}` : "Flagged for review"}
+                        >
+                          <Flag size={11} />
+                          Flagged for review
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => handleOpenFlag(review)}
+                          title="Flag this review"
+                          className="p-2 text-slate-300 hover:text-amber-500 hover:bg-amber-50 rounded-lg transition-all"
+                        >
+                          <Flag size={16} />
+                        </button>
+                      )}
                     </div>
                   </div>
 
@@ -871,6 +1020,18 @@ export default function ReviewsPage() {
             onClose={() => setReplyTarget(null)}
             onSubmit={handleSubmitReply}
             submitting={submitting}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Flag Modal */}
+      <AnimatePresence>
+        {flagTarget && (
+          <FlagModal
+            review={flagTarget}
+            onClose={() => setFlagTarget(null)}
+            onSubmit={handleSubmitFlag}
+            submitting={flagSaving}
           />
         )}
       </AnimatePresence>
