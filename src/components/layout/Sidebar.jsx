@@ -5,7 +5,7 @@ import { useSidebarStore } from "@/stores/sidebarStore";
 import { useAuthStore } from "@/stores/authStore";
 import { toast } from "sonner";
 import { loadSupplierProfile } from "@/features/auth/api";
-import { LogOut, ChevronLeft, ChevronRight, Menu, LayoutDashboard, Package, Ticket, CalendarDays, Users, DollarSign, Star, Bell, BarChart3, BadgeCheck, Settings, CalendarX2, BadgePercent, MapPinned } from "lucide-react";
+import { LogOut, ChevronLeft, ChevronRight, Menu, LayoutDashboard, Package, Ticket, CalendarDays, Users, DollarSign, Star, Bell, BarChart3, BadgeCheck, Settings, CalendarX2, BadgePercent, MapPinned, ShieldCheck } from "lucide-react";
 import OptimizedImage from "@/components/shared/OptimizedImage";
 import { useTeamRole } from "@/hooks/useTeamRole";
 
@@ -20,8 +20,9 @@ const allNavItems = [
   { label: "Customers", path: "/chat", icon: <Users size={20} />, permission: "chat.view" },
   { label: "Finance", path: "/finance", icon: <DollarSign size={20} />, permission: "earnings.view" },
   { label: "Reviews", path: "/reviews", icon: <Star size={20} />, permission: "reviews.view" },
-  { label: "Notifications", path: "/notifications", icon: <Bell size={20} />, permission: null },
-  { label: "Analytics", path: "/analytics", icon: <BarChart3 size={20} />, permission: null },
+{ label: "Notifications", path: "/notifications", icon: <Bell size={20} />, permission: null },
+{ label: "Verification", path: "/verification", icon: <ShieldCheck size={20} />, permission: null },
+{ label: "Analytics", path: "/analytics", icon: <BarChart3 size={20} />, permission: null },
   { label: "Settings", path: "/settings", icon: <Settings size={20} />, permission: null },
 ];
 

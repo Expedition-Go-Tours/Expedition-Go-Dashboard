@@ -6,7 +6,6 @@ import {
 
 import { Loader2, RefreshCw, ArrowUpRight, ShoppingBag, CheckCircle2, Star, DollarSign, MessageCircle, AlertTriangle, ClipboardList, MapPin, TrendingUp, Bell, Check, CalendarX2 } from "lucide-react";
 import StatusBadge from "@/components/shared/StatusBadge";
-import CancellationGauge from "@/components/shared/CancellationGauge";
 import OptimizedImage from "@/components/shared/OptimizedImage";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { fetchSupplierDashboard } from "../api";
@@ -126,10 +125,6 @@ export default function DashboardPage() {
   const activeBookings = bookings.confirmed || 0;
   const totalRevenue = Number(earnings.totalEarnings) || 0;
   const pendingBookings = bookings.pending || 0;
-  const cancelledBookings = bookings.cancelled || 0;
-  const totalBookings = bookings.total || 0;
-
-  const cancellationRate = totalBookings > 0 ? Math.round((cancelledBookings / totalBookings) * 100) : 0;
 
   const statsValues = [
     { value: activeBookings + pendingBookings },
@@ -145,8 +140,6 @@ export default function DashboardPage() {
       month, revenue: i === now.getMonth() ? totalRevenue : Math.round(totalRevenue * (i + 1) / (now.getMonth() + 1) * 0.7),
     }));
   }, [totalRevenue]);
-
-  const gaugeLabel = cancellationRate < 2 ? "Excellent" : cancellationRate < 5 ? "Warning" : "Poor";
 
   return (
     <div className="p-5 md:p-6 max-w-7xl mx-auto space-y-5">

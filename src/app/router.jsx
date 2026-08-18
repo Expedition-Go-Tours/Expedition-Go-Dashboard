@@ -26,6 +26,7 @@ import AuthCallback from "@/features/auth/pages/AuthCallback";
 import LoginPage from "@/features/auth/pages/LoginPage";
 
 import SupplierStatusPage from "@/features/supplier/pages/SupplierStatusPage";
+import VerificationPage from "@/features/supplier/pages/VerificationPage";
 
 import TeamInvitePage from "@/pages/TeamInvitePage";
 
@@ -71,6 +72,7 @@ export const router = createBrowserRouter([
               { path: "reviews", element: <ReviewsPage /> },
               { path: "finance", element: <FinancePage /> },
               { path: "notifications", element: <NotificationsPage /> },
+              { path: "verification", element: <VerificationPage /> },
               { path: "settings", element: <SettingsPage /> },
               { path: "chat", element: <ChatPage /> },
               { path: "customers", element: <Navigate to="/chat" replace /> },

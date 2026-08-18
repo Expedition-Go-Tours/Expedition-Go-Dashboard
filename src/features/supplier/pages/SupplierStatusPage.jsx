@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Loader2,
   Clock,
@@ -20,6 +20,8 @@ import {
   getAuthToken,
 } from "@/stores/authStore";
 import { loadSupplierProfile } from "@/features/auth/api";
+import { replaceDocument } from "@/features/supplier/api";
+import { toast } from "sonner";
 import { formatDate } from "@/lib/utils";
 
 const STATUS_CONFIG = {
@@ -65,7 +67,25 @@ const STATUS_CONFIG = {
     title: "Application Rejected",
     description: "Your supplier application was not approved at this time.",
   },
+  EXPIRED: {
+    icon: XCircle,
+    color: "text-[#991b1b]",
+    bg: "bg-[#fee2e2]",
+    title: "Documents Expired",
+    description: "A required licence or certificate has expired. Upload a renewed copy to restore your account.",
+  },
 };
+
+const DOC_STATUS_STYLES = {
+  APPROVED: "bg-[#dcfce7] text-[#166534]",
+  REJECTED: "bg-[#fee2e2] text-[#991b1b]",
+  REPLACEMENT_REQUESTED: "bg-[#fef3c7] text-[#92400e]",
+  EXPIRED: "bg-[#fee2e2] text-[#991b1b]",
+  PENDING: "bg-[#dbeafe] text-[#1e40af]",
+};
+
+const DOC_LABEL = (type) =>
+  (type || "Other").replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
 export default function SupplierStatusPage() {
   const navigate = useNavigate();
@@ -245,6 +265,33 @@ export default function SupplierStatusPage() {
           </div>
         )}
 
+        {/* Documents */}
+        {supplierProfile?.documents?.length > 0 && (
+          <div className="mb-6">
+            <div className="mb-3 flex items-center gap-2">
+              <FileText size={15} className="text-[#044b3b]" />
+              <h2 className="text-sm font-bold text-[#1e293b]">Required documents</h2>
+            </div>
+            <div className="space-y-2">
+              {supplierProfile.documents.map((doc) => (
+                <DocumentStatusRow key={doc.id} doc={doc} onReplaced={() => window.location.reload()} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {canProceed && (
+          <div className="mb-3">
+            <button
+              onClick={() => navigate("/verification")}
+              className="w-full inline-flex items-center justify-center gap-2 px-6 py-2.5 border border-[#044b3b] text-[#044b3b] rounded-lg text-sm font-medium hover:bg-[#f0fdf4] transition-colors"
+            >
+              <Shield size={16} />
+              <span>Manage Verification</span>
+            </button>
+          </div>
+        )}
+
         {canProceed && (
           <button
             onClick={() => navigate("/")}
@@ -279,6 +326,60 @@ export default function SupplierStatusPage() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function DocumentStatusRow({ doc, onReplaced }) {
+  const inputRef = useRef(null);
+  const [uploading, setUploading] = useState(false);
+  const replaceable = ["REJECTED", "REPLACEMENT_REQUESTED", "EXPIRED"].includes(doc.status);
+  const style = DOC_STATUS_STYLES[doc.status] || "bg-[#f1f5f9] text-[#64748b]";
+
+  const handleFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      await replaceDocument(doc.id, file);
+      toast.success("Document re-uploaded — it's back under review");
+      onReplaced();
+    } catch {
+      toast.error("Failed to upload replacement");
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-3 rounded-lg border border-[#eaeaea] bg-white px-3 py-2.5">
+      <FileText size={15} className="shrink-0 text-[#64748b]" />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium text-[#1e293b]">{DOC_LABEL(doc.type)}</p>
+        <div className="mt-0.5 flex flex-wrap items-center gap-2">
+          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${style}`}>
+            {doc.status.replace(/_/g, " ")}
+          </span>
+          {doc.expiryDate && (
+            <span className="text-[11px] text-[#64748b]">expires {formatDate(doc.expiryDate)}</span>
+          )}
+        </div>
+      </div>
+      {replaceable && (
+        <>
+          <input ref={inputRef} type="file" className="hidden" accept="image/*,.pdf" onChange={handleFile} />
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            disabled={uploading}
+            className="inline-flex items-center gap-1 rounded-lg bg-[#044b3b] px-2.5 py-1.5 text-[11px] font-semibold text-white transition hover:bg-[#033629] disabled:opacity-60"
+          >
+            {uploading ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+            {uploading ? "Uploading" : "Re-upload"}
+          </button>
+        </>
+      )}
     </div>
   );
 }

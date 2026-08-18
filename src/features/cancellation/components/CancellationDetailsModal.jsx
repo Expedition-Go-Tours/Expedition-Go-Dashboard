@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { X, CalendarX2, AlertTriangle, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, Download } from "lucide-react";
+import { X, CalendarX2, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, Download } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
 const SORT_FIELDS = {

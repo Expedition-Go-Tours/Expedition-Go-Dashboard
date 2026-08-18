@@ -1,4 +1,4 @@
-import { CalendarX2, ChevronDown } from "lucide-react";
+import { CalendarX2 } from "lucide-react";
 import CancellationProgressBar from "./CancellationProgressBar";
 
 const STATUS_CONFIG = {
@@ -9,13 +9,7 @@ const STATUS_CONFIG = {
   "Building performance record": { color: "bg-blue-100 text-blue-800 border-blue-200", icon: "📊", label: "Building performance record" },
 };
 
-const PERIOD_OPTIONS = [
-  { value: 30, label: "Last 30 days" },
-  { value: 90, label: "Last 90 days" },
-  { value: 365, label: "Last 12 months" },
-];
-
-export default function CancellationCard({ summary, days, onDaysChange, onViewDetails }) {
+export default function CancellationCard({ summary, onViewDetails }) {
   const rate = summary?.cancellationRate ?? 0;
   const status = summary?.status ?? "Building performance record";
   const confirmed = summary?.confirmed ?? 0;

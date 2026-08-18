@@ -13,13 +13,11 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { toast } from "sonner";
-import StatusBadge from "@/components/shared/StatusBadge";
 import {
-  BOOKING_STATUSES,
   DEFAULT_PAGE_SIZE,
   PAGE_SIZE_OPTIONS,
 } from "@/lib/constants";
-import { formatCurrency, cn } from "@/lib/utils";
+import { formatCurrency } from "@/lib/utils";
 import DatePicker from "@/components/forms/DatePicker";
 import { fetchSupplierBookings, updateBookingStatus } from "../api";
 import { getAuthToken } from "@/stores/authStore";
