@@ -8,7 +8,7 @@
  *   of its booking flow (DIRECT or EXTERNAL).
  *
  * URL shapes:
- *   - https://travioafrica.com/tours/{slug}          (matches backend's own external links)
+ *   - https://travioafrica.com/tour/{slug}          (matches the TravioAfrica router — singular)
  *   - https://expeditiongotours.vercel.app/tour/{slug} (matches the ExpeditionGo router)
  */
 import { Compass, Plane } from "lucide-react";
@@ -27,7 +27,7 @@ export const TOUR_PLATFORMS = [
     baseUrl: TRAVIO_AFRICA_URL,
     icon: Compass,
     accent: "emerald",
-    pathFor: (slug) => `/tours/${slug}`,
+    pathFor: (slug) => `/tour/${slug}`,
   },
   {
     key: "expedition_go",
