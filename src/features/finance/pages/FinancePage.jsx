@@ -28,6 +28,7 @@ const METHOD_TYPES = [
 
 const INITIAL_METHOD_FORM = {
   type: "BANK_TRANSFER", accountName: "", accountNumber: "", bankName: "", bankCountry: "",
+  branchName: "", branchCode: "",
   mobileProvider: "", mobileNumber: "", paypalEmail: "", currency: "USD",
 };
 
@@ -43,7 +44,7 @@ const STAGGER = {
 
 export default function FinancePage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "earnings");
+  const activeTab = searchParams.get("tab") || "earnings";
   const [highlightedPayoutId, setHighlightedPayoutId] = useState(searchParams.get("payoutId") || null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -93,7 +94,7 @@ export default function FinancePage() {
     try {
       const payload = { type: methodForm.type, currency: methodForm.currency };
       if (methodForm.type === "BANK_TRANSFER") {
-        Object.assign(payload, { accountName: methodForm.accountName, accountNumber: methodForm.accountNumber, bankName: methodForm.bankName, bankCountry: methodForm.bankCountry });
+        Object.assign(payload, { accountName: methodForm.accountName, accountNumber: methodForm.accountNumber, bankName: methodForm.bankName, bankCountry: methodForm.bankCountry, branchName: methodForm.branchName || null, branchCode: methodForm.branchCode || null });
       } else { payload.paypalEmail = methodForm.paypalEmail; }
       await createPayoutMethod(payload);
       toast.success("Payout method added");
@@ -209,7 +210,7 @@ export default function FinancePage() {
         {TABS.map((tab) => {
           const Icon = tab.icon;
           return (
-            <button key={tab.key} onClick={() => setActiveTab(tab.key)}
+            <button key={tab.key} onClick={() => setSearchParams((prev) => ({ ...Object.fromEntries(prev), tab: tab.key }))}
               className={cn(
                 "relative flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium transition-colors",
                 activeTab === tab.key ? "text-white" : "text-slate-500 hover:text-slate-700"
@@ -468,6 +469,16 @@ export default function FinancePage() {
                             <input placeholder="e.g. Barclays" value={methodForm.bankName} onChange={(e) => setMethodForm((p) => ({ ...p, bankName: e.target.value }))}
                               className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-300 transition-all" required />
                           </div>
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-700 mb-1">Bank Branch <span className="font-normal text-slate-400">(optional)</span></label>
+                            <input placeholder="e.g. Oxford Circus" value={methodForm.branchName} onChange={(e) => setMethodForm((p) => ({ ...p, branchName: e.target.value }))}
+                              className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-300 transition-all" />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-700 mb-1">Branch Code <span className="font-normal text-slate-400">(optional)</span></label>
+                            <input placeholder="e.g. 20-33-44" value={methodForm.branchCode} onChange={(e) => setMethodForm((p) => ({ ...p, branchCode: e.target.value }))}
+                              className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-300 transition-all" />
+                          </div>
                           <div className="col-span-2">
                             <label className="block text-xs font-semibold text-slate-700 mb-1">Country</label>
                             <input placeholder="e.g. GH" value={methodForm.bankCountry} onChange={(e) => setMethodForm((p) => ({ ...p, bankCountry: e.target.value }))}
@@ -596,6 +607,14 @@ export default function FinancePage() {
                                       <div>
                                         <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Bank Name</p>
                                         <p className="text-sm font-medium text-slate-700 mt-1">{method.bankName || "—"}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Bank Branch</p>
+                                        <p className="text-sm font-medium text-slate-700 mt-1">{method.branchName || "—"}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Branch Code</p>
+                                        <p className="text-sm font-medium text-slate-700 mt-1">{method.branchCode || "—"}</p>
                                       </div>
                                       <div>
                                         <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Country</p>

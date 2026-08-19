@@ -6,21 +6,63 @@ import { useTeamRole } from "@/hooks/useTeamRole";
 import { cn } from "@/lib/utils";
 
 const allNavItems = [
-  { label: "Dashboard", path: "/", iconName: "LayoutDashboard", permission: null },
-  { label: "Products", path: "/products", iconName: "Package", permission: "tours.view" },
-  { label: "Bookings", path: "/bookings", iconName: "Ticket", permission: "bookings.view" },
-  { label: "Pickup Planner", path: "/pickup-planner", iconName: "MapPinned", permission: "bookings.view" },
-  { label: "Special Offers", path: "/special-offers", iconName: "BadgePercent", permission: "tours.manage" },
-  { label: "Cancellation", path: "/cancellation-rate", iconName: "CalendarX2", permission: null },
-  { label: "Availability", path: "/availability", iconName: "CalendarDays", permission: "tours.view" },
-  { label: "Customers", path: "/chat", iconName: "Users", permission: "chat.view" },
-  { label: "Finance", path: "/finance", iconName: "DollarSign", permission: "earnings.view" },
-  { label: "Reviews", path: "/reviews", iconName: "Star", permission: "reviews.view" },
-  { label: "Notifications", path: "/notifications", iconName: "Bell", permission: null },
-  { label: "Verification", path: "/verification", iconName: "ShieldCheck", permission: null },
-  { label: "Analytics", path: "/analytics", iconName: "BarChart3", permission: null },
-  { label: "Settings", path: "/settings", iconName: "Settings", permission: null },
+  { label: "Dashboard", path: "/", iconName: "LayoutDashboard", permission: null, keywords: ["home", "overview"] },
+  { label: "Products", path: "/products", iconName: "Package", permission: "tours.view", keywords: ["tour", "listing", "package"] },
+  { label: "Bookings", path: "/bookings", iconName: "Ticket", permission: "bookings.view", keywords: ["reservation", "order", "customer booking"] },
+  { label: "Pickup Planner", path: "/pickup-planner", iconName: "MapPinned", permission: "bookings.view", keywords: ["pickup", "map", "transport"] },
+  { label: "Special Offers", path: "/special-offers", iconName: "BadgePercent", permission: "tours.manage", keywords: ["discount", "deal", "promo", "offer"] },
+  { label: "Cancellation", path: "/cancellation-rate", iconName: "CalendarX2", permission: null, keywords: ["cancel", "refund", "rate"] },
+  { label: "Availability", path: "/availability", iconName: "CalendarDays", permission: "tours.view", keywords: ["calendar", "slots", "schedule"] },
+  { label: "Customers", path: "/chat", iconName: "Users", permission: "chat.view", keywords: ["chat", "messages", "inbox"] },
+  {
+    label: "Finance", path: "/finance", iconName: "DollarSign", permission: "earnings.view",
+    keywords: ["money", "payout", "bank", "paypal", "withdraw", "earnings"],
+    children: [
+      { label: "Earnings", tab: "earnings", keywords: ["revenue", "income", "commission"] },
+      { label: "Payouts", tab: "payouts", keywords: ["paid", "transfer", "payment"] },
+      { label: "Payout Methods", tab: "methods", keywords: ["bank", "paypal", "account", "withdraw"] },
+    ],
+  },
+  { label: "Reviews", path: "/reviews", iconName: "Star", permission: "reviews.view", keywords: ["rating", "feedback"] },
+  { label: "Notifications", path: "/notifications", iconName: "Bell", permission: null, keywords: ["alerts", "updates"] },
+  { label: "Verification", path: "/verification", iconName: "ShieldCheck", permission: null, keywords: ["verify", "identity", "badge"] },
+  { label: "Analytics", path: "/analytics", iconName: "BarChart3", permission: null, keywords: ["stats", "reports", "insights"] },
+  {
+    label: "Settings", path: "/settings", iconName: "Settings", permission: null,
+    keywords: ["account", "preferences", "configuration"],
+    children: [
+      { label: "Profile", tab: "profile", keywords: ["business", "contact", "info"] },
+      { label: "Notifications", tab: "notifications", keywords: ["alerts", "email"] },
+      { label: "Payout Settings", tab: "payouts", keywords: ["bank", "paypal", "payout", "withdraw"] },
+      { label: "Security", tab: "security", keywords: ["password", "two factor", "login"] },
+      { label: "Tax Information", tab: "tax", keywords: ["vat", "tin", "registration"] },
+      { label: "Booking Rules", tab: "booking-rules", keywords: ["policies", "cancellation"] },
+      { label: "Team", tab: "team", keywords: ["members", "roles", "invite", "staff"] },
+    ],
+  },
 ];
+
+const SEARCHABLE_TEXT = (item) => [item.label, item.parent, item.keywords || []].flat().join(" ").toLowerCase();
+
+function flattenNavItems(items) {
+  const out = [];
+  for (const item of items) {
+    out.push(item);
+    if (item.children) {
+      for (const child of item.children) {
+        out.push({
+          label: child.label,
+          parent: item.label,
+          path: `${item.path}?tab=${child.tab}`,
+          iconName: item.iconName,
+          permission: item.permission,
+          keywords: [...(item.keywords || []), ...(child.keywords || [])],
+        });
+      }
+    }
+  }
+  return out;
+}
 
 const RECENT_KEY = "supplier-search-recent";
 const MAX_RECENT = 6;
@@ -70,10 +112,11 @@ export default function SearchDropdown() {
   const { hasPermission } = useTeamRole();
 
   const navItems = useMemo(() => {
-    return allNavItems.filter((item) => {
+    const filtered = allNavItems.filter((item) => {
       if (!item.permission) return true;
       return hasPermission(item.permission);
     });
+    return flattenNavItems(filtered);
   }, [hasPermission]);
 
   const validPaths = useMemo(() => new Set(navItems.map((i) => i.path)), [navItems]);
@@ -96,7 +139,7 @@ export default function SearchDropdown() {
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return [];
-    return navItems.filter((i) => i.label.toLowerCase().includes(q));
+    return navItems.filter((i) => SEARCHABLE_TEXT(i).includes(q));
   }, [navItems, query]);
 
   const displayItems = query.trim() ? results : recentItems;
@@ -265,8 +308,15 @@ export default function SearchDropdown() {
                             : "text-[#1e293b] hover:bg-[#f8fafc]",
                         )}
                       >
-                        <span className="min-w-0 flex-1 truncate font-medium">
-                          {highlightMatch(item.label, query.trim())}
+                        <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                          <span className="truncate font-medium">
+                            {highlightMatch(item.label, query.trim())}
+                          </span>
+                          {item.parent && (
+                            <span className="truncate text-[11px] text-[#94a3a3]">
+                              in {item.parent}
+                            </span>
+                          )}
                         </span>
                         <span className="shrink-0 text-xs text-[#94a3a3]">{item.iconName.replace(/([A-Z])/g, " $1").trim()}</span>
                         {idx === highlight && (
