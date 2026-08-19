@@ -6,15 +6,19 @@ import { cn } from "@/lib/utils";
 import { getLivePlatforms } from "@/lib/platforms";
 
 /**
- * "Preview" control for a product card.
+ * "Preview" control for a product.
  * - 0 live platforms → disabled affordance ("Preview available once published").
  * - 1 live platform  → direct external link to that platform's tour page.
  * - 2 live platforms → animated popover to pick which platform to preview.
  *
- * Rendered through a portal so the popover is never clipped by a card's
- * `overflow-hidden`.
+ * Pass `label` (e.g. "Preview") to render a labeled pill button — used in the
+ * product detail header next to Edit / Create special offer. Without a label
+ * it renders as the compact icon control used on product cards.
+ *
+ * Rendered through a portal so the popover is never clipped by an
+ * `overflow-hidden` ancestor.
  */
-export default function PreviewMenu({ product, className }) {
+export default function PreviewMenu({ product, className, label }) {
   const live = useMemo(() => getLivePlatforms(product), [product]);
   const [open, setOpen] = useState(false);
   const triggerRef = useRef(null);
@@ -50,15 +54,31 @@ export default function PreviewMenu({ product, className }) {
     };
   }, [open]);
 
-  const iconBtn = "p-1.5 rounded-lg transition-colors";
+  // Compact icon control (cards) vs labeled pill button (detail header).
+  const triggerBase = label
+    ? "inline-flex items-center gap-1.5 h-8 px-3.5 rounded-lg text-xs font-medium transition-all"
+    : "p-1.5 rounded-lg transition-colors";
+
+  const content = (
+    <>
+      <ExternalLink size={label ? 13 : 14} />
+      {label && <span>{label}</span>}
+    </>
+  );
 
   if (live.length === 0) {
     return (
       <span
         title="Preview available once published"
-        className={cn(iconBtn, "text-slate-300 cursor-not-allowed", className)}
+        className={cn(
+          triggerBase,
+          label
+            ? "border border-slate-200 bg-white text-slate-300 cursor-not-allowed"
+            : "text-slate-300 cursor-not-allowed",
+          className,
+        )}
       >
-        <ExternalLink size={14} />
+        {content}
       </span>
     );
   }
@@ -72,9 +92,15 @@ export default function PreviewMenu({ product, className }) {
         rel="noopener noreferrer"
         title={`Preview on ${platform.name}`}
         aria-label={`Preview on ${platform.name}`}
-        className={cn(iconBtn, "text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors", className)}
+        className={cn(
+          triggerBase,
+          label
+            ? "border border-slate-200 bg-white text-slate-600 hover:border-emerald-300 hover:text-emerald-700"
+            : "text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors",
+          className,
+        )}
       >
-        <ExternalLink size={14} />
+        {content}
       </a>
     );
   }
@@ -89,13 +115,22 @@ export default function PreviewMenu({ product, className }) {
         aria-haspopup="menu"
         aria-expanded={open}
         className={cn(
-          iconBtn,
-          "text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors",
-          open && "text-emerald-600 bg-emerald-50",
+          triggerBase,
+          label
+            ? cn(
+                "border bg-white transition-all",
+                open
+                  ? "border-emerald-400 text-emerald-700 shadow-sm"
+                  : "border-slate-200 text-slate-600 hover:border-emerald-300 hover:text-emerald-700",
+              )
+            : cn(
+                "text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors",
+                open && "text-emerald-600 bg-emerald-50",
+              ),
           className,
         )}
       >
-        <ExternalLink size={14} />
+        {content}
       </button>
 
       {createPortal(

@@ -18,6 +18,7 @@ import { PRODUCT_STATUSES } from "@/lib/constants";
 import { formatCurrency, formatDate, formatTime, cn } from "@/lib/utils";
 import OptimizedImage from "@/components/shared/OptimizedImage";
 import { PickupGeoshapePreview } from "@/components/shared/PickupGeoshapeDrawer";
+import PreviewMenu from "@/components/shared/PreviewMenu";
 import { getUniqueCities } from "@/features/products/utils/getUniqueCities";
 import { ACCOMMODATION_LABELS } from "@/features/products/utils/itineraryConstants";
 import DeleteModal from "@/components/ui/DeleteModal";
@@ -497,6 +498,7 @@ export default function ProductDetailPage() {
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <StatusBadge status={tour.status} size="sm" />
+              <PreviewMenu product={tour} label="Preview" />
               {(tour.status === "ACTIVE" || tour.status === "PAUSED") && (
                 <button
                   onClick={() => navigate(`/special-offers/build/new/products?productId=${id}`)}
