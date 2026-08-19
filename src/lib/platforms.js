@@ -15,12 +15,17 @@
 import { Compass, Plane } from "lucide-react";
 import { config } from "@/config";
 
+// Env-backed with hard production fallbacks: a stale config module or a missing
+// env value must never disable the preview link for a live tour.
+const TRAVIO_AFRICA_URL = config.VITE_TRAVIO_AFRICA_URL || "https://travioafrica.com";
+const EXPEDITION_GO_URL = config.VITE_EXPEDITION_GO_URL || "https://expeditiongotours.vercel.app";
+
 export const TOUR_PLATFORMS = [
   {
     key: "travio_africa",
     name: "Travio Africa",
     domain: "travioafrica.com",
-    baseUrl: config.VITE_TRAVIO_AFRICA_URL,
+    baseUrl: TRAVIO_AFRICA_URL,
     icon: Compass,
     accent: "emerald",
     pathFor: (slug) => `/tours/${slug}`,
@@ -29,7 +34,7 @@ export const TOUR_PLATFORMS = [
     key: "expedition_go",
     name: "ExpeditionGo",
     domain: "expeditiongotours.vercel.app",
-    baseUrl: config.VITE_EXPEDITION_GO_URL,
+    baseUrl: EXPEDITION_GO_URL,
     icon: Plane,
     accent: "sky",
     pathFor: (slug) => `/tour/${slug}`,
