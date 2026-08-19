@@ -3,8 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import {
   User, Bell, CreditCard, Shield, FileText, ClipboardList, Users,
   Loader2, Upload, Trash2, X, Plus, Building2,
-  Wallet, Globe, MapPin, Clock, Phone, Camera, ExternalLink,
-  AtSign, Save, Key, Eye, EyeOff,
+  Wallet, Globe, MapPin, Clock, Phone, Save, Key, Eye, EyeOff,
   Landmark, Banknote, AlertTriangle, RefreshCw
 } from "lucide-react";
 import { toast } from "sonner";
@@ -30,6 +29,7 @@ import { cn } from "@/lib/utils";
 import { config } from "@/config";
 import { useTeamRole } from "@/hooks/useTeamRole";
 import { TEAM_ROLE_LABELS, TEAM_ROLE_COLORS } from "@/config/teamRoles";
+import SocialMediaManager from "../components/SocialMediaManager";
 
 const TABS = [
   { key: "profile", label: "Profile", icon: User },
@@ -128,7 +128,9 @@ function ProfileTab() {
   const [form, setForm] = useState({
     name: "", phone: "", language: "en", timezone: "UTC", email: "",
     description: "", address: "", city: "", country: "", region: "",
-    website: "", instagram: "", facebook: "", twitter: "", operatingHours: "",
+    website: "", operatingHours: "",
+    instagram: "", facebook: "", twitter: "",
+    tiktok: "", youtube: "", linkedin: "", whatsapp: "", pinterest: "",
   });
   const [initialForm, setInitialForm] = useState(null);
   const [logoFile, setLogoFile] = useState(null);
@@ -156,6 +158,9 @@ function ProfileTab() {
             region: bi.region || "", website: bi.website || "",
             instagram: bi.instagram || "", facebook: bi.facebook || "",
             twitter: bi.twitter || "", operatingHours: bi.operatingHours || "",
+            tiktok: bi.tiktok || "", youtube: bi.youtube || "",
+            linkedin: bi.linkedin || "", whatsapp: bi.whatsapp || "",
+            pinterest: bi.pinterest || "",
           };
           setForm(loaded);
           setInitialForm(loaded);
@@ -173,7 +178,7 @@ function ProfileTab() {
     try {
       await updateCurrentUser({ name: form.name, phone: form.phone, language: form.language, timezone: form.timezone });
       const user = await fetchCurrentUser();
-      if (user) useAuthStore.setState({ user });
+      if (user) useAuthStore.getState().updateUser(user);
       toast.success("Personal info updated");
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to update personal info");
@@ -187,15 +192,22 @@ function ProfileTab() {
         businessInfo: {
           description: form.description, address: form.address,
           city: form.city, country: form.country, region: form.region,
-          website: form.website, instagram: form.instagram,
-          facebook: form.facebook, twitter: form.twitter,
-          operatingHours: form.operatingHours,
+          website: form.website, operatingHours: form.operatingHours,
+          instagram: form.instagram, facebook: form.facebook, twitter: form.twitter,
+          tiktok: form.tiktok, youtube: form.youtube, linkedin: form.linkedin,
+          whatsapp: form.whatsapp, pinterest: form.pinterest,
         },
       });
       toast.success("Business profile updated");
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to update business profile");
     } finally { setSaving(false); }
+  };
+
+  // Social links persist to the backend immediately on add / edit / remove.
+  const handlePersistSocials = async (socials) => {
+    await updateBusinessProfile({ businessInfo: socials });
+    setInitialForm((prev) => (prev ? { ...prev, ...socials } : prev));
   };
 
   const handleLogoSelect = (e) => {
@@ -216,7 +228,7 @@ function ProfileTab() {
       const result = await uploadSupplierLogo(formData);
       if (result?.logoUrl) {
         setCurrentLogoUrl(result.logoUrl);
-        useAuthStore.setState((state) => ({ user: { ...state.user, logoUrl: result.logoUrl } }));
+        useAuthStore.getState().updateUser({ logoUrl: result.logoUrl });
         toast.success("Logo uploaded");
         setLogoFile(null); setLogoPreview(null);
       }
@@ -228,7 +240,7 @@ function ProfileTab() {
     try {
       await updateCurrentUser({ logoUrl: null });
       setCurrentLogoUrl(null);
-      useAuthStore.setState((state) => ({ user: { ...state.user, logoUrl: null } }));
+      useAuthStore.getState().updateUser({ logoUrl: null });
       toast.success("Logo removed");
     } catch { toast.error("Failed to remove logo"); }
   };
@@ -245,13 +257,17 @@ function ProfileTab() {
   const hasBusinessChanges = initialForm && JSON.stringify({
     description: form.description, address: form.address, city: form.city,
     country: form.country, region: form.region, website: form.website,
-    instagram: form.instagram, facebook: form.facebook, twitter: form.twitter,
     operatingHours: form.operatingHours,
+    instagram: form.instagram, facebook: form.facebook, twitter: form.twitter,
+    tiktok: form.tiktok, youtube: form.youtube, linkedin: form.linkedin,
+    whatsapp: form.whatsapp, pinterest: form.pinterest,
   }) !== JSON.stringify({
     description: initialForm.description, address: initialForm.address, city: initialForm.city,
     country: initialForm.country, region: initialForm.region, website: initialForm.website,
-    instagram: initialForm.instagram, facebook: initialForm.facebook, twitter: initialForm.twitter,
     operatingHours: initialForm.operatingHours,
+    instagram: initialForm.instagram, facebook: initialForm.facebook, twitter: initialForm.twitter,
+    tiktok: initialForm.tiktok, youtube: initialForm.youtube, linkedin: initialForm.linkedin,
+    whatsapp: initialForm.whatsapp, pinterest: initialForm.pinterest,
   });
 
   if (loading) return <LoadingSkeleton />;
@@ -465,26 +481,18 @@ function ProfileTab() {
 
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">Social Media Links</label>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="flex items-center gap-2">
-                <Camera size={16} className="text-pink-500 shrink-0" />
-                <input type="url" value={form.instagram} onChange={(e) => setForm((p) => ({ ...p, instagram: e.target.value }))}
-                  placeholder="Instagram URL"
-                  className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-300 transition-all" />
-              </div>
-              <div className="flex items-center gap-2">
-                <ExternalLink size={16} className="text-blue-600 shrink-0" />
-                <input type="url" value={form.facebook} onChange={(e) => setForm((p) => ({ ...p, facebook: e.target.value }))}
-                  placeholder="Facebook URL"
-                  className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-300 transition-all" />
-              </div>
-              <div className="flex items-center gap-2">
-                <AtSign size={16} className="text-sky-500 shrink-0" />
-                <input type="url" value={form.twitter} onChange={(e) => setForm((p) => ({ ...p, twitter: e.target.value }))}
-                  placeholder="Twitter/X URL"
-                  className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-300 transition-all" />
-              </div>
-            </div>
+            <SocialMediaManager
+              value={{
+                twitter: form.twitter, instagram: form.instagram, facebook: form.facebook,
+                tiktok: form.tiktok, youtube: form.youtube, linkedin: form.linkedin,
+                whatsapp: form.whatsapp, pinterest: form.pinterest,
+              }}
+              onChange={(next) => setForm((p) => ({ ...p, ...next }))}
+              onPersist={handlePersistSocials}
+            />
+            <p className="mt-2 text-xs text-slate-400">
+              Social links are saved to your public business profile automatically.
+            </p>
           </div>
 
           <div className="pt-2">
