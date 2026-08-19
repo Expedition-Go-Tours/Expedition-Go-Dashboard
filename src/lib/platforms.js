@@ -1,12 +1,11 @@
 /**
  * Public tour platforms — where a product can be live.
  *
- * - Travio Africa  (travioafrica.com): the main catalog. A tour is live here when
- *   its `status === "ACTIVE"` OR the ExpeditionGo listing is an EXTERNAL redirect
- *   (in which case the ExpeditionGo page points to the Travio Africa page).
- * - ExpeditionGo   (expeditiongotours.vercel.app): controlled separately via the
- *   `ExpeditionTour` record. A tour is live here when `expeditionTour.isActive === true`
- *   with a DIRECT booking flow.
+ * - Travio Africa  (travioafrica.com): the main catalog. Every ACTIVE tour is
+ *   automatically live here.
+ * - ExpeditionGo   (expeditiongotours.vercel.app): live whenever the tour is
+ *   published on Expedition Go (`expeditionTour.isActive === true`), regardless
+ *   of its booking flow (DIRECT or EXTERNAL).
  *
  * URL shapes:
  *   - https://travioafrica.com/tours/{slug}          (matches backend's own external links)
@@ -50,10 +49,9 @@ export function platformUrl(platform, slug) {
 
 /**
  * Determine which platform(s) a product is currently live on.
- * Flow-aware:
- *   - Travio Africa: `status === "ACTIVE"`, or an ACTIVE ExpeditionGo listing with
- *     an EXTERNAL booking flow (that listing redirects to the Travio Africa page).
- *   - ExpeditionGo: ACTIVE ExpeditionGo listing with a DIRECT booking flow.
+ *   - Travio Africa: every ACTIVE tour is automatically live there.
+ *   - ExpeditionGo: shown whenever `expeditionTour.isActive === true`, regardless
+ *     of booking flow (DIRECT or EXTERNAL).
  * @param {{ slug?: string, status?: string, expeditionTour?: { isActive?: boolean, bookingFlow?: string } }} product
  * @returns {{ platform: typeof TOUR_PLATFORMS[number], url: string }[]}
  */
@@ -63,20 +61,15 @@ export function getLivePlatforms(product) {
 
   const status = product?.status;
   const exp = product?.expeditionTour || {};
-  const onExpedition = exp.isActive === true;
-  const isExternal = exp.bookingFlow === "EXTERNAL";
 
   const [travio, expedition] = TOUR_PLATFORMS;
 
   const live = [];
-  const onTravio = status === "ACTIVE" || (onExpedition && isExternal);
-  const onExpeditionDirect = onExpedition && !isExternal;
-
-  if (onTravio) {
+  if (status === "ACTIVE") {
     const url = platformUrl(travio, slug);
     if (url) live.push({ platform: travio, url });
   }
-  if (onExpeditionDirect) {
+  if (exp.isActive === true) {
     const url = platformUrl(expedition, slug);
     if (url) live.push({ platform: expedition, url });
   }
