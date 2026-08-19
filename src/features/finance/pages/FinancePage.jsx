@@ -14,6 +14,7 @@ import {
   createPayoutMethod, deletePayoutMethod, fetchEarnings, fetchPayoutMethods, fetchPayouts,
 } from "../api";
 import { getAuthToken } from "@/stores/authStore";
+import { validatePayoutMethod } from "../utils/validatePayoutMethod";
 
 const TABS = [
   { key: "earnings", label: "Earnings", icon: DollarSign },
@@ -55,6 +56,7 @@ export default function FinancePage() {
   const [methods, setMethods] = useState([]);
   const [showMethodForm, setShowMethodForm] = useState(false);
   const [methodForm, setMethodForm] = useState(INITIAL_METHOD_FORM);
+  const [formErrors, setFormErrors] = useState({});
   const [savingMethod, setSavingMethod] = useState(false);
   const [expandedMethod, setExpandedMethod] = useState(null);
 
@@ -92,6 +94,13 @@ export default function FinancePage() {
   const handleAddMethod = async (e) => {
     e.preventDefault(); setSavingMethod(true);
     try {
+      const { ok, errors } = validatePayoutMethod(methodForm);
+      if (!ok) {
+        setFormErrors(errors);
+        const firstField = Object.keys(errors)[0];
+        toast.error(errors[firstField]);
+        return;
+      }
       const payload = { type: methodForm.type, currency: methodForm.currency };
       if (methodForm.type === "BANK_TRANSFER") {
         Object.assign(payload, { accountName: methodForm.accountName, accountNumber: methodForm.accountNumber, bankName: methodForm.bankName, bankCountry: methodForm.bankCountry, branchName: methodForm.branchName || null, branchCode: methodForm.branchCode || null });
@@ -100,9 +109,18 @@ export default function FinancePage() {
       toast.success("Payout method added");
       setShowMethodForm(false);
       setMethodForm(INITIAL_METHOD_FORM);
+      setFormErrors({});
       await loadData();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to add payout method");
+      const serverMessage = err.response?.data?.message || "Failed to add payout method";
+      // Backend validation messages are shaped as "body.<field>: <message>";
+      // surface them inline when the field is mapped on the form.
+      const match = String(serverMessage).match(/^body\.(\w+):\s*(.*)$/);
+      if (match && match[1] !== "type") {
+        setFormErrors((prev) => ({ ...prev, [match[1]]: match[2] }));
+      } else {
+        toast.error(serverMessage);
+      }
     } finally { setSavingMethod(false); }
   };
 
@@ -116,6 +134,8 @@ export default function FinancePage() {
       toast.error(err.response?.data?.message || "Failed to delete payout method");
     }
   };
+
+  const clearError = (field) => setFormErrors((p) => ({ ...p, [field]: undefined }));
 
   useEffect(() => {
     if (!highlightedPayoutId || payouts.length === 0) return;
@@ -456,41 +476,48 @@ export default function FinancePage() {
                         <div className="grid grid-cols-2 gap-3">
                           <div className="col-span-2">
                             <label className="block text-xs font-semibold text-slate-700 mb-1">Account Name</label>
-                            <input placeholder="e.g. John Doe" value={methodForm.accountName} onChange={(e) => setMethodForm((p) => ({ ...p, accountName: e.target.value }))}
-                              className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-300 transition-all" required />
-                          </div>
+                             <input placeholder="e.g. John Doe" value={methodForm.accountName} onChange={(e) => { setMethodForm((p) => ({ ...p, accountName: e.target.value })); clearError("accountName"); }}
+                               className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-300 transition-all" required />
+                             {formErrors.accountName && <p className="mt-1 text-[10px] font-medium text-red-600">{formErrors.accountName}</p>}
+                           </div>
                           <div>
                             <label className="block text-xs font-semibold text-slate-700 mb-1">Account Number</label>
-                            <input placeholder="e.g. 1234567890" value={methodForm.accountNumber} onChange={(e) => setMethodForm((p) => ({ ...p, accountNumber: e.target.value }))}
-                              className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-300 transition-all" required />
-                          </div>
+                             <input placeholder="e.g. 1234567890" value={methodForm.accountNumber} onChange={(e) => { setMethodForm((p) => ({ ...p, accountNumber: e.target.value })); clearError("accountNumber"); }}
+                               className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-300 transition-all" required />
+                             {formErrors.accountNumber && <p className="mt-1 text-[10px] font-medium text-red-600">{formErrors.accountNumber}</p>}
+                           </div>
                           <div>
                             <label className="block text-xs font-semibold text-slate-700 mb-1">Bank Name</label>
-                            <input placeholder="e.g. Barclays" value={methodForm.bankName} onChange={(e) => setMethodForm((p) => ({ ...p, bankName: e.target.value }))}
-                              className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-300 transition-all" required />
-                          </div>
+                             <input placeholder="e.g. Barclays" value={methodForm.bankName} onChange={(e) => { setMethodForm((p) => ({ ...p, bankName: e.target.value })); clearError("bankName"); }}
+                               className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-300 transition-all" required />
+                             {formErrors.bankName && <p className="mt-1 text-[10px] font-medium text-red-600">{formErrors.bankName}</p>}
+                           </div>
                           <div>
                             <label className="block text-xs font-semibold text-slate-700 mb-1">Bank Branch <span className="font-normal text-slate-400">(optional)</span></label>
-                            <input placeholder="e.g. Oxford Circus" value={methodForm.branchName} onChange={(e) => setMethodForm((p) => ({ ...p, branchName: e.target.value }))}
-                              className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-300 transition-all" />
-                          </div>
-                          <div>
-                            <label className="block text-xs font-semibold text-slate-700 mb-1">Branch Code <span className="font-normal text-slate-400">(optional)</span></label>
-                            <input placeholder="e.g. 20-33-44" value={methodForm.branchCode} onChange={(e) => setMethodForm((p) => ({ ...p, branchCode: e.target.value }))}
-                              className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-300 transition-all" />
-                          </div>
+                             <input placeholder="e.g. Oxford Circus" value={methodForm.branchName} onChange={(e) => { setMethodForm((p) => ({ ...p, branchName: e.target.value })); clearError("branchName"); }}
+                               className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-300 transition-all" />
+                             {formErrors.branchName && <p className="mt-1 text-[10px] font-medium text-red-600">{formErrors.branchName}</p>}
+                           </div>
+                           <div>
+                             <label className="block text-xs font-semibold text-slate-700 mb-1">Branch Code <span className="font-normal text-slate-400">(optional)</span></label>
+                             <input placeholder="e.g. 20-33-44" value={methodForm.branchCode} onChange={(e) => { setMethodForm((p) => ({ ...p, branchCode: e.target.value })); clearError("branchCode"); }}
+                               className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-300 transition-all" />
+                             {formErrors.branchCode && <p className="mt-1 text-[10px] font-medium text-red-600">{formErrors.branchCode}</p>}
+                           </div>
                           <div className="col-span-2">
                             <label className="block text-xs font-semibold text-slate-700 mb-1">Country</label>
-                            <input placeholder="e.g. GH" value={methodForm.bankCountry} onChange={(e) => setMethodForm((p) => ({ ...p, bankCountry: e.target.value }))}
-                              className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-300 transition-all" required />
-                          </div>
+                             <input placeholder="e.g. GH" value={methodForm.bankCountry} onChange={(e) => { setMethodForm((p) => ({ ...p, bankCountry: e.target.value })); clearError("bankCountry"); }}
+                               className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-300 transition-all" required />
+                             {formErrors.bankCountry && <p className="mt-1 text-[10px] font-medium text-red-600">{formErrors.bankCountry}</p>}
+                           </div>
                         </div>
                       ) : (
                         <div>
                           <label className="block text-xs font-semibold text-slate-700 mb-1">PayPal Email</label>
-                          <input type="email" placeholder="e.g. name@example.com" value={methodForm.paypalEmail} onChange={(e) => setMethodForm((p) => ({ ...p, paypalEmail: e.target.value }))}
-                            className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-300 transition-all" required />
-                        </div>
+                           <input type="email" placeholder="e.g. name@example.com" value={methodForm.paypalEmail} onChange={(e) => { setMethodForm((p) => ({ ...p, paypalEmail: e.target.value })); clearError("paypalEmail"); }}
+                             className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-300 transition-all" required />
+                           {formErrors.paypalEmail && <p className="mt-1 text-[10px] font-medium text-red-600">{formErrors.paypalEmail}</p>}
+                         </div>
                       )}
 
                       <button type="submit" disabled={savingMethod}
