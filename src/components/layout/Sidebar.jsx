@@ -5,6 +5,7 @@ import { useSidebarStore } from "@/stores/sidebarStore";
 import { useAuthStore } from "@/stores/authStore";
 import { toast } from "sonner";
 import { loadSupplierProfile } from "@/features/auth/api";
+import api from "@/lib/axios";
 import { LogOut, ChevronLeft, ChevronRight, Menu, LayoutDashboard, Package, Ticket, CalendarDays, Users, DollarSign, Star, Bell, BarChart3, BadgeCheck, Settings, CalendarX2, BadgePercent, MapPinned, ShieldCheck } from "lucide-react";
 import OptimizedImage from "@/components/shared/OptimizedImage";
 import { useTeamRole } from "@/hooks/useTeamRole";
@@ -50,6 +51,8 @@ export default function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const logoUrl = user?.logoUrl;
+  const [fetchedLogoUrl, setFetchedLogoUrl] = useState(null);
+  const [logoLoaded, setLogoLoaded] = useState(false);
   const [businessName, setBusinessName] = useState(null);
 const [logoutConfirmOpen, setShowLogoutConfirm] = useState(false);
   // Derived state: a collapsed sidebar can never show the confirm dialog.
@@ -71,6 +74,30 @@ const [logoutConfirmOpen, setShowLogoutConfirm] = useState(false);
       if (name) setBusinessName(name);
     });
   }, [user?.roles]);
+
+  // Company logo is fetched directly from the backend on mount so it always
+  // reflects the server even after a fresh login/refresh (the auth store is
+  // hydrated from localStorage, which may be stale). The fetched value is also
+  // persisted so future refreshes keep it without another request each render.
+  useEffect(() => {
+    if (!user?.roles?.includes("supplier")) return;
+    let cancelled = false;
+    api
+      .get("/users/me", { skipGlobalErrorHandler: true })
+      .then((res) => {
+        if (cancelled) return;
+        const fresh = res.data?.data?.user;
+        if (!fresh) return;
+        const logo = fresh.logoUrl || null;
+        setFetchedLogoUrl(logo);
+        setLogoLoaded(true);
+        useAuthStore.getState().updateUser({ logoUrl: logo });
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [user?.roles]);
+
+  const effectiveLogoUrl = logoLoaded ? fetchedLogoUrl : logoUrl;
 
   const statusStyle = SIDEBAR_STATUS_STYLES[supplierProfile?.status] || null;
 
@@ -166,9 +193,9 @@ const [logoutConfirmOpen, setShowLogoutConfirm] = useState(false);
         >
           <div className={`flex flex-col items-center gap-2 ${isCollapsed ? "" : "relative"}`}>
             <div className="relative shrink-0">
-              {logoUrl ? (
+              {effectiveLogoUrl ? (
                 <div className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-white/20">
-                  <OptimizedImage src={logoUrl} width={40} className="w-full h-full object-cover" />
+                  <OptimizedImage src={effectiveLogoUrl} width={40} className="w-full h-full object-cover" />
                 </div>
               ) : (
                 <div className="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center ring-2 ring-white/20">
