@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
-import axios from 'axios';
 import config from '@/config';
-import { getAuthToken, useAuthStore } from '@/stores/authStore';
+import { getAuthToken } from '@/stores/authStore';
+import { refreshAccessToken, getRefreshToken } from '@/lib/tokenRefresh';
 
 function decodeTokenPayload(token) {
   try {
@@ -14,9 +14,11 @@ function decodeTokenPayload(token) {
 }
 
 const REFRESH_BEFORE_MS = 5 * 60 * 1000;
+const ACTIVITY_REFRESH_THROTTLE_MS = 10 * 1000;
 
 export function useTokenRefresh() {
   const timerRef = useRef(null);
+  const lastActivityRefreshRef = useRef(0);
 
   useEffect(() => {
     const scheduleRefresh = () => {
@@ -38,26 +40,15 @@ export function useTokenRefresh() {
     };
 
     const refresh = async () => {
-      const token = getAuthToken();
-      if (!token) return;
-
-      const refreshToken = localStorage.getItem('refresh_token');
-      if (!refreshToken) return;
+      if (!getAuthToken()) return;
+      if (!getRefreshToken()) return;
 
       try {
-        const res = await axios.post(
-          `${config.api.baseURL}/auth/refresh`,
-          { refreshToken },
-          { skipGlobalErrorHandler: true }
-        );
-        const data = res.data?.data;
-        if (data?.accessToken) {
-          localStorage.setItem('auth_token', data.accessToken);
-          if (data?.refreshToken) {
-            localStorage.setItem('refresh_token', data.refreshToken);
-          }
-          useAuthStore.getState().setToken(data.accessToken);
-        }
+        // refreshAccessToken is single-flight: the timer, activity events and
+        // the axios 401 interceptor share one /auth/refresh call, so the
+        // backend's rotating refresh token can't be raced into a revoked-token
+        // 401.
+        await refreshAccessToken();
       } catch (err) {
         if (config.isDevelopment()) {
           console.error('[TokenRefresh] Failed to proactively refresh token:', err?.response?.status, err?.message);
@@ -76,8 +67,17 @@ export function useTokenRefresh() {
       if (!decoded?.exp) return;
       const expiresAt = decoded.exp * 1000;
       const timeUntilExpiry = expiresAt - Date.now();
+
       if (timeUntilExpiry < REFRESH_BEFORE_MS + 10_000) {
-        refresh();
+        // Throttle activity-triggered refreshes; a burst of clicks/keystrokes
+        // must not spawn a burst of refresh requests.
+        const now = Date.now();
+        if (now - lastActivityRefreshRef.current >= ACTIVITY_REFRESH_THROTTLE_MS) {
+          lastActivityRefreshRef.current = now;
+          refresh();
+        } else {
+          scheduleRefresh();
+        }
       } else {
         scheduleRefresh();
       }

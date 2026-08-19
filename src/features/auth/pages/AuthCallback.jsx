@@ -4,7 +4,7 @@ import { Loader2, CheckCircle2, AlertCircle, ArrowRight, Shield } from "lucide-r
 import { toast } from "sonner";
 import { getLoginErrorMessage, fetchCurrentUser, loadSupplierProfile } from "@/features/auth/api";
 import { useAuthStore } from "@/stores/authStore";
-import { getPostLoginPath } from "@/features/auth/hooks/useSupplierLogin";
+import { getPostLoginPath, getSafeReturnUrl } from "@/features/auth/hooks/useSupplierLogin";
 
 export default function AuthCallback() {
   const navigate = useNavigate();
@@ -53,7 +53,7 @@ export default function AuthCallback() {
 
         setStatus("success");
 
-        const returnUrl = localStorage.getItem("auth_return_url");
+        const returnUrl = getSafeReturnUrl();
         const redirectTo = returnUrl || getPostLoginPath(supplierProfile);
 
         setTimeout(() => {
@@ -105,13 +105,13 @@ export default function AuthCallback() {
         {status === "success" && (
           <button
             onClick={() => {
-              const returnUrl = localStorage.getItem("auth_return_url");
+              const returnUrl = getSafeReturnUrl();
               localStorage.removeItem("auth_return_url");
               navigate(returnUrl || "/", { replace: true });
             }}
             className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#044b3b] text-white rounded-lg text-sm font-medium hover:bg-[#033629] transition-colors"
           >
-            <span>{localStorage.getItem("auth_return_url") ? "Continue Where You Left Off" : "Go to Dashboard"}</span>
+            <span>{getSafeReturnUrl() ? "Continue Where You Left Off" : "Go to Dashboard"}</span>
             <ArrowRight size={16} />
           </button>
         )}

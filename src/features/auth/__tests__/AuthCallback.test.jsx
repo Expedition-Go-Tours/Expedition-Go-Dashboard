@@ -25,6 +25,7 @@ vi.mock('@/features/auth/api', () => ({
 
 vi.mock('@/features/auth/hooks/useSupplierLogin', () => ({
   getPostLoginPath: () => '/',
+  getSafeReturnUrl: () => null,
 }));
 
 describe('AuthCallback', () => {

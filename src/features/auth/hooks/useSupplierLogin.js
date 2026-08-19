@@ -9,8 +9,30 @@ import {
 import { useAuthStore, canAccessSupplierDashboard } from "@/stores/authStore";
 import api from "@/lib/axios";
 
+/**
+ * Read the stored post-login return URL, but only accept a real internal path.
+ * Never trust "/login" or the auth-callback routes — landing back on those after
+ * login is what previously produced a redirect loop and a blank screen.
+ */
+export function getSafeReturnUrl() {
+  if (typeof window === "undefined") return null;
+  const raw = localStorage.getItem("auth_return_url");
+  if (!raw) return null;
+
+  try {
+    const url = new URL(raw, window.location.origin);
+    if (url.origin !== window.location.origin) return null;
+    if (!url.pathname.startsWith("/")) return null;
+    if (url.pathname === "/login" || url.pathname.startsWith("/login/")) return null;
+    if (url.pathname === "/auth/callback" || url.pathname.startsWith("/auth/")) return null;
+    return url.pathname + url.search + url.hash;
+  } catch {
+    return null;
+  }
+}
+
 export function getPostLoginPath(supplierProfile, isTeamMember) {
-  const returnUrl = localStorage.getItem("auth_return_url");
+  const returnUrl = getSafeReturnUrl();
 
   if (returnUrl) {
     return returnUrl;

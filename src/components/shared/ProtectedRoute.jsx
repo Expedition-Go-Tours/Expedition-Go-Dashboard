@@ -81,14 +81,17 @@ export default function ProtectedRoute({ requireAdmin = false }) {
     };
   }, [needsProfileLookup, authToken, setSupplierProfile]);
 
+  useEffect(() => {
+    if (isAuthenticated && !authToken) {
+      useAuthStore.getState().setUnauthenticated();
+    }
+  }, [isAuthenticated, authToken]);
+
   if (!hasHydrated) {
     return <SessionLoadingScreen />;
   }
 
   if (!isAuthenticated || !authToken) {
-    if (isAuthenticated && !authToken) {
-      useAuthStore.getState().setUnauthenticated();
-    }
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 

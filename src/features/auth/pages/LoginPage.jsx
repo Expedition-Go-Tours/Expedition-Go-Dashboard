@@ -54,11 +54,13 @@ const stagger = {
 export default function LoginPage() {
   const { completeLoginWithEmail, completeLoginFromToken, loading, error, setError } = useSupplierLogin();
   const [searchParams] = useSearchParams();
-
   const redirect = searchParams.get("redirect");
-  if (redirect) {
-    localStorage.setItem("auth_return_url", redirect);
-  }
+
+  useEffect(() => {
+    if (redirect) {
+      localStorage.setItem("auth_return_url", redirect);
+    }
+  }, [redirect]);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
