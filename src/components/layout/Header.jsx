@@ -1,5 +1,6 @@
 import { ChevronDown, LogOut, User, Mail, Loader2 } from "lucide-react";
 import NotificationBell from "@/features/notifications/components/NotificationBell";
+import SearchDropdown from "@/components/layout/SearchDropdown";
 import { useSidebarStore } from "@/stores/sidebarStore";
 import { useAuthStore } from "@/stores/authStore";
 import { useState } from "react";
@@ -36,8 +37,10 @@ export default function Header() {
         isCollapsed ? "lg:left-[64px]" : "lg:left-[270px]"
       } left-0`}
     >
-      <div className="flex-1 min-w-0 ml-10 lg:ml-0" />
-
+      <div className="flex items-center ml-12 lg:ml-0">
+        <SearchDropdown />
+      </div>
+      <div className="flex-1 min-w-0" />
       <div className="flex items-center gap-2 sm:gap-3">
         <NotificationBell />
 
