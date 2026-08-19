@@ -12,6 +12,7 @@ import { PRODUCT_STATUSES } from "@/lib/constants";
 import { formatCurrency, formatDate, cn } from "@/lib/utils";
 import { deleteProduct, productsListQuery, PRODUCTS_LIST_KEY } from "@/features/products/api";
 import EmptyState from "@/components/shared/EmptyState";
+import PreviewMenu from "@/components/shared/PreviewMenu";
 import { getAuthToken, useAuthStore } from "@/stores/authStore";
 import OptimizedImage from "@/components/shared/OptimizedImage";
 import DeleteModal from "@/components/ui/DeleteModal";
@@ -519,6 +520,7 @@ export default function ProductsListPage() {
                         >
                           <Eye size={14} />
                         </button>
+                        <PreviewMenu product={product} />
                         {usingSupplierEndpoint && (
                           <>
                             <button
@@ -612,6 +614,7 @@ export default function ProductsListPage() {
                             <button onClick={() => navigate(`/special-offers/build/new/products?productId=${product.id}`)} className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" title="Create special offer"><Percent size={14} /></button>
                           )}
                           <button onClick={() => navigate(`/products/${product.id}`)} className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" title="View"><Eye size={14} /></button>
+                          <PreviewMenu product={product} />
                           {usingSupplierEndpoint && (
                             <>
                               <button onClick={() => navigate(`/products/build/${product.id}/type`)} className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" title="Edit"><Edit size={14} /></button>

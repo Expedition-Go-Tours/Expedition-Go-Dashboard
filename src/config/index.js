@@ -103,6 +103,10 @@ const env = {
   VITE_STRIPE_PUBLIC_KEY: envString(import.meta.env.VITE_STRIPE_PUBLIC_KEY, ''),
   VITE_INTERCOM_APP_ID: envString(import.meta.env.VITE_INTERCOM_APP_ID, ''),
 
+  // Public platforms (live product preview URLs)
+  VITE_TRAVIO_AFRICA_URL: envString(import.meta.env.VITE_TRAVIO_AFRICA_URL, 'https://travioafrica.com'),
+  VITE_EXPEDITION_GO_URL: envString(import.meta.env.VITE_EXPEDITION_GO_URL, 'https://expeditiongotours.vercel.app'),
+
   // Support
   VITE_ADMIN_SUPPORT_ID: envString(import.meta.env.VITE_ADMIN_SUPPORT_ID, ''),
 
