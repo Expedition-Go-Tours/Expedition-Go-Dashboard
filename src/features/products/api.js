@@ -152,8 +152,8 @@ export const productsListQuery = (useSupplier) => ({
   queryKey: PRODUCTS_LIST_KEY(useSupplier),
   queryFn: async () => {
     const res = useSupplier
-      ? await listMyProducts({ limit: 100 })
-      : await listProducts({ limit: 100 });
+      ? await listMyProducts({ limit: 200 })
+      : await listProducts({ limit: 200 });
     return { tours: res.data?.data?.tours || [], useSupplier };
   },
 });
