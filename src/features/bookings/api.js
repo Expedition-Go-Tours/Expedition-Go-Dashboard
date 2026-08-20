@@ -11,6 +11,11 @@ export function mapBookingRow(booking) {
     customerEmail: booking.customer?.email || "",
     customerPhone: booking.customer?.phone || "",
     customerPhoto: booking.customer?.photoURL || "",
+    // Lead traveler entered on the storefront (the person going on the trip).
+    // Falls back to the booking-owner account when not provided (legacy pay-now).
+    leadTravelerName: booking.leadTravelerName || booking.customer?.name || "—",
+    leadTravelerEmail: booking.leadTravelerEmail || booking.customer?.email || "",
+    leadTravelerPhone: booking.leadTravelerPhone || booking.customer?.phone || "",
     tourName: booking.tour?.title || "—",
     tourId: booking.tourId,
     tourPhoto: booking.tour?.photos?.[0] || "",

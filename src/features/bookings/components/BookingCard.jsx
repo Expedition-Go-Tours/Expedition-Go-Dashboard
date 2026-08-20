@@ -298,25 +298,28 @@ export default function BookingCard({
                     />
                   ) : (
                     <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-sm font-semibold text-slate-600 shrink-0">
-                      {(booking.customerName || "?").charAt(0)}
+                      {(booking.leadTravelerName || "?").charAt(0)}
                     </div>
                   )}
                   <div>
                     <p className="text-sm font-medium text-slate-900">
-                      {booking.customerName}
+                      {booking.leadTravelerName}
                     </p>
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5">
-                      {booking.customerEmail && (
+                      {booking.leadTravelerEmail && (
                         <span className="text-xs text-slate-500">
-                          {booking.customerEmail}
+                          {booking.leadTravelerEmail}
                         </span>
                       )}
-                      {booking.customerPhone && (
+                      {booking.leadTravelerPhone && (
                         <span className="text-xs text-slate-500">
-                          {booking.customerPhone}
+                          {booking.leadTravelerPhone}
                         </span>
                       )}
                     </div>
+                    {booking.customerName && booking.customerName !== booking.leadTravelerName && (
+                      <p className="text-xs text-slate-400 mt-1">Booked by {booking.customerName}</p>
+                    )}
                   </div>
                 </div>
               </div>
