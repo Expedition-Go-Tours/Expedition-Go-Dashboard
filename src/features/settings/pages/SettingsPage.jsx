@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
-  User, Bell, CreditCard, Shield, FileText, ClipboardList, Users,
+  User, Bell, CreditCard, Shield, FileText, Users,
   Loader2, Upload, Trash2, X, Plus, Building2,
   Wallet, Globe, MapPin, Clock, Phone, Save, Key, Eye, EyeOff,
   Landmark, Banknote, AlertTriangle, RefreshCw
@@ -18,7 +18,6 @@ import {
   fetchBusinessProfile, updateBusinessProfile,
   fetchNotificationPreferences, updateNotificationPreferences,
   fetchTaxInfo, updateTaxInfo,
-  fetchBookingRules, updateBookingRules,
   fetchPayoutMethods, createPayoutMethod, deletePayoutMethod,
   fetchPayouts,
   fetchTeamMembers, inviteTeamMember, removeTeamMember, updateTeamMemberRole,
@@ -37,7 +36,6 @@ const TABS = [
   { key: "payouts", label: "Payout Settings", icon: Banknote },
   { key: "security", label: "Security", icon: Shield },
   { key: "tax", label: "Tax Information", icon: FileText },
-  { key: "booking-rules", label: "Booking Rules", icon: ClipboardList },
   { key: "team", label: "Team", icon: Users },
 ];
 
@@ -54,7 +52,7 @@ const FADE_UP = {
 
 export default function SettingsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = searchParams.get("tab") || "profile";
+  const requestedTab = searchParams.get("tab") || "profile";
   const { canManageTeam, canManageFinance, isOwner, teamRole } = useTeamRole();
 
   const filteredTabs = TABS.filter((tab) => {
@@ -63,6 +61,8 @@ export default function SettingsPage() {
     if (tab.key === "notifications") return isOwner;
     return true;
   });
+  // Guard against a stale/removed tab in the URL (e.g. the removed booking-rules tab).
+  const activeTab = filteredTabs.some((t) => t.key === requestedTab) ? requestedTab : "profile";
 
   return (
     <div className="p-5 md:p-6 max-w-5xl mx-auto">
@@ -114,7 +114,6 @@ export default function SettingsPage() {
         {activeTab === "payouts" && <PayoutsTab key="payouts" />}
         {activeTab === "security" && <SecurityTab key="security" />}
         {activeTab === "tax" && <TaxTab key="tax" />}
-        {activeTab === "booking-rules" && <BookingRulesTab key="booking-rules" />}
         {activeTab === "team" && <TeamTab key="team" />}
       </AnimatePresence>
     </div>
@@ -1174,136 +1173,6 @@ function TaxTab() {
               Your tax information is required for payment processing and regulatory compliance.
               This information is kept secure and only shared with our payment partners when necessary.
             </p>
-          </div>
-        </div>
-      </div>
-    </motion.div>
-  );
-}
-
-const BOOKING_RULES_DEFAULTS = {
-  confirmationType: "INSTANT",
-  maxTravelersPerBooking: 15,
-  minAdvanceHours: 24,
-  maxAdvanceDays: 365,
-  cancellationPolicy: "Free cancellation up to 24 hours before start time",
-  cancellationWindowHours: 24,
-};
-
-function BookingRulesTab() {
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [initialForm, setInitialForm] = useState(null);
-  const [form, setForm] = useState(BOOKING_RULES_DEFAULTS);
-
-  useEffect(() => {
-    fetchBookingRules()
-      .then((data) => {
-        if (data) {
-          setForm((prev) => ({ ...prev, ...data }));
-          setInitialForm({ ...BOOKING_RULES_DEFAULTS, ...data });
-        }
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
-
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      await updateBookingRules(form);
-      toast.success("Booking rules updated");
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to update booking rules");
-    } finally { setSaving(false); }
-  };
-
-  if (loading) return <LoadingSkeleton />;
-
-  return (
-    <motion.div variants={FADE_UP} initial="initial" animate="animate" exit="exit" className="space-y-6">
-      <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
-        <div className="px-6 py-5 border-b border-slate-100 flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-emerald-50 flex items-center justify-center">
-            <ClipboardList size={16} className="text-emerald-600" />
-          </div>
-          <div>
-            <h2 className="text-sm font-semibold text-slate-800">Default Booking Rules</h2>
-            <p className="text-xs text-slate-500">Default settings applied to all new tours</p>
-          </div>
-        </div>
-        <div className="px-6 py-5 space-y-4 max-w-lg">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Confirmation Type</label>
-            <div className="grid grid-cols-2 gap-3">
-              {[
-                { value: "INSTANT", label: "Instant", desc: "Auto-confirm bookings" },
-                { value: "MANUAL", label: "Manual", desc: "Review before confirming" },
-              ].map((opt) => (
-                <button key={opt.value} type="button"
-                  onClick={() => setForm((p) => ({ ...p, confirmationType: opt.value }))}
-                  className={cn(
-                    "p-3.5 rounded-xl border-2 text-left transition-all",
-                    form.confirmationType === opt.value
-                      ? "border-emerald-500 bg-emerald-50/50"
-                      : "border-slate-200 hover:border-slate-300"
-                  )}>
-                  <p className={cn("text-sm font-semibold", form.confirmationType === opt.value ? "text-emerald-800" : "text-slate-700")}>
-                    {opt.label}
-                  </p>
-                  <p className="text-xs text-slate-500 mt-0.5">{opt.desc}</p>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Max Travelers Per Booking</label>
-              <input type="number" value={form.maxTravelersPerBooking}
-                onChange={(e) => setForm((p) => ({ ...p, maxTravelersPerBooking: parseInt(e.target.value) || 1 }))}
-                min={1} max={100}
-                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-300 transition-all" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Cancellation Window (hours)</label>
-              <input type="number" value={form.cancellationWindowHours}
-                onChange={(e) => setForm((p) => ({ ...p, cancellationWindowHours: parseInt(e.target.value) || 0 }))}
-                min={0}
-                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-300 transition-all" />
-              <p className="text-xs text-slate-400 mt-1">Free cancellation before this window</p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Min Advance Booking (hours)</label>
-              <input type="number" value={form.minAdvanceHours}
-                onChange={(e) => setForm((p) => ({ ...p, minAdvanceHours: parseInt(e.target.value) || 0 }))}
-                min={0}
-                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-300 transition-all" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Max Advance Booking (days)</label>
-              <input type="number" value={form.maxAdvanceDays}
-                onChange={(e) => setForm((p) => ({ ...p, maxAdvanceDays: parseInt(e.target.value) || 365 }))}
-                min={1}
-                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-300 transition-all" />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Default Cancellation Policy</label>
-            <textarea value={form.cancellationPolicy}
-              onChange={(e) => setForm((p) => ({ ...p, cancellationPolicy: e.target.value }))}
-              rows={2}
-              className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-300 transition-all resize-none" />
-            <p className="text-xs text-slate-400 mt-1">This will be pre-filled for new tours. Can be customized per tour.</p>
-          </div>
-
-          <div className="pt-2">
-            <button onClick={handleSave} disabled={saving || (initialForm && JSON.stringify(form) === JSON.stringify(initialForm))}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-medium hover:bg-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm">
-              {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-              Save Booking Rules
-            </button>
           </div>
         </div>
       </div>

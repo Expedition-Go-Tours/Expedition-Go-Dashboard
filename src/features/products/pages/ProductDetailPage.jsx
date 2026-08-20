@@ -106,7 +106,7 @@ function SectionCard({ title, children, className, onEdit }) {
             <div className="w-0.5 h-4 bg-linear-to-b from-emerald-500 to-emerald-300 rounded-full shrink-0" />
             <h2 className="text-sm font-semibold text-slate-800 tracking-tight flex-1">{title}</h2>
             {onEdit && (
-              <button onClick={onEdit} className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors opacity-0 group-hover:opacity-100" title={`Edit ${title}`}>
+              <button onClick={onEdit} className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors opacity-100" title={`Edit ${title}`}>
                 <Pencil size={13} />
               </button>
             )}
@@ -214,7 +214,7 @@ function AllPhotosModal({ displayPhotos, open, onClose, onSelect, handleImageErr
               <button key={i} onClick={() => { onClose(); onSelect(i); }} className="group relative aspect-[4/3] overflow-hidden rounded-lg bg-slate-100">
                 <OptimizedImage src={photo} width={600} alt={`${tour?.title} - Photo ${i + 1}`} className="absolute inset-0 w-full h-full object-cover transition-all duration-500 group-hover:scale-110" onError={(e) => handleImageError(e, i)} />
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all duration-300" />
-                <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-black/40 text-white text-[10px] px-2 py-0.5 rounded-full">{i + 1}</div>
+                <div className="absolute bottom-2 right-2 opacity-100 transition-opacity duration-200 bg-black/40 text-white text-[10px] px-2 py-0.5 rounded-full">{i + 1}</div>
               </button>
             ))}
           </div>
@@ -555,9 +555,9 @@ export default function ProductDetailPage() {
                 return (
                   <button key={i} onClick={hasMore ? () => setGalleryOpen(true) : () => setLightboxIndex(i)} className={cn("relative overflow-hidden bg-slate-100 group cursor-pointer", i === 0 ? "md:col-span-2 md:row-span-2 min-h-[260px] md:min-h-[440px]" : "min-h-[130px] md:min-h-[219px]")}>
                     <OptimizedImage src={photo} width={i === 0 ? 2400 : 600} alt={`${tour.title} - Photo ${i + 1}`} className="absolute inset-0 w-full h-full object-cover transition-all duration-700 group-hover:scale-105" />
-                    <div className="absolute inset-0 bg-linear-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300" />
+                    <div className="absolute inset-0 bg-linear-to-t from-black/30 via-transparent to-transparent opacity-100 transition-all duration-300" />
                     {i === 0 && (
-                      <div className="absolute bottom-3 right-3 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-white/10 backdrop-blur-sm border border-white/20 shadow-sm opacity-0 group-hover:opacity-100 transition-all duration-300">
+                      <div className="absolute bottom-3 right-3 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-white/10 backdrop-blur-sm border border-white/20 shadow-sm opacity-100 transition-all duration-300">
                         <Camera size={12} /> <span>View all {displayPhotos.length} photos</span>
                       </div>
                     )}
@@ -1019,7 +1019,7 @@ export default function ProductDetailPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     {currency && <span className="text-xs font-medium text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">{currency}</span>}
-                    <button onClick={() => handleEditSection("Pricing")} className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors opacity-0 group-hover:opacity-100" title="Edit Pricing">
+                    <button onClick={() => handleEditSection("Pricing")} className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors opacity-100" title="Edit Pricing">
                       <Pencil size={13} />
                     </button>
                   </div>
@@ -1142,7 +1142,7 @@ export default function ProductDetailPage() {
                     <div className="w-0.5 h-4 bg-linear-to-b from-emerald-500 to-emerald-300 rounded-full shrink-0" />
                     <h3 className="text-sm font-semibold text-slate-800">Schedule</h3>
                   </div>
-                  <button onClick={() => handleEditSection("Schedule")} className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors opacity-0 group-hover:opacity-100" title="Edit Schedule">
+                  <button onClick={() => handleEditSection("Schedule")} className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors opacity-100" title="Edit Schedule">
                     <Pencil size={13} />
                   </button>
                 </div>
@@ -1226,7 +1226,7 @@ export default function ProductDetailPage() {
                       <div className="w-0.5 h-4 bg-linear-to-b from-emerald-500 to-emerald-300 rounded-full shrink-0" />
                       <h3 className="text-sm font-semibold text-slate-800">Booking Options</h3>
                     </div>
-                    <button onClick={() => handleEditSection("Booking Options")} className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors opacity-0 group-hover:opacity-100" title="Edit Booking Options">
+                    <button onClick={() => handleEditSection("Booking Options")} className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors opacity-100" title="Edit Booking Options">
                       <Pencil size={13} />
                     </button>
                   </div>
@@ -1288,7 +1288,7 @@ export default function ProductDetailPage() {
                     <div className="w-0.5 h-4 bg-linear-to-b from-emerald-500 to-emerald-300 rounded-full shrink-0" />
                     <h3 className="text-sm font-semibold text-slate-800">Details</h3>
                   </div>
-                  <button onClick={() => handleEditSection("Details")} className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors opacity-0 group-hover:opacity-100" title="Edit Details">
+                  <button onClick={() => handleEditSection("Details")} className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors opacity-100" title="Edit Details">
                     <Pencil size={13} />
                   </button>
                 </div>
@@ -1300,7 +1300,10 @@ export default function ProductDetailPage() {
                 <DetailRow icon={Activity} label="Difficulty" value={categorization.difficulty} />
                 <DetailRow icon={Users} label="Group Size" value={categorization.groupSize ? `${categorization.groupSize.min || 1}\u2013${categorization.groupSize.max}` : null} />
                 <DetailRow icon={Shield} label="Age Requirement" value={categorization.ageRequirement} />
-                <DetailRow icon={Navigation} label="Transport" value={categorization.transportMode && Object.keys(categorization.transportMode).length > 0 ? Object.entries(categorization.transportMode).map(([mode, items]) => items?.length ? `${mode}: ${items.join(", ")}` : "").filter(Boolean).join(" | ") : null} />
+                <DetailRow icon={Navigation} label="Transport" value={categorization.transportMode && Object.keys(categorization.transportMode).length > 0 ? Object.entries(categorization.transportMode).map(([mode, items]) => {
+                  const joined = Array.isArray(items) ? items.join(", ") : (typeof items === "string" ? items : items ? String(items) : "")
+                  return joined ? `${mode}: ${joined}` : ""
+                }).filter(Boolean).join(" | ") : null} />
                 <DetailRow icon={Users} label="Group Type" value={content.isPrivateActivity ? "Private" : "Group"} />
                 <DetailRow icon={DollarSign} label="Pricing" value={travelerDetails.pricingModel === "perPerson" ? "Per person" : "Per group"} />
                 {(() => {
@@ -1358,7 +1361,7 @@ export default function ProductDetailPage() {
                         <div className="w-0.5 h-4 bg-linear-to-b from-emerald-500 to-emerald-300 rounded-full shrink-0" />
                         <h3 className="text-sm font-semibold text-slate-800">Traveler Info Required</h3>
                       </div>
-                      <button onClick={() => handleEditSection("Traveler Info Required")} className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors opacity-0 group-hover:opacity-100" title="Edit Traveler Info">
+                      <button onClick={() => handleEditSection("Traveler Info Required")} className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors opacity-100" title="Edit Traveler Info">
                         <Pencil size={13} />
                       </button>
                     </div>
@@ -1387,7 +1390,7 @@ export default function ProductDetailPage() {
                       <div className="w-0.5 h-4 bg-linear-to-b from-emerald-500 to-emerald-300 rounded-full shrink-0" />
                       <h3 className="text-sm font-semibold text-slate-800">Location</h3>
                     </div>
-                    <button onClick={() => handleEditSection("Location")} className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors opacity-0 group-hover:opacity-100" title="Edit Location">
+                    <button onClick={() => handleEditSection("Location")} className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors opacity-100" title="Edit Location">
                       <Pencil size={13} />
                     </button>
                   </div>
@@ -1432,7 +1435,7 @@ export default function ProductDetailPage() {
                     <div className="w-0.5 h-4 bg-linear-to-b from-emerald-500 to-emerald-300 rounded-full shrink-0" />
                     <h3 className="text-sm font-semibold text-slate-800">Booking Rules</h3>
                   </div>
-                  <button onClick={() => handleEditSection("Booking Rules")} className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors opacity-0 group-hover:opacity-100" title="Edit Booking Rules">
+                  <button onClick={() => handleEditSection("Booking Rules")} className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors opacity-100" title="Edit Booking Rules">
                     <Pencil size={13} />
                   </button>
                 </div>

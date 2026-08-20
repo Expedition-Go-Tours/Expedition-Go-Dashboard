@@ -8,6 +8,7 @@ import {
   Loader2,
   Check,
   Clock,
+  Zap,
   CalendarDays,
   CreditCard,
   Ban,
@@ -28,7 +29,6 @@ const STATUS_ACTIONS = {
     { value: "CANCELLED", label: "Cancel", variant: "danger" },
   ],
   CONFIRMED: [
-    { value: "COMPLETED", label: "Mark completed", variant: "primary" },
     { value: "CANCELLED", label: "Cancel", variant: "danger" },
   ],
   COMPLETED: [],
@@ -116,10 +116,13 @@ export default function BookingCard({
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const isPayLater = booking.paymentTiming === 'later';
-  // Reserve-now-pay-later bookings are PENDING until the deferred charge lands;
-  // payment is the gate, so don't offer a manual "Accept booking" on them.
+  // Reserve-now-pay-later bookings start PENDING with no money captured; payment
+  // is the gate, so don't offer a manual "Accept booking" until the charge lands.
+  // A PAID PENDING booking (pay-later charged, or a manual-confirmation tour)
+  // is awaiting the supplier's acceptance, so the Accept action must be shown.
+  const payLaterUnpaid = isPayLater && booking.status === 'PENDING' && booking.paymentStatus !== 'SUCCEEDED';
   const actions = (STATUS_ACTIONS[booking.status] || []).filter(
-    (a) => !(isPayLater && booking.status === 'PENDING' && a.value === 'CONFIRMED')
+    (a) => !(payLaterUnpaid && a.value === 'CONFIRMED')
   );
   const pickup = booking.pickup || {};
   const partySummary = formatPartySummary(booking.travelersRaw);
@@ -206,6 +209,11 @@ export default function BookingCard({
             <span className="flex items-center gap-1">
               <Users size={12} className="shrink-0" />
               {guestCount} traveler{guestCount !== 1 ? "s" : ""}
+            </span>
+            <span className="text-slate-300">·</span>
+            <span className={`flex items-center gap-1 ${booking.instantConfirmation ? "text-emerald-600" : "text-amber-600"}`}>
+              {booking.instantConfirmation ? <Zap size={12} className="shrink-0" /> : <Clock size={12} className="shrink-0" />}
+              {booking.instantConfirmation ? "Instant confirmation" : "Manual confirmation"}
             </span>
           </p>
         </div>

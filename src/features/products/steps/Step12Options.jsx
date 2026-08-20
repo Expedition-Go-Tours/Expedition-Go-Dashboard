@@ -59,6 +59,59 @@ function NoYesPill({ value, onChange }) {
   )
 }
 
+const CONFIRMATION_MODES = [
+  {
+    value: true,
+    title: 'Instant confirmation',
+    desc: 'Bookings are confirmed automatically as soon as payment is received. You don’t need to do anything.',
+  },
+  {
+    value: false,
+    title: 'Manual confirmation',
+    desc: 'Bookings stay pending after payment until you accept them in the Bookings section. Customer is told to wait for your confirmation.',
+  },
+]
+
+function ConfirmationModeCard({ value, onChange }) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-5 mb-5">
+      <h3 className="text-sm font-bold text-slate-800 tracking-tight mb-1">
+        Booking confirmation
+      </h3>
+      <p className="text-sm text-slate-500 leading-relaxed mb-4">
+        Choose how new bookings for this tour are confirmed.
+      </p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {CONFIRMATION_MODES.map((mode) => {
+          const selected = value === mode.value
+          return (
+            <button
+              key={String(mode.value)}
+              type="button"
+              onClick={() => onChange(mode.value)}
+              className={`flex items-start gap-3 rounded-xl border p-4 text-left transition-all cursor-pointer ${
+                selected
+                  ? 'border-emerald-500 bg-emerald-50/60 ring-1 ring-emerald-500/30'
+                  : 'border-slate-200 bg-white hover:border-slate-300'
+              }`}
+            >
+              <span className="flex-1 min-w-0">
+                <span className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+                  {mode.title}
+                  {selected && <Check size={14} className="text-emerald-600 shrink-0" />}
+                </span>
+                <span className="block text-xs text-slate-500 leading-relaxed mt-1">
+                  {mode.desc}
+                </span>
+              </span>
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 function SkipLinePills({ value, onChange }) {
   return (
     <div className="flex flex-wrap gap-1.5 mt-2">
@@ -359,6 +412,8 @@ export default function Step12Options() {
   const updateOption = useProductBuilderStore((s) => s.updateOption)
   const removeOption = useProductBuilderStore((s) => s.removeOption)
   const duplicateOption = useProductBuilderStore((s) => s.duplicateOption)
+  const instantConfirmation = useProductBuilderStore((s) => s.instantConfirmation)
+  const setField = useProductBuilderStore((s) => s.setField)
   const errors = useStepErrors(12)
 
   const [editingIndex, setEditingIndex] = useState(null)
@@ -458,6 +513,11 @@ export default function Step12Options() {
           {errors.options[0]}
         </div>
       )}
+
+      <ConfirmationModeCard
+        value={instantConfirmation}
+        onChange={(v) => setField('instantConfirmation', v)}
+      />
 
       {count === 0 ? (
         <div className="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 p-8 text-center">

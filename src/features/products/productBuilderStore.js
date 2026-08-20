@@ -97,6 +97,10 @@ const INITIAL_FORM = {
   lastMinuteBookings: false,
   perSlotCutoff: false,
   perSlotCutoffs: {},
+  // Per-tour confirmation mode. true = instant confirmation (auto-confirm on
+  // payment), false = manual confirmation (supplier accepts in the dashboard).
+  // Defaults to instant; only a deliberate "manual" selection changes it.
+  instantConfirmation: true,
   timezone: 'UTC',
   notSuitableFor: [],
   notAllowed: [],

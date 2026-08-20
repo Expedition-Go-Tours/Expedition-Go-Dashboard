@@ -142,6 +142,7 @@ function tourToProduct(tour) {
     lastMinuteBookings: !!booking.lastMinuteBookings,
     perSlotCutoff: !!booking.perSlotCutoff,
     perSlotCutoffs: booking.perSlotCutoffs || {},
+    instantConfirmation: booking.instantConfirmation !== false,
     timezone: booking.timezone || avail.timezone || 'UTC',
     notSuitableFor: content.healthRestrictions || [],
     notAllowed: content.notAllowed || [],

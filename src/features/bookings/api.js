@@ -17,6 +17,8 @@ export function mapBookingRow(booking) {
     leadTravelerEmail: booking.leadTravelerEmail || booking.customer?.email || "",
     leadTravelerPhone: booking.leadTravelerPhone || booking.customer?.phone || "",
     tourName: booking.tour?.title || "—",
+    // Per-tour confirmation mode (from bookingAndTickets). Missing/unset => instant.
+    instantConfirmation: booking.tour?.bookingAndTickets?.instantConfirmation !== false,
     tourId: booking.tourId,
     tourPhoto: booking.tour?.photos?.[0] || "",
     travelDate: booking.selectedDate,
