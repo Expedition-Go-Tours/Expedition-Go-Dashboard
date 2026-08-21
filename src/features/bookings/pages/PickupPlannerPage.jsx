@@ -33,11 +33,14 @@ const RANGE_PRESETS = [
 
 function toDateKey(d) {
   const dt = new Date(d);
+  if (Number.isNaN(dt.getTime())) return null;
   return dt.toISOString().slice(0, 10);
 }
 
 function formatDateHeader(dateKey) {
+  if (!dateKey) return "Unknown date";
   const date = new Date(dateKey + "T00:00:00");
+  if (Number.isNaN(date.getTime())) return "Unknown date";
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const tomorrow = new Date(today.getTime() + 86400000);
@@ -468,6 +471,7 @@ export default function PickupPlannerPage() {
     const groups = {};
     filteredBookings.forEach((b) => {
       const dateKey = toDateKey(b.travelDate);
+      if (!dateKey) return;
       if (!groups[dateKey]) groups[dateKey] = [];
       groups[dateKey].push(b);
     });
