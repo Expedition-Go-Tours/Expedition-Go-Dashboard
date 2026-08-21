@@ -205,6 +205,7 @@ export const stepSchemas = {
       address: z.string().optional(),
       lat: z.number().nullable().optional(),
       lng: z.number().nullable().optional(),
+      radiusKm: z.number().min(0.5).max(100).optional().default(1),
       polygon: z.array(z.tuple([z.number(), z.number()])).min(3).optional(),
       exclusions: z.array(z.array(z.tuple([z.number(), z.number()])).min(3)).optional(),
     })).optional(),

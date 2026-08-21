@@ -1026,6 +1026,7 @@ export const useProductBuilderStore = create(
               address: area.address || '',
               lat: area.lat ?? null,
               lng: area.lng ?? null,
+              radiusKm: area.radiusKm ?? 1,
               ...(Array.isArray(area.polygon) ? { polygon: area.polygon } : {}),
               ...(Array.isArray(area.exclusions) ? { exclusions: area.exclusions } : {}),
             },

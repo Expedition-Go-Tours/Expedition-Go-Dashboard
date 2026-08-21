@@ -6,7 +6,7 @@ import {
   SelectContent,
   SelectItem,
 } from '@/components/ui/select'
-import { HelpCircle, Info, Upload, X, Image, Loader2, Shapes, Trash2 } from 'lucide-react'
+import { HelpCircle, Info, Upload, X, Image, Loader2, MapPin } from 'lucide-react'
 import { useProductBuilderStore } from '@/features/products/productBuilderStore'
 import { useStepErrors } from '@/features/products/useStepErrors'
 import {
@@ -14,10 +14,9 @@ import {
   PICKUP_DESCRIPTION_MAX_CHARS,
 } from '@/features/products/productFormSchema'
 import LocationMapPicker from '@/components/shared/LocationMapPicker'
-import PickupGeoshapeDrawer from '@/components/shared/PickupGeoshapeDrawer'
+import PickupAreaModal from '@/components/shared/PickupGeoshapeDrawer'
 import AmPmTimePicker from '@/components/shared/AmPmTimePicker'
 import { uploadPhotos } from '@/features/products/api'
-import { warmMapResources } from '@/lib/mapConfig'
 
 const ARRIVAL_OPTIONS = [
   { value: 'none', label: 'Not relevant for this activity' },
@@ -88,14 +87,14 @@ function AddressModal({ title, description, onSave, onCancel, initialValues }) {
           <button
             type="button"
             onClick={onCancel}
-            className="px-5 py-2.5 text-sm font-medium text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+            className="px-5 py-2.5 text-sm font-medium text-[#00838F] hover:bg-[#00838F]/10 rounded-lg transition-colors"
           >
             Cancel
           </button>
           <button
             type="button"
             onClick={handleSave}
-            className="px-5 py-2.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-colors"
+            className="px-5 py-2.5 text-sm font-medium text-white bg-[#00838F] rounded-lg hover:bg-[#006970] transition-colors"
           >
             Save address
           </button>
@@ -158,7 +157,7 @@ function MeetingPointSection({ errors }) {
         <button
           type="button"
           onClick={() => setShowAddressModal(true)}
-          className="px-5 py-2.5 border-2 border-emerald-600 text-emerald-600 rounded-lg text-sm font-medium hover:bg-emerald-50 transition-colors"
+          className="px-5 py-2.5 border-2 border-[#00838F] text-[#00838F] rounded-lg text-sm font-medium hover:bg-[#00838F]/10 transition-colors"
         >
           Add address
         </button>
@@ -203,7 +202,7 @@ function MeetingPointSection({ errors }) {
         </label>
         <p className="text-sm text-slate-500 mb-3">Is there a specific landmark to look out for? How will customers recognize the guide?</p>
         <textarea
-          className="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 resize-vertical"
+          className="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#00838F] focus:ring-1 focus:ring-[#00838F] resize-vertical"
           rows={4}
           maxLength={MEETING_POINT_DESCRIPTION_MAX_CHARS}
           value={meetingPointDescription}
@@ -236,14 +235,14 @@ function MeetingPointSection({ errors }) {
             </button>
           </div>
         ) : uploading ? (
-          <div className="border-2 border-dashed border-emerald-300 rounded-xl p-8 text-center bg-emerald-50/50">
-            <Loader2 className="w-8 h-8 text-emerald-500 animate-spin mx-auto mb-2" />
+          <div className="border-2 border-dashed border-[#00838F]/30 rounded-xl p-8 text-center bg-[#00838F]/5">
+            <Loader2 className="w-8 h-8 text-[#00838F] animate-spin mx-auto mb-2" />
             <p className="text-sm text-slate-500">Uploading to cloud...</p>
           </div>
         ) : (
           <div
             onClick={() => fileInputRef.current?.click()}
-            className="border-2 border-dashed border-slate-200 rounded-xl p-8 text-center cursor-pointer hover:border-emerald-400 hover:bg-emerald-50/50 transition-all"
+            className="border-2 border-dashed border-slate-200 rounded-xl p-8 text-center cursor-pointer hover:border-[#00838F]/50 hover:bg-[#00838F]/5 transition-all"
           >
             <p className="text-sm text-slate-500 mb-3">Drag your photo into the area below or select "Upload photo".</p>
             <div className="flex items-center justify-center gap-4">
@@ -256,7 +255,7 @@ function MeetingPointSection({ errors }) {
               <span className="text-sm text-slate-400">or</span>
               <button
                 type="button"
-                className="inline-flex items-center gap-2 px-4 py-2.5 border-2 border-emerald-600 text-emerald-600 rounded-lg text-sm font-medium hover:bg-emerald-50 transition-colors"
+                className="inline-flex items-center gap-2 px-4 py-2.5 border-2 border-[#00838F] text-[#00838F] rounded-lg text-sm font-medium hover:bg-[#00838F]/10 transition-colors"
               >
                 <Upload className="w-4 h-4" />
                 Upload photo
@@ -313,20 +312,15 @@ function PickupSection({ errors }) {
 
   const [showAddModal, setShowAddModal] = useState(false)
   const [editingIdx, setEditingIdx] = useState(null)
-  const [showGeoshapeModal, setShowGeoshapeModal] = useState(false)
-  const [geoshapeAreaIdx, setGeoshapeAreaIdx] = useState(null)
-
-  // Start warming the map tiles/style as soon as the supplier is likely to
-  // open the pickup-area drawer, so the first open paints fast.
-  useEffect(() => {
-    if (pickupType === 'area') warmMapResources()
-  }, [pickupType])
+  const [showAreaModal, setShowAreaModal] = useState(false)
+  const [editingAreaIdx, setEditingAreaIdx] = useState(null)
 
   useEffect(() => {
     if (previewFocus?.step === 'meeting-point' && previewFocus.section === 'pickup') {
       const t = setTimeout(() => {
         if (pickupType === 'area') {
-          setShowGeoshapeModal(true)
+          setEditingAreaIdx(null)
+          setShowAreaModal(true)
         } else {
           setShowAddModal(true)
         }
@@ -346,38 +340,24 @@ function PickupSection({ errors }) {
     setEditingIdx(null)
   }
 
-  const handleGeoshapeSave = ({ polygon, exclusions, location }) => {
-    const hasZone = polygon && polygon.length >= 3
-    if (!hasZone && !location) return
-    const nameFrom = (base) =>
-      base || location?.name || location?.address?.split(',').slice(0, 2).join(',') || ''
-    if (geoshapeAreaIdx !== null && pickupAreas[geoshapeAreaIdx]) {
-      const existing = pickupAreas[geoshapeAreaIdx]
-      updatePickupArea(geoshapeAreaIdx, {
-        name: nameFrom(existing?.name),
-        address: location ? location.address || '' : existing?.address || '',
-        lat: location ? location.lat : polygon[0][0],
-        lng: location ? location.lng : polygon[0][1],
-        polygon: hasZone ? polygon : undefined,
-        exclusions: exclusions || [],
-      })
-    } else {
-      addPickupArea({
-        name: nameFrom(''),
-        time: '',
-        address: location?.address || '',
-        lat: location ? location.lat : polygon[0][0],
-        lng: location ? location.lng : polygon[0][1],
-        polygon: hasZone ? polygon : undefined,
-        exclusions: exclusions || [],
-      })
-    }
-    setShowGeoshapeModal(false)
-    setGeoshapeAreaIdx(null)
+  const handleAddArea = () => {
+    setEditingAreaIdx(null)
+    setShowAreaModal(true)
   }
 
-  const clearAreaZone = (i) => {
-    updatePickupArea(i, { polygon: undefined, exclusions: [] })
+  const handleEditArea = (idx) => {
+    setEditingAreaIdx(idx)
+    setShowAreaModal(true)
+  }
+
+  const handleAreaSave = ({ name, address, lat, lng, radiusKm }) => {
+    if (editingAreaIdx !== null) {
+      updatePickupArea(editingAreaIdx, { name, address, lat, lng, radiusKm })
+    } else {
+      addPickupArea({ name, address, lat, lng, radiusKm })
+    }
+    setShowAreaModal(false)
+    setEditingAreaIdx(null)
   }
 
   return (
@@ -395,7 +375,7 @@ function PickupSection({ errors }) {
               name="pickupType"
               checked={pickupType === 'area'}
               onChange={() => setField('pickupType', 'area')}
-              className="mt-0.5 w-4 h-4 text-emerald-600 border-slate-300 focus:ring-emerald-500"
+              className="mt-0.5 w-4 h-4 text-[#00838F] border-slate-300 focus:ring-[#00838F]"
             />
             <span className="text-sm text-slate-700">From any address within a specific area</span>
           </label>
@@ -405,7 +385,7 @@ function PickupSection({ errors }) {
               name="pickupType"
               checked={pickupType === 'address'}
               onChange={() => setField('pickupType', 'address')}
-              className="mt-0.5 w-4 h-4 text-emerald-600 border-slate-300 focus:ring-emerald-500"
+              className="mt-0.5 w-4 h-4 text-[#00838F] border-slate-300 focus:ring-[#00838F]"
             />
             <span className="text-sm text-slate-700">From a defined list of pickup locations (hotels, airports, etc.)</span>
           </label>
@@ -423,7 +403,7 @@ function PickupSection({ errors }) {
               name="pickupTiming"
               checked={pickupTiming === 'at_start'}
               onChange={() => setField('pickupTiming', 'at_start')}
-              className="mt-0.5 w-4 h-4 text-emerald-600 border-slate-300 focus:ring-emerald-500"
+              className="mt-0.5 w-4 h-4 text-[#00838F] border-slate-300 focus:ring-[#00838F]"
             />
             <div>
               <span className="text-sm text-slate-700">At the activity start time</span>
@@ -436,7 +416,7 @@ function PickupSection({ errors }) {
               name="pickupTiming"
               checked={pickupTiming === 'before_start'}
               onChange={() => setField('pickupTiming', 'before_start')}
-              className="mt-0.5 w-4 h-4 text-emerald-600 border-slate-300 focus:ring-emerald-500"
+              className="mt-0.5 w-4 h-4 text-[#00838F] border-slate-300 focus:ring-[#00838F]"
             />
             <div>
               <span className="text-sm text-slate-700">Before the activity starts</span>
@@ -458,7 +438,7 @@ function PickupSection({ errors }) {
               name="pickupFinalLocationTiming"
               checked={pickupFinalLocationTiming === 'day_before'}
               onChange={() => setField('pickupFinalLocationTiming', 'day_before')}
-              className="mt-0.5 w-4 h-4 text-emerald-600 border-slate-300 focus:ring-emerald-500"
+              className="mt-0.5 w-4 h-4 text-[#00838F] border-slate-300 focus:ring-[#00838F]"
             />
             <span className="text-sm text-slate-700">The day before the activity takes place</span>
           </label>
@@ -468,7 +448,7 @@ function PickupSection({ errors }) {
               name="pickupFinalLocationTiming"
               checked={pickupFinalLocationTiming === 'after_selection'}
               onChange={() => setField('pickupFinalLocationTiming', 'after_selection')}
-              className="mt-0.5 w-4 h-4 text-emerald-600 border-slate-300 focus:ring-emerald-500"
+              className="mt-0.5 w-4 h-4 text-[#00838F] border-slate-300 focus:ring-[#00838F]"
             />
             <span className="text-sm text-slate-700">Directly after customer selects pickup location</span>
           </label>
@@ -489,7 +469,7 @@ function PickupSection({ errors }) {
                 name="pickupAtSpecificTime"
                 checked={pickupAtSpecificTime === true}
                 onChange={() => setField('pickupAtSpecificTime', true)}
-                className="mt-0.5 w-4 h-4 text-emerald-600 border-slate-300 focus:ring-emerald-500"
+                className="mt-0.5 w-4 h-4 text-[#00838F] border-slate-300 focus:ring-[#00838F]"
               />
               <div>
                 <span className="text-sm text-slate-700">Yes, at a specific time</span>
@@ -502,7 +482,7 @@ function PickupSection({ errors }) {
                 name="pickupAtSpecificTime"
                 checked={pickupAtSpecificTime === false}
                 onChange={() => setField('pickupAtSpecificTime', false)}
-                className="mt-0.5 w-4 h-4 text-emerald-600 border-slate-300 focus:ring-emerald-500"
+                className="mt-0.5 w-4 h-4 text-[#00838F] border-slate-300 focus:ring-[#00838F]"
               />
               <div>
                 <span className="text-sm text-slate-700">No, pickup time varies</span>
@@ -525,7 +505,7 @@ function PickupSection({ errors }) {
             <button
               type="button"
               onClick={() => setField('planPickupTimes', !planPickupTimes)}
-              className={`relative w-11 h-6 rounded-full transition-colors ${planPickupTimes ? 'bg-emerald-600' : 'bg-slate-300'}`}
+              className={`relative w-11 h-6 rounded-full transition-colors ${planPickupTimes ? 'bg-[#00838F]' : 'bg-slate-300'}`}
             >
               <div className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${planPickupTimes ? 'translate-x-5' : ''}`} />
             </button>
@@ -552,13 +532,12 @@ function PickupSection({ errors }) {
           <div className="space-y-2 mb-3" data-field="pickupAreas">
             {pickupAreas.map((area, i) => {
               const hasZone = Array.isArray(area.polygon) && area.polygon.length >= 3
-              const exclusionCount = Array.isArray(area.exclusions) ? area.exclusions.length : 0
               return (
               <div key={i} className="p-3 rounded-lg border border-slate-200 bg-white" data-field={`pickupAreas.${i}`}>
                 <div className="flex items-center gap-2">
                   <div className="flex-1">
                     <input
-                      className="w-full h-9 rounded-lg border border-slate-200 px-2.5 text-sm focus:outline-none focus:border-emerald-500"
+                      className="w-full h-9 rounded border border-[#CCCCCC] px-2.5 text-sm focus:outline-none focus:border-[#00838F]"
                       type="text"
                       value={area.name}
                       onChange={(e) => updatePickupArea(i, { name: e.target.value })}
@@ -569,15 +548,15 @@ function PickupSection({ errors }) {
                   </div>
                   <button
                     type="button"
-                    onClick={() => { setGeoshapeAreaIdx(i); setShowGeoshapeModal(true) }}
-                    className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-colors border ${
-                      hasZone || area.lat
-                        ? 'bg-emerald-50 border-emerald-200 text-emerald-600'
-                        : 'bg-white border-slate-200 text-slate-400 hover:border-emerald-300'
+                    onClick={() => handleEditArea(i)}
+                    className={`shrink-0 w-8 h-8 rounded flex items-center justify-center transition-colors border ${
+                      area.lat
+                        ? 'bg-[#00838F]/10 border-[#00838F]/30 text-[#00838F]'
+                        : 'bg-white border-slate-200 text-slate-400 hover:border-[#00838F] hover:text-[#00838F]'
                     }`}
-                    title={hasZone ? 'Edit zone or location on map' : 'Set zone or location on map'}
+                    title="Edit location and radius"
                   >
-                    <Shapes className="w-4 h-4" />
+                    <MapPin className="w-4 h-4" />
                   </button>
                   {pickupAtSpecificTime && (
                     <AmPmTimePicker
@@ -597,28 +576,10 @@ function PickupSection({ errors }) {
                 {area.address && (
                   <p className="text-[12px] text-slate-400 mt-1.5 ml-0.5 truncate">{area.address}</p>
                 )}
-                {(hasZone || exclusionCount > 0) && (
-                  <div className="flex items-center gap-2 mt-2">
-                    {hasZone && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-[11px] font-semibold text-emerald-700">
-                        <Shapes className="w-3 h-3" /> Zone drawn ({area.polygon.length} pts)
-                      </span>
-                    )}
-                    {exclusionCount > 0 && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-50 border border-rose-200 text-[11px] font-semibold text-rose-600">
-                        {exclusionCount} exclusion zone{exclusionCount === 1 ? '' : 's'}
-                      </span>
-                    )}
-                    {hasZone && (
-                      <button
-                        type="button"
-                        onClick={() => clearAreaZone(i)}
-                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-medium text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-colors"
-                      >
-                        <Trash2 className="w-3 h-3" /> Clear zone
-                      </button>
-                    )}
-                  </div>
+                {area.radiusKm && (
+                  <p className="text-[12px] text-slate-500 mt-0.5 ml-0.5">
+                    Radius: {area.radiusKm} km
+                  </p>
                 )}
                 {pickupAtSpecificTime && errors[`pickupAreas.${i}.time`] && <span className="text-[13px] text-red-600 font-medium mt-1">{errors[`pickupAreas.${i}.time`][0]}</span>}
               </div>
@@ -744,53 +705,50 @@ function PickupSection({ errors }) {
           <button
             type="button"
             onClick={() => { setEditingIdx(null); setShowAddModal(true) }}
-            className="px-4 py-2.5 border-2 border-emerald-600 text-emerald-600 rounded-lg text-sm font-medium hover:bg-emerald-50 transition-colors"
+            className="text-sm text-[#00838F] font-medium hover:underline"
           >
             + Add address
           </button>
         )}
 
-        {/* Add pickup area button (for area mode) */}
+        {/* Add pickup area (for area mode) */}
         {pickupType === 'area' && (
           <>
             <button
               type="button"
-              onClick={() => { setGeoshapeAreaIdx(null); setShowGeoshapeModal(true) }}
-              className="px-4 py-2.5 border-2 border-emerald-600 text-emerald-600 rounded-lg text-sm font-medium hover:bg-emerald-50 transition-colors"
+              onClick={handleAddArea}
+              className="px-4 py-2.5 border-2 border-[#00838F] text-[#00838F] rounded-lg text-sm font-medium hover:bg-[#00838F]/10 transition-colors"
             >
               + Add pickup area
             </button>
             <p className="w-full text-xs text-slate-500 mt-1">
-              Draw the exact boundary of your pickup area — or search a location to save the area by name. Customers whose address is inside the zone can book pickup; add exclusion zones for streets you can't reach.
+              Set a location and radius to define where you pick up customers.
             </p>
           </>
         )}
 
-        {/* Pickup geoshape drawer — draw the service zone or set a location point. Kept
-        mounted across opens (open flag toggles visibility) so the map reopens instantly. */}
-        <PickupGeoshapeDrawer
-          open={showGeoshapeModal}
-          title={geoshapeAreaIdx !== null ? 'Edit pickup area' : 'Add pickup area'}
-          description={
-            geoshapeAreaIdx !== null
-              ? 'Redraw the boundary of your pickup area, adjust exclusion zones, or update its location point.'
-              : 'Trace the exact boundary of where you pick up customers, or search a location to save the area by name. Customers with addresses inside your zone can book pickup; addresses outside cannot.'
-          }
-          initialZone={geoshapeAreaIdx !== null && pickupAreas[geoshapeAreaIdx] ? pickupAreas[geoshapeAreaIdx].polygon : undefined}
-          initialExclusions={geoshapeAreaIdx !== null && pickupAreas[geoshapeAreaIdx] ? pickupAreas[geoshapeAreaIdx].exclusions : undefined}
-          initialLocation={
-            geoshapeAreaIdx !== null && pickupAreas[geoshapeAreaIdx]?.lat != null
-              ? {
-                  name: pickupAreas[geoshapeAreaIdx].name || '',
-                  address: pickupAreas[geoshapeAreaIdx].address || '',
-                  lat: pickupAreas[geoshapeAreaIdx].lat,
-                  lng: pickupAreas[geoshapeAreaIdx].lng,
-                }
-              : undefined
-          }
-          onSave={handleGeoshapeSave}
-          onCancel={() => { setShowGeoshapeModal(false); setGeoshapeAreaIdx(null) }}
-        />
+        {/* Pickup area modal — search location, set radius, see circle on map */}
+        {showAreaModal && (
+          <PickupAreaModal
+            open={showAreaModal}
+            title={editingAreaIdx !== null ? 'Edit pickup area' : 'Add pickup area'}
+            initialLocation={
+              editingAreaIdx !== null && pickupAreas[editingAreaIdx]?.lat != null
+                ? {
+                    name: pickupAreas[editingAreaIdx].name || '',
+                    address: pickupAreas[editingAreaIdx].address || '',
+                    lat: pickupAreas[editingAreaIdx].lat,
+                    lng: pickupAreas[editingAreaIdx].lng,
+                  }
+                : null
+            }
+            initialRadiusKm={
+              editingAreaIdx !== null ? (pickupAreas[editingAreaIdx]?.radiusKm || 1) : 1
+            }
+            onSave={handleAreaSave}
+            onCancel={() => { setShowAreaModal(false); setEditingAreaIdx(null) }}
+          />
+        )}
 
         {/* AddressModal for adding/editing pickup locations */}
         {showAddModal && (
@@ -829,7 +787,7 @@ function PickupSection({ errors }) {
         </label>
         <p className="text-sm text-slate-500 mb-3">What should customers look for when waiting for their vehicle? Where should they wait? If your pickup areas/places are very specific, describe them in more detail.</p>
         <textarea
-          className="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 resize-vertical"
+          className="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#00838F] focus:ring-1 focus:ring-[#00838F] resize-vertical"
           rows={4}
           maxLength={PICKUP_DESCRIPTION_MAX_CHARS}
           value={pickupDescription}
@@ -883,7 +841,7 @@ function DropoffSection({ errors }) {
             name="dropoffOption"
             checked={dropoffOption === 'same_location'}
             onChange={() => setField('dropoffOption', 'same_location')}
-            className="mt-0.5 w-4 h-4 text-emerald-600 border-slate-300 focus:ring-emerald-500"
+            className="mt-0.5 w-4 h-4 text-[#00838F] border-slate-300 focus:ring-[#00838F]"
           />
           <span className="text-sm text-slate-700">{samePlaceLabel}</span>
         </label>
@@ -893,7 +851,7 @@ function DropoffSection({ errors }) {
             name="dropoffOption"
             checked={dropoffOption === 'different_location'}
             onChange={() => setField('dropoffOption', 'different_location')}
-            className="mt-0.5 w-4 h-4 text-emerald-600 border-slate-300 focus:ring-emerald-500"
+            className="mt-0.5 w-4 h-4 text-[#00838F] border-slate-300 focus:ring-[#00838F]"
           />
           <span className="text-sm text-slate-700">At a different place</span>
         </label>
@@ -903,7 +861,7 @@ function DropoffSection({ errors }) {
             name="dropoffOption"
             checked={dropoffOption === 'none'}
             onChange={() => setField('dropoffOption', 'none')}
-            className="mt-0.5 w-4 h-4 text-emerald-600 border-slate-300 focus:ring-emerald-500"
+            className="mt-0.5 w-4 h-4 text-[#00838F] border-slate-300 focus:ring-[#00838F]"
           />
           <span className="text-sm text-slate-700">No drop-off service, the customer stays at the site or destination</span>
         </label>
@@ -916,7 +874,7 @@ function DropoffSection({ errors }) {
           <button
             type="button"
             onClick={() => setShowDropoffModal(true)}
-            className="px-5 py-2.5 border-2 border-emerald-600 text-emerald-600 rounded-lg text-sm font-medium hover:bg-emerald-50 transition-colors"
+            className="px-5 py-2.5 border-2 border-[#00838F] text-[#00838F] rounded-lg text-sm font-medium hover:bg-[#00838F]/10 transition-colors"
           >
             Add address
           </button>
@@ -968,7 +926,7 @@ export default function Step13MeetingPoint() {
       <div>
         <div className="flex items-center gap-2.5 mb-4">
           <h2 className="text-lg font-bold text-slate-900">Meeting point or pickup</h2>
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-full text-xs font-medium">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#00838F]/10 text-[#00838F] rounded-full text-xs font-medium">
             <Info className="w-3.5 h-3.5" />
             Customizable
           </span>
@@ -985,7 +943,7 @@ export default function Step13MeetingPoint() {
                 name="meetingMode"
                 checked={meetingMode === 'meeting_point'}
                 onChange={() => setField('meetingMode', 'meeting_point')}
-                className="mt-0.5 w-4 h-4 text-emerald-600 border-slate-300 focus:ring-emerald-500"
+                className="mt-0.5 w-4 h-4 text-[#00838F] border-slate-300 focus:ring-[#00838F]"
               />
               <span className="text-sm text-slate-700">They go to the starting point of the activity by themselves (e.g. meeting point, entrance)</span>
             </label>
@@ -995,7 +953,7 @@ export default function Step13MeetingPoint() {
                 name="meetingMode"
                 checked={meetingMode === 'pickup'}
                 onChange={() => setField('meetingMode', 'pickup')}
-                className="mt-0.5 w-4 h-4 text-emerald-600 border-slate-300 focus:ring-emerald-500"
+                className="mt-0.5 w-4 h-4 text-[#00838F] border-slate-300 focus:ring-[#00838F]"
               />
               <span className="text-sm text-slate-700">They get picked up (by bus, car, etc.)</span>
             </label>

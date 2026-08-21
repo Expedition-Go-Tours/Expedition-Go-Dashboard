@@ -774,6 +774,7 @@ export default function ProductDetailPage() {
                             const name = typeof area === 'string' ? area : area.name || '';
                             const time = typeof area === 'string' ? '' : area.time || '';
                             const address = typeof area === 'string' ? '' : area.address || '';
+                            const radiusKm = typeof area === 'string' ? null : area.radiusKm;
                             return (
                               <div key={i} className="text-sm bg-slate-50 rounded-lg px-3 py-2">
                                 <div className="flex items-center justify-between">
@@ -781,6 +782,7 @@ export default function ProductDetailPage() {
                                   {time && <span className="text-xs text-slate-400">{time}</span>}
                                 </div>
                                 {address && <p className="text-[12px] text-slate-400 mt-0.5 truncate">{address}</p>}
+                                {radiusKm && <p className="text-[12px] text-slate-500 mt-0.5">Radius: {radiusKm} km</p>}
                               </div>
                             );
                           })}
@@ -818,12 +820,14 @@ export default function ProductDetailPage() {
                       )}
                     </div>
                     {(() => {
-                      const drawnAreas = (content.pickupAreas || []).filter((a) => Array.isArray(a?.polygon) && a.polygon.length >= 3)
-                      if (drawnAreas.length === 0) return null
+                      const mappableAreas = (content.pickupAreas || []).filter(
+                        (a) => typeof a === 'object' && a.lat != null && a.lng != null && (a.radiusKm || (Array.isArray(a?.polygon) && a.polygon.length >= 3))
+                      )
+                      if (mappableAreas.length === 0) return null
                       return (
                         <div className="mb-3">
-                          <p className="text-[11px] text-slate-400 uppercase tracking-wider font-medium mb-1.5">Pickup Zone</p>
-                          <PickupGeoshapePreview areas={drawnAreas} height={220} />
+                          <p className="text-[11px] text-slate-400 uppercase tracking-wider font-medium mb-1.5">Pickup Areas</p>
+                          <PickupGeoshapePreview areas={mappableAreas} height={220} />
                         </div>
                       )
                     })()}

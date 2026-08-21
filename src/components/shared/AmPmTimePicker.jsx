@@ -37,7 +37,7 @@ function Dropdown({ value, options, onChange, width = 'w-[64px]' }) {
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className={`h-10 ${width} flex items-center justify-between rounded-lg border border-slate-200 bg-white px-2.5 text-sm font-medium text-slate-800 hover:border-slate-300 focus:outline-none focus:border-emerald-500 transition-colors`}
+        className={`h-10 ${width} flex items-center justify-between rounded-lg border border-slate-200 bg-white px-2.5 text-sm font-medium text-slate-800 hover:border-slate-300 focus:outline-none focus:border-[#00838F] transition-colors`}
       >
         <span>{value}</span>
         <ChevronDown size={14} className="text-slate-400 shrink-0" />
@@ -51,7 +51,7 @@ function Dropdown({ value, options, onChange, width = 'w-[64px]' }) {
               onClick={() => { onChange(opt); setOpen(false) }}
               className={`w-full px-3 py-2 text-left text-sm font-medium transition-colors ${
                 opt === value
-                  ? 'bg-emerald-50 text-emerald-700'
+                  ? 'bg-[#00838F]/10 text-[#00838F]'
                   : 'text-slate-700 hover:bg-slate-50'
               }`}
             >
@@ -83,7 +83,7 @@ export default function AmPmTimePicker({ value, onChange, className = '' }) {
           onClick={() => setPeriod('AM')}
           className={`px-2.5 h-10 text-xs font-bold transition-colors ${
             period === 'AM'
-              ? 'bg-emerald-600 text-white'
+              ? 'bg-[#00838F] text-white'
               : 'bg-white text-slate-500 hover:bg-slate-50'
           }`}
         >
@@ -94,7 +94,7 @@ export default function AmPmTimePicker({ value, onChange, className = '' }) {
           onClick={() => setPeriod('PM')}
           className={`px-2.5 h-10 text-xs font-bold transition-colors ${
             period === 'PM'
-              ? 'bg-emerald-600 text-white'
+              ? 'bg-[#00838F] text-white'
               : 'bg-white text-slate-500 hover:bg-slate-50'
           }`}
         >
