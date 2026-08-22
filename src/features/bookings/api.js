@@ -46,6 +46,7 @@ export async function fetchSupplierBookings(params = {}) {
   const payload = response.data?.data || {};
   return {
     bookings: (payload.bookings || []).map(mapBookingRow),
+    summary: payload.summary || null,
     pagination: payload.pagination || null,
   };
 }

@@ -24,7 +24,7 @@ import {
   directAddTeamMember, resendInvite
 } from "../api";
 import { getAuthToken, useAuthStore } from "@/stores/authStore";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 import { config } from "@/config";
 import { useTeamRole } from "@/hooks/useTeamRole";
 import { TEAM_ROLE_LABELS, TEAM_ROLE_COLORS } from "@/config/teamRoles";
@@ -705,7 +705,7 @@ function PayoutsTab() {
             <Banknote size={16} className="text-emerald-600" />
           </div>
           <p className="text-lg font-bold text-slate-800">
-            {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(Number(payoutsSummary.totalEarned) || 0)}
+            {formatCurrency(Number(payoutsSummary.totalEarned) || 0, payoutsSummary.currency || "USD")}
           </p>
           <p className="text-[11px] font-medium text-slate-500 mt-0.5">Total Paid Out</p>
         </div>
@@ -917,7 +917,7 @@ function PayoutsTab() {
                   <div className="text-right flex items-center gap-3">
                     <div>
                       <p className="text-sm font-bold text-slate-800">
-                        {new Intl.NumberFormat("en-US", { style: "currency", currency: p.currency || "USD" }).format(p.amount)}
+                        {formatCurrency(Number(p.amount) || 0, p.currency || "USD")}
                       </p>
                       {p.paidAt && (
                         <p className="text-[10px] text-slate-400 mt-0.5">{new Date(p.paidAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</p>

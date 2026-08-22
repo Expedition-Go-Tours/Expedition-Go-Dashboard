@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
@@ -8,7 +8,7 @@ import { Loader2, RefreshCw, ArrowUpRight, ShoppingBag, CheckCircle2, Star, Doll
 import StatusBadge from "@/components/shared/StatusBadge";
 import OptimizedImage from "@/components/shared/OptimizedImage";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import { fetchSupplierDashboard } from "../api";
+import { fetchSupplierDashboard, fetchMonthlyRevenue } from "../api";
 import { fetchCancellationSummary } from "@/features/cancellation/api";
 import { getAuthToken, useAuthStore } from "@/stores/authStore";
 import { fetchSupplierBookings } from "@/features/bookings/api";
@@ -28,7 +28,7 @@ const NOTIFICATION_ICONS = {
 
 const STATS_CONFIG = [
   { label: "Total Bookings", icon: ShoppingBag, accent: "border-l-emerald-600", iconBg: "bg-emerald-50", iconBorder: "border-emerald-200/60", iconColor: "text-emerald-600", path: "/bookings" },
-  { label: "Total Revenue", icon: TrendingUp, accent: "border-l-emerald-500", iconBg: "bg-emerald-50", iconBorder: "border-emerald-200/60", iconColor: "text-emerald-600", path: "/finance" },
+  { label: "Total Earnings", icon: TrendingUp, accent: "border-l-emerald-500", iconBg: "bg-emerald-50", iconBorder: "border-emerald-200/60", iconColor: "text-emerald-600", path: "/finance" },
   { label: "Active Tours", icon: MapPin, accent: "border-l-emerald-400", iconBg: "bg-emerald-50", iconBorder: "border-emerald-200/60", iconColor: "text-emerald-600", path: "/products", state: { statusFilter: "ACTIVE" } },
   { label: "Pending Requests", icon: ClipboardList, accent: "border-l-amber-400", iconBg: "bg-amber-50", iconBorder: "border-amber-200/60", iconColor: "text-amber-600", path: "/bookings?tab=PENDING" },
 ];
@@ -72,6 +72,7 @@ export default function DashboardPage() {
   const [error, setError] = useState(null);
   const [recentBookings, setRecentBookings] = useState([]);
   const [cancellationSummary, setCancellationSummary] = useState(null);
+  const [revenueData, setRevenueData] = useState([]);
   const user = useAuthStore((s) => s.user);
 
   const { data: notificationsData, refetch: refetchNotifications } =
@@ -87,11 +88,13 @@ export default function DashboardPage() {
       fetchSupplierDashboard(),
       fetchSupplierBookings({ page: 1, limit: 4 }).then(r => r.bookings).catch(() => []),
       fetchCancellationSummary().catch(() => null),
+      fetchMonthlyRevenue(12).catch(() => []),
     ])
-      .then(([data, bookings, cancellationData]) => {
+      .then(([data, bookings, cancellationData, monthly]) => {
         setDashboardData(data);
         setRecentBookings(bookings);
         setCancellationSummary(cancellationData);
+        setRevenueData(monthly);
       })
       .catch((err) => {
         if (err.code === "AUTH_REQUIRED") return;
@@ -132,14 +135,6 @@ export default function DashboardPage() {
     { value: activeTours },
     { value: pendingBookings },
   ];
-
-  const revenueData = useMemo(() => {
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const now = new Date();
-    return months.slice(0, now.getMonth() + 1).map((month, i) => ({
-      month, revenue: i === now.getMonth() ? totalRevenue : Math.round(totalRevenue * (i + 1) / (now.getMonth() + 1) * 0.7),
-    }));
-  }, [totalRevenue]);
 
   return (
     <div className="p-5 md:p-6 max-w-7xl mx-auto space-y-5">
@@ -213,17 +208,17 @@ export default function DashboardPage() {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={revenueData} barCategoryGap="20%">
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                  <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#94a3b8", fontWeight: 500 }} axisLine={false} tickLine={false} />
+                  <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#94a3b8", fontWeight: 500 }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fontSize: 11, fill: "#94a3b8", fontWeight: 500 }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${v / 1000}k`} />
                   <Tooltip content={<CustomTooltip />} cursor={{ fill: "#f0fdf4" }} />
-                  <Bar dataKey="revenue" fill="#044b3b" radius={[4, 4, 0, 0]} maxBarSize={32} />
+                  <Bar dataKey="grossAmount" fill="#044b3b" radius={[4, 4, 0, 0]} maxBarSize={32} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
               <div className="flex items-center justify-center h-full text-xs font-medium text-slate-400">No booking data yet</div>
             )}
           </div>
-          <p className="text-[10px] font-medium text-slate-400 mt-3 shrink-0">Data is based on last 30 days</p>
+          <p className="text-[10px] font-medium text-slate-400 mt-3 shrink-0">Earnings are cumulative · Bookings from last 90 days</p>
         </div>
 
         {/* Right Column */}

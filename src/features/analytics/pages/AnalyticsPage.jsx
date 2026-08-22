@@ -25,6 +25,7 @@ export default function AnalyticsPage() {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [monthlyRevenueData, setMonthlyRevenueData] = useState([]);
 
   const fetchData = () => {
     if (!getAuthToken()) { setLoading(false); return; }
@@ -32,8 +33,9 @@ export default function AnalyticsPage() {
     Promise.all([
       fetchSupplierAnalytics(),
       fetchSupplierBookings({ page: 1, limit: 50 }).then(r => r.bookings).catch(() => []),
+      fetchMonthlyRevenue(12).catch(() => []),
     ])
-      .then(([d, b]) => { setData(d); setBookings(b); })
+      .then(([d, b, monthly]) => { setData(d); setBookings(b); setMonthlyRevenueData(monthly); })
       .catch((err) => {
         if (err.code === "AUTH_REQUIRED") return;
         setError(err.response?.data?.message || err.message || "Failed to load analytics");
@@ -62,14 +64,6 @@ export default function AnalyticsPage() {
   const activeTours = tours.active || 0;
 
   const avgRating = 4.75;
-
-  const monthlyRevenue = useMemo(() => {
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const now = new Date();
-    return months.slice(0, now.getMonth() + 1).map((month, i) => ({
-      month, revenue: i === now.getMonth() ? totalRevenue : Math.round(totalRevenue * (i + 1) / (now.getMonth() + 1) * 0.7),
-    }));
-  }, [totalRevenue]);
 
   const productBookings = useMemo(() => {
     const map = {};
@@ -134,7 +128,7 @@ export default function AnalyticsPage() {
           {loading ? (
             <div className="space-y-1.5"><div className="h-5 w-20 bg-slate-100 rounded animate-pulse" /><div className="h-3 w-16 bg-slate-100 rounded animate-pulse" /></div>
           ) : (
-            <><p className="text-lg font-bold text-slate-800">{formatCurrency(totalRevenue)}</p><p className="text-[11px] text-slate-400 mt-0.5">Revenue</p></>
+            <><p className="text-lg font-bold text-slate-800">{formatCurrency(totalRevenue)}</p><p className="text-[11px] text-slate-400 mt-0.5">Earnings</p></>
           )}
           <div className="mt-2 h-0.5 w-full rounded-full bg-emerald-200/40" />
         </div>
@@ -197,12 +191,12 @@ export default function AnalyticsPage() {
             <div className="h-[240px] bg-slate-50 rounded-lg animate-pulse" />
           ) : (
             <ResponsiveContainer width="100%" height={240}>
-              <BarChart data={monthlyRevenue} barCategoryGap="24%">
+              <BarChart data={monthlyRevenueData} barCategoryGap="24%">
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+                <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${v / 1000}k`} />
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: "#f8fafc" }} />
-                <Bar dataKey="revenue" fill="#044b3b" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                <Bar dataKey="grossAmount" fill="#044b3b" radius={[4, 4, 0, 0]} maxBarSize={40} />
               </BarChart>
             </ResponsiveContainer>
           )}

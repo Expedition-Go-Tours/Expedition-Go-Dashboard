@@ -36,6 +36,7 @@ export default function BookingsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [bookings, setBookings] = useState([]);
   const [pagination, setPagination] = useState(null);
+  const [bookingSummary, setBookingSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [updatingId, setUpdatingId] = useState(null);
@@ -80,6 +81,7 @@ export default function BookingsPage() {
       });
       setBookings(result.bookings);
       setPagination(result.pagination);
+      setBookingSummary(result.summary);
     } catch (err) {
       if (err.code === "AUTH_REQUIRED") return;
       setError(
@@ -219,9 +221,9 @@ export default function BookingsPage() {
       total: filteredData.length,
       pending: filteredData.filter((b) => b.status === "PENDING").length,
       confirmed: filteredData.filter((b) => b.status === "CONFIRMED").length,
-      revenue: filteredData.reduce((sum, b) => sum + b.total, 0),
+      revenue: bookingSummary?.totalRevenue ?? filteredData.reduce((sum, b) => sum + b.total, 0),
     }),
-    [filteredData]
+    [filteredData, bookingSummary]
   );
 
   const hasFilters =
