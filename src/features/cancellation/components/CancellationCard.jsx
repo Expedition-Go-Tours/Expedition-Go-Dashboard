@@ -9,7 +9,14 @@ const STATUS_CONFIG = {
   "Building performance record": { color: "bg-blue-100 text-blue-800 border-blue-200", icon: "📊", label: "Building performance record" },
 };
 
-export default function CancellationCard({ summary, onViewDetails }) {
+const PERIOD_OPTIONS = [
+  { value: 7, label: "7 days" },
+  { value: 30, label: "30 days" },
+  { value: 60, label: "60 days" },
+  { value: 90, label: "90 days" },
+];
+
+export default function CancellationCard({ summary, days = 30, onDaysChange, onViewDetails }) {
   const rate = summary?.cancellationRate ?? 0;
   const status = summary?.status ?? "Building performance record";
   const confirmed = summary?.confirmed ?? 0;
@@ -31,12 +38,31 @@ export default function CancellationCard({ summary, onViewDetails }) {
             <p className="text-sm text-slate-500">Your booking performance this month</p>
           </div>
         </div>
-        <button
-          onClick={onViewDetails}
-          className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-all"
-        >
-          View details
-        </button>
+        <div className="flex items-center gap-3">
+          {onDaysChange && (
+            <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-0.5">
+              {PERIOD_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => onDaysChange(opt.value)}
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                    days === opt.value
+                      ? "bg-white text-slate-800 shadow-sm"
+                      : "text-slate-500 hover:text-slate-700"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          )}
+          <button
+            onClick={onViewDetails}
+            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-all"
+          >
+            View details
+          </button>
+        </div>
       </div>
 
       {/* Main Content: Rate + Stats */}

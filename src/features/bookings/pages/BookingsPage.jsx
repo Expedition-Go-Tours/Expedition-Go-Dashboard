@@ -22,6 +22,7 @@ import DatePicker from "@/components/forms/DatePicker";
 import { fetchSupplierBookings, updateBookingStatus } from "../api";
 import { getAuthToken } from "@/stores/authStore";
 import BookingCard from "../components/BookingCard";
+import CancelBookingModal from "../components/CancelBookingModal";
 
 const QUICK_FILTERS = [
   { key: "ALL", label: "All bookings" },
@@ -41,6 +42,7 @@ export default function BookingsPage() {
   const [error, setError] = useState(null);
   const [updatingId, setUpdatingId] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [cancelBooking, setCancelBooking] = useState(null);
   const [highlightedBookingId, setHighlightedBookingId] = useState(
     searchParams.get("bookingId") || null
   );
@@ -154,6 +156,11 @@ export default function BookingsPage() {
 
   const handleStatusUpdate = useCallback(
     async (bookingId, status) => {
+      if (status === "CANCELLED") {
+        const booking = bookings.find((b) => b.id === bookingId);
+        setCancelBooking(booking || { id: bookingId, tour: {} });
+        return;
+      }
       setUpdatingId(bookingId);
       try {
         await updateBookingStatus(bookingId, { status });
@@ -167,7 +174,30 @@ export default function BookingsPage() {
         setUpdatingId(null);
       }
     },
-    [loadBookings]
+    [bookings, loadBookings]
+  );
+
+  const handleConfirmCancel = useCallback(
+    async (reason) => {
+      if (!cancelBooking) return;
+      setUpdatingId(cancelBooking.id);
+      try {
+        await updateBookingStatus(cancelBooking.id, {
+          status: "CANCELLED",
+          reason,
+        });
+        toast.success("Booking cancelled");
+        setCancelBooking(null);
+        await loadBookings();
+      } catch (err) {
+        toast.error(
+          err.response?.data?.message || "Failed to cancel booking"
+        );
+      } finally {
+        setUpdatingId(null);
+      }
+    },
+    [cancelBooking, loadBookings]
   );
 
   const handleMessageCustomer = useCallback(
@@ -555,6 +585,13 @@ export default function BookingsPage() {
           </div>
         </div>
       )}
+      <CancelBookingModal
+        isOpen={!!cancelBooking}
+        onClose={() => setCancelBooking(null)}
+        onConfirm={handleConfirmCancel}
+        booking={cancelBooking}
+        isLoading={!!updatingId}
+      />
     </div>
   );
 }

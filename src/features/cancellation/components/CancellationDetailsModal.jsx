@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { X, CalendarX2, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, Download } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
@@ -29,13 +29,20 @@ export default function CancellationDetailsModal({
   const completed = summary?.completed ?? 0;
   const completionRate = summary?.completionRate ?? 0;
   const totalLost = summary?.bookingValueLost ?? 0;
+  const closeRef = useRef(null);
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
+    closeRef.current?.focus();
+    const onKey = (e) => {
+      if (e.key === "Escape") onClose?.();
+    };
+    window.addEventListener("keydown", onKey);
     return () => {
       document.body.style.overflow = "";
+      window.removeEventListener("keydown", onKey);
     };
-  }, []);
+  }, [onClose]);
 
   const SortIcon = ({ field }) => {
     if (sortField !== field) return <ArrowUpDown size={13} className="text-slate-300 shrink-0" />;
@@ -50,7 +57,12 @@ export default function CancellationDetailsModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={onClose} />
 
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[85vh] flex flex-col">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Cancellation details"
+        className="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[85vh] flex flex-col"
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
           <div>
@@ -58,6 +70,7 @@ export default function CancellationDetailsModal({
             <p className="text-sm text-slate-500">Last {days} days</p>
           </div>
           <button
+            ref={closeRef}
             onClick={onClose}
             className="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-slate-100 transition-colors"
           >

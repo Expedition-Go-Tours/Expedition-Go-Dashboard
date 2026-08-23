@@ -51,10 +51,10 @@ export async function fetchSupplierBookings(params = {}) {
   };
 }
 
-export function updateBookingStatus(id, { status, supplierNotes }) {
+export function updateBookingStatus(id, { status, supplierNotes, reason }) {
   return api.patch(
     `/bookings/${id}/status`,
-    { status, supplierNotes },
+    { status, supplierNotes, reason },
     { skipGlobalErrorHandler: true }
   );
 }
