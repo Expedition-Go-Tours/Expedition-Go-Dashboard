@@ -21,6 +21,7 @@ import OptimizedImage from "@/components/shared/OptimizedImage";
 import {
   formatPartySummary,
   formatTravelerDetails,
+  getTravelerDetails,
 } from "../lib/formatTravelers";
 
 const STATUS_ACTIONS = {
@@ -116,6 +117,9 @@ export default function BookingCard({
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const isPayLater = booking.paymentTiming === 'later';
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const travelDatePassed = new Date(booking.travelDate) < today;
   // Reserve-now-pay-later bookings start PENDING with no money captured; payment
   // is the gate, so don't offer a manual "Accept booking" until the charge lands.
   // A PAID PENDING booking (pay-later charged, or a manual-confirmation tour)
@@ -123,10 +127,13 @@ export default function BookingCard({
   const payLaterUnpaid = isPayLater && booking.status === 'PENDING' && booking.paymentStatus !== 'SUCCEEDED';
   const actions = (STATUS_ACTIONS[booking.status] || []).filter(
     (a) => !(payLaterUnpaid && a.value === 'CONFIRMED')
+  ).filter(
+    (a) => !(travelDatePassed && a.value === 'CONFIRMED')
   );
   const pickup = booking.pickup || {};
   const partySummary = formatPartySummary(booking.travelersRaw);
   const travelerNames = formatTravelerDetails(booking.travelersRaw);
+  const travelerDetails = getTravelerDetails(booking.travelersRaw);
   const guestCount = booking.travelers;
 
   const toggleExpand = useCallback(() => {
@@ -258,6 +265,16 @@ export default function BookingCard({
                 </p>
               </div>
 
+              {/* ── Warning: past-date PENDING ── */}
+              {booking.status === 'PENDING' && travelDatePassed && (
+                <div className="flex items-center gap-2.5 px-3 py-2.5 mt-3 rounded-lg bg-red-50 border border-red-200/60">
+                  <AlertTriangle size={15} className="text-red-500 shrink-0" />
+                  <p className="text-sm text-red-700">
+                    Activity date has passed. This booking will be auto-cancelled if not confirmed soon.
+                  </p>
+                </div>
+              )}
+
               {/* ── Section: Booking details ── */}
               <div className="py-4 border-b border-slate-100">
                 <h4 className="text-sm font-bold text-slate-900 mb-3">
@@ -338,12 +355,29 @@ export default function BookingCard({
                   <h4 className="text-sm font-bold text-slate-900 mb-3">
                     Participants
                   </h4>
-                  <p className="text-sm text-slate-700">
+                  <p className="text-sm text-slate-500 mb-3">
                     {guestCount} traveler{guestCount !== 1 ? "s" : ""}
-                    {travelerNames && (
-                      <span className="text-slate-500"> — {travelerNames}</span>
-                    )}
                   </p>
+                  {travelerDetails.length > 0 && (
+                    <div className="rounded-lg border border-slate-200 overflow-hidden">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="bg-slate-50 border-b border-slate-200">
+                            <th className="text-left px-3 py-2 text-xs font-medium text-slate-500">Name</th>
+                            <th className="text-left px-3 py-2 text-xs font-medium text-slate-500 w-16">Age</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {travelerDetails.map((d, i) => (
+                            <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-slate-50/50"}>
+                              <td className="px-3 py-2 text-slate-700">{d.name || `Traveler ${i + 1}`}</td>
+                              <td className="px-3 py-2 text-slate-500">{d.age ?? "—"}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
               )}
 

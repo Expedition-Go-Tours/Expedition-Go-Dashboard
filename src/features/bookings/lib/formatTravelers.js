@@ -80,3 +80,36 @@ export function formatTravelerDetails(travelers) {
     .filter(Boolean)
     .join(", ");
 }
+
+export function getTravelerDetails(travelers) {
+  const t = normalizeTravelers(travelers);
+  if (!t) return [];
+  const details = Array.isArray(t) ? t : t.details;
+  if (Array.isArray(details) && details.length > 0) {
+    return details.filter(Boolean).map((d) => ({
+      name: d.name || d.firstName || "",
+      age: d.age ?? null,
+      type: d.ageGroup || d.type || "adult",
+    }));
+  }
+  const parts = [];
+  const counts = { adults: t.adults, children: t.children, infants: t.infants, seniors: t.seniors };
+  for (const [type, count] of Object.entries(counts)) {
+    const n = Number(count);
+    if (Number.isFinite(n) && n > 0) {
+      for (let i = 0; i < n; i++) {
+        parts.push({ name: "", age: null, type });
+      }
+    }
+  }
+  if (parts.length === 0) {
+    const total = Object.values(t).reduce((s, v) => {
+      const n = Number(v);
+      return s + (Number.isFinite(n) && n > 0 ? n : 0);
+    }, 0);
+    for (let i = 0; i < Math.max(1, total); i++) {
+      parts.push({ name: "", age: null, type: "adult" });
+    }
+  }
+  return parts;
+}
