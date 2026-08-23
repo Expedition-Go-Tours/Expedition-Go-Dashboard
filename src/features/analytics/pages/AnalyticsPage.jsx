@@ -3,7 +3,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { DollarSign, ShoppingCart, Star, TrendingUp, Loader2, RefreshCw, AlertTriangle } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { getAuthToken } from "@/stores/authStore";
-import { fetchSupplierAnalytics } from "../api";
+import { fetchSupplierAnalytics, fetchMonthlyRevenue } from "../api";
 import { fetchSupplierBookings } from "@/features/bookings/api";
 
 const CustomTooltip = ({ active, payload, label }) => {
@@ -59,11 +59,12 @@ export default function AnalyticsPage() {
   const bookingsData = dashboardData?.bookings || {};
   const earnings = dashboardData?.earnings || {};
 
+  const reviews = dashboardData?.reviews || {};
   const totalRevenue = Number(earnings.totalEarnings) || 0;
   const totalBookings = bookingsData.total || 0;
   const activeTours = tours.active || 0;
 
-  const avgRating = 4.75;
+  const avgRating = reviews.averageRating || 0;
 
   const productBookings = useMemo(() => {
     const map = {};
