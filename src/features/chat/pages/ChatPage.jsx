@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
+import { toast } from "sonner";
 import { useAuthStore } from "@/stores/authStore";
 import { useChatStore } from "@/stores/chatStore";
 import ConversationList from "../components/ConversationList";
@@ -28,6 +29,7 @@ export default function ChatPage() {
   const [activeTab, setActiveTab] = useState(tabParam);
   const [loadingMore, setLoadingMore] = useState(false);
   const [sending, setSending] = useState(false);
+  const [creatingConv, setCreatingConv] = useState(false);
   const [showDetailsPanel, setShowDetailsPanel] = useState(false);
   const [mobileView, setMobileView] = useState('list');
   const isFetchingRef = useRef(false);
@@ -141,12 +143,18 @@ export default function ChatPage() {
       return;
     }
 
+    setCreatingConv(true);
     getOrCreateConversation(customerIdParam)
       .then((conv) => {
         appendConversation(conv);
         Promise.resolve().then(() => handleSelectConversation(conv));
       })
-      .catch(() => {});
+      .catch(() => {
+        toast.error("Failed to open conversation");
+      })
+      .finally(() => {
+        setCreatingConv(false);
+      });
   }, [customerIdParam, currentUserId, conversations, handleSelectConversation, appendConversation]);
 
   const handleTabChange = (tab) => {

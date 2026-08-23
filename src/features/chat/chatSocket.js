@@ -25,6 +25,13 @@ export function getChatSocket(userId) {
       reconnectionAttempts: 10,
       reconnectionDelay: 3000,
     });
+
+    socket.on("auth:expired", () => {
+      socket.disconnect();
+      socket = null;
+      currentUserId = null;
+    });
+
     currentUserId = userId;
   }
   return socket;

@@ -158,6 +158,10 @@ export default function ChatWindow({ conversation, messages, messageStatuses, on
   const handleSend = async () => {
     const trimmed = input.trim();
     if (!trimmed || sending) return;
+    if (trimmed.length > 5000) {
+      toast.error("Message too long (max 5000 characters)");
+      return;
+    }
     setInput("");
     stopTypingSignal();
     await onSendMessage(trimmed);
