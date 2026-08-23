@@ -44,6 +44,7 @@ export const updateBookingStatusSchema = z.object({
   status: z.enum([
     "AWAITING_CONFIRMATION",
     "CONFIRMED",
+    "COMPLETED",
     "CANCELLED",
     "REJECTED",
     "REFUND_REQUEST",

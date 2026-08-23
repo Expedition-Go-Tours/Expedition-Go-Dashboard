@@ -97,6 +97,12 @@ const STATUS_STYLES = {
     border: "border-[#93c5fd]",
     dot: "bg-[#298dff]",
   },
+  COMPLETED: {
+    bg: "bg-[#f0fdf4]",
+    text: "text-[#166534]",
+    border: "border-[#86efac]",
+    dot: "bg-[#16a34a]",
+  },
 };
 
 export default function StatusBadge({ status, label, size = "sm" }) {

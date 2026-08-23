@@ -9,6 +9,7 @@ import {
   ShoppingCart,
   Clock,
   CheckCircle2,
+  BadgeCheck,
   AlertTriangle,
   TrendingUp,
 } from "lucide-react";
@@ -251,6 +252,7 @@ export default function BookingsPage() {
       total: filteredData.length,
       pending: filteredData.filter((b) => b.status === "PENDING").length,
       confirmed: filteredData.filter((b) => b.status === "CONFIRMED").length,
+      completed: filteredData.filter((b) => b.status === "COMPLETED").length,
       revenue: bookingSummary?.totalRevenue ?? filteredData.reduce((sum, b) => sum + b.total, 0),
     }),
     [filteredData, bookingSummary]
@@ -291,7 +293,7 @@ export default function BookingsPage() {
       </div>
 
       {/* ====== STATS ====== */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 lg:gap-4">
         {[
           {
             label: "Total Bookings",
@@ -313,6 +315,13 @@ export default function BookingsPage() {
             icon: CheckCircle2,
             color: "text-emerald-600",
             bar: "bg-emerald-400",
+          },
+          {
+            label: "Completed",
+            value: stats.completed,
+            icon: BadgeCheck,
+            color: "text-green-700",
+            bar: "bg-green-500",
           },
           {
             label: "Revenue",
