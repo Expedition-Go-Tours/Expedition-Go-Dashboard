@@ -237,11 +237,11 @@ export default function BookingCard({
             {formatCurrency(booking.total, booking.currency)}
           </p>
           {booking.discount > 0 && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200/60 text-[11px] font-semibold text-emerald-700 whitespace-nowrap">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-50 border border-red-200/60 text-[11px] font-semibold text-red-700 whitespace-nowrap">
               <Tag size={10} />
               {booking.offerName || 'Discount'}
               {booking.offerPromoCode && (
-                <span className="ml-0.5 px-1 py-px rounded bg-emerald-100 text-emerald-800 font-mono text-[10px]">
+                <span className="ml-0.5 px-1 py-px rounded bg-red-100 text-red-800 font-mono text-[10px]">
                   {booking.offerPromoCode}
                 </span>
               )}
@@ -292,7 +292,7 @@ export default function BookingCard({
                     )}
                     <div className="flex justify-between px-3 py-2">
                       <span className="text-slate-600">Discount</span>
-                      <span className="font-medium text-emerald-600">
+                      <span className="font-medium text-red-600">
                         −{formatCurrency(booking.discount, booking.currency)}
                       </span>
                     </div>
@@ -302,10 +302,10 @@ export default function BookingCard({
                         <span className="text-xs text-slate-600">
                           {booking.offerName}
                           {booking.offerDiscountType === 'PERCENTAGE' && booking.offerDiscountPct && (
-                            <span className="ml-1 text-emerald-600 font-medium">({booking.offerDiscountPct}% off)</span>
+                            <span className="ml-1 text-red-600 font-medium">({booking.offerDiscountPct}% off)</span>
                           )}
                           {booking.offerDiscountType === 'FIXED' && booking.offerDiscountFix && (
-                            <span className="ml-1 text-emerald-600 font-medium">({formatCurrency(booking.offerDiscountFix, booking.currency)} off)</span>
+                            <span className="ml-1 text-red-600 font-medium">({formatCurrency(booking.offerDiscountFix, booking.currency)} off)</span>
                           )}
                         </span>
                       </div>
