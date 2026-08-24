@@ -135,6 +135,7 @@ export default function ChatPage() {
 
     const existing = conversations.find(
       (c) =>
+        c.type === 'SUPPLIER_CUSTOMER' &&
         c.participants?.some((p) => p.userId === customerIdParam)
     );
 
@@ -144,7 +145,7 @@ export default function ChatPage() {
     }
 
     setCreatingConv(true);
-    getOrCreateConversation(customerIdParam)
+    getOrCreateConversation(customerIdParam, 'SUPPLIER_CUSTOMER')
       .then((conv) => {
         appendConversation(conv);
         Promise.resolve().then(() => handleSelectConversation(conv));
