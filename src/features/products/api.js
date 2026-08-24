@@ -88,20 +88,6 @@ export const uploadPhotos = (formData) =>
 export const deleteProduct = (id) => api.delete(`/tours/${id}`);
 
 /**
- * Check if supplier has a verified payout method
- * @returns {Promise<boolean>} True if supplier has verified payout method
- */
-export const hasVerifiedPayoutMethod = async () => {
-  try {
-    const res = await api.get('/payout-methods/my-methods');
-    const methods = res.data?.data?.payoutMethods || [];
-    return methods.some(m => m.verified === true);
-  } catch {
-    return false;
-  }
-};
-
-/**
  * Submit a product/tour for admin review (replaces direct publishing)
  * Sets status to PENDING_APPROVAL and notifies the admins.
  * The full submitted payload is passed so the server persists + validates

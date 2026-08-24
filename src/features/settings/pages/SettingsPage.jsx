@@ -919,8 +919,8 @@ function PayoutsTab() {
                       <p className="text-sm font-bold text-slate-800">
                         {formatCurrency(Number(p.amount) || 0, p.currency || "USD")}
                       </p>
-                      {p.paidAt && (
-                        <p className="text-[10px] text-slate-400 mt-0.5">{new Date(p.paidAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</p>
+                      {p.date && (
+                        <p className="text-[10px] text-slate-400 mt-0.5">{new Date(p.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</p>
                       )}
                     </div>
                     <span className={cn(

@@ -99,20 +99,5 @@ export async function declineInvite(token) {
   return api.post(`/suppliers/settings/team/invite/${token}/decline`, {}, { skipGlobalErrorHandler: true });
 }
 
-export async function fetchPayoutMethods() {
-  const response = await api.get("/payout-methods/me", { skipGlobalErrorHandler: true });
-  return response.data?.data?.methods || [];
-}
-
-export async function createPayoutMethod(data) {
-  return api.post("/payout-methods", data, { skipGlobalErrorHandler: true });
-}
-
-export async function deletePayoutMethod(id) {
-  return api.delete(`/payout-methods/${id}`, { skipGlobalErrorHandler: true });
-}
-
-export async function fetchPayouts(params = {}) {
-  const response = await api.get("/payouts/me", { params, skipGlobalErrorHandler: true });
-  return response.data?.data || null;
-}
+// Payout functions are shared from the finance feature to avoid duplication.
+export { fetchPayoutMethods, createPayoutMethod, deletePayoutMethod, fetchPayouts } from "@/features/finance/api";
