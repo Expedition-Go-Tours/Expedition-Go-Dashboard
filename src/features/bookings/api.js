@@ -35,6 +35,14 @@ export function mapBookingRow(booking) {
     specialRequests: booking.specialRequests || "",
     selectedTime: booking.selectedTime || "",
     pickup: typeof booking.pickup === 'string' ? (() => { try { return JSON.parse(booking.pickup); } catch { return null; } })() : booking.pickup || null,
+    discount: Number(booking.discounts) || 0,
+    offerId: booking.appliedOfferId || null,
+    offerName: booking.offerName || booking.appliedOffer?.name || null,
+    offerPromoCode: booking.offerPromoCode || booking.appliedOffer?.promoCode || null,
+    offerType: booking.appliedOffer?.offerType || null,
+    offerDiscountType: booking.offerDiscountType || booking.appliedOffer?.discountType || null,
+    offerDiscountPct: booking.offerDiscountPct ?? booking.appliedOffer?.discountPercentage ?? null,
+    offerDiscountFix: booking.offerDiscountFix ?? booking.appliedOffer?.fixedDiscountValue ?? null,
   };
 }
 

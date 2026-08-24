@@ -12,6 +12,7 @@ import {
   CalendarDays,
   CreditCard,
   Ban,
+  Tag,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import StatusBadge from "@/components/shared/StatusBadge";
@@ -235,6 +236,17 @@ export default function BookingCard({
           <p className="text-base font-bold text-slate-900 whitespace-nowrap">
             {formatCurrency(booking.total, booking.currency)}
           </p>
+          {booking.discount > 0 && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200/60 text-[11px] font-semibold text-emerald-700 whitespace-nowrap">
+              <Tag size={10} />
+              {booking.offerName || 'Discount'}
+              {booking.offerPromoCode && (
+                <span className="ml-0.5 px-1 py-px rounded bg-emerald-100 text-emerald-800 font-mono text-[10px]">
+                  {booking.offerPromoCode}
+                </span>
+              )}
+            </span>
+          )}
         </div>
 
         <ChevronDown
@@ -264,6 +276,47 @@ export default function BookingCard({
                   Total charged to customer
                 </p>
               </div>
+
+              {/* ── Pricing breakdown ── */}
+              {booking.discount > 0 && (
+                <div className="py-3 border-b border-slate-100">
+                  <h4 className="text-sm font-bold text-slate-900 mb-2">
+                    Pricing breakdown
+                  </h4>
+                  <div className="rounded-lg bg-slate-50 border border-slate-200/60 divide-y divide-slate-200/60 text-sm">
+                    {booking.subtotal > 0 && (
+                      <div className="flex justify-between px-3 py-2">
+                        <span className="text-slate-600">Subtotal</span>
+                        <span className="font-medium text-slate-800">{formatCurrency(booking.subtotal, booking.currency)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between px-3 py-2">
+                      <span className="text-slate-600">Discount</span>
+                      <span className="font-medium text-emerald-600">
+                        −{formatCurrency(booking.discount, booking.currency)}
+                      </span>
+                    </div>
+                    {booking.offerName && (
+                      <div className="flex justify-between px-3 py-2">
+                        <span className="text-slate-500 text-xs">Applied offer</span>
+                        <span className="text-xs text-slate-600">
+                          {booking.offerName}
+                          {booking.offerDiscountType === 'PERCENTAGE' && booking.offerDiscountPct && (
+                            <span className="ml-1 text-emerald-600 font-medium">({booking.offerDiscountPct}% off)</span>
+                          )}
+                          {booking.offerDiscountType === 'FIXED' && booking.offerDiscountFix && (
+                            <span className="ml-1 text-emerald-600 font-medium">({formatCurrency(booking.offerDiscountFix, booking.currency)} off)</span>
+                          )}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex justify-between px-3 py-2 bg-white">
+                      <span className="font-semibold text-slate-800">Total paid</span>
+                      <span className="font-bold text-slate-900">{formatCurrency(booking.total, booking.currency)}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* ── Warning: past-date PENDING ── */}
               {booking.status === 'PENDING' && travelDatePassed && (
