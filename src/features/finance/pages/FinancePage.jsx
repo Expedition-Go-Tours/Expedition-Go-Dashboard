@@ -210,14 +210,14 @@ function TablePagination({ pagination, page, onPageChange }) {
       <div className="flex items-center gap-2">
         <button
           disabled={current <= 1}
-          onClick={() => onPageChange(page - 1)}
+          onClick={() => onPageChange(current - 1)}
           className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:pointer-events-none transition-colors"
         >
           <ChevronLeft size={13} /> Previous
         </button>
         <button
           disabled={current >= pagination.totalPages}
-          onClick={() => onPageChange(page + 1)}
+          onClick={() => onPageChange(current + 1)}
           className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:pointer-events-none transition-colors"
         >
           Next <ChevronRight size={13} />
@@ -266,7 +266,9 @@ export default function FinancePage() {
       setSummary(summaryResult);
 
       if (activeTab === "earnings") {
-        const result = await fetchFinanceEarnings({ page, limit: PAGE_SIZE });
+        const params = { page, limit: PAGE_SIZE };
+        if (filterPill) params.payoutStatus = filterPill;
+        const result = await fetchFinanceEarnings(params);
         setEarnings(result.earnings || []);
         setEarningsPagination(result.pagination || null);
       } else if (activeTab === "payouts") {
@@ -289,10 +291,10 @@ export default function FinancePage() {
       if (err.code === "AUTH_REQUIRED") return;
       setError(err.response?.data?.message || err.message || "Failed to load finance data");
     } finally { setLoading(false); }
-  }, [activeTab, disputeStatusFilter, page]);
+  }, [activeTab, disputeStatusFilter, filterPill, page]);
 
   // Reset to the first page whenever the tab or refund filter changes
-  useEffect(() => { setPage(1); }, [activeTab, disputeStatusFilter]);
+  useEffect(() => { setPage(1); }, [activeTab, disputeStatusFilter, filterPill]);
 
   useEffect(() => {
     let cancelled = false;
@@ -359,27 +361,6 @@ export default function FinancePage() {
   const windowOpen = Boolean(windowInfo?.open);
   const canRequestPayout = windowOpen && stats.available > 0;
 
-  // Filter earnings by payout lifecycle status
-  const filteredEarnings = useMemo(() => {
-    if (filterPill === "ELIGIBLE") return earnings.filter((e) => e.payoutStatus === "ELIGIBLE");
-    if (filterPill === "PENDING") return earnings.filter((e) => e.payoutStatus === "PENDING" || !e.payoutStatus);
-    if (filterPill === "REQUESTED") return earnings.filter((e) => e.payoutStatus === "REQUESTED");
-    if (filterPill === "PAID") return earnings.filter((e) => e.payoutStatus === "PAID");
-    if (filterPill === "DISPUTED") return earnings.filter((e) => e.payoutStatus === "DISPUTED");
-    return earnings;
-  }, [earnings, filterPill]);
-
-  const filterCounts = useMemo(() => {
-    const count = (statuses) => earnings.filter((e) => statuses.includes(e.payoutStatus)).length;
-    return {
-      ELIGIBLE: count(["ELIGIBLE"]),
-      PENDING: count(["PENDING", undefined, null]),
-      REQUESTED: count(["REQUESTED"]),
-      PAID: count(["PAID"]),
-      DISPUTED: count(["DISPUTED"]),
-    };
-  }, [earnings]);
-
   // Cycle display strings from the server-provided summary
   const cycleInfo = useMemo(() => {
     const current = summary?.currentCycle?.label || "";
@@ -419,10 +400,8 @@ export default function FinancePage() {
     setShowRefundModal(true);
     setRefundForm(INITIAL_REFUND_FORM);
     try {
-      const result = await fetchFinanceEarnings({ limit: 100 });
-      const eligible = (result.earnings || []).filter(
-        (e) => ["PENDING", "ELIGIBLE"].includes(e.payoutStatus) && !e.openDispute
-      );
+      const result = await fetchFinanceEarnings({ limit: 500, payoutStatus: "PENDING,ELIGIBLE" });
+      const eligible = (result.earnings || []).filter((e) => !e.openDispute);
       setEligibleBookings(eligible);
     } catch {
       setEligibleBookings([]);
@@ -826,9 +805,7 @@ export default function FinancePage() {
           <motion.div key="earnings" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }} className="space-y-4">
             {/* Filter Pills */}
             <div className="flex items-center gap-2">
-              {FILTER_PILLS.map((pill) => {
-                const count = filterCounts[pill.key];
-                return (
+              {FILTER_PILLS.map((pill) => (
                   <button
                     key={pill.key}
                     onClick={() => setFilterPill(pill.key)}
@@ -839,10 +816,9 @@ export default function FinancePage() {
                         : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
                     )}
                   >
-                    {pill.label}{count !== undefined ? ` (${count})` : ""}
+                    {pill.label}
                   </button>
-                );
-              })}
+                ))}
             </div>
 
             {/* Info Banner */}
@@ -864,7 +840,7 @@ export default function FinancePage() {
                   ))}
                 </div>
               </div>
-            ) : filteredEarnings.length === 0 ? (
+            ) : earnings.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-24 text-center bg-white border border-gray-200 rounded-xl">
                 <div className="w-16 h-16 rounded-2xl bg-emerald-50 flex items-center justify-center mb-4">
                   <DollarSign size={26} className="text-emerald-300" />
@@ -888,7 +864,7 @@ export default function FinancePage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredEarnings.map((e, i) => (
+                      {earnings.map((e, i) => (
                         <motion.tr
                           key={e.id}
                           initial={{ opacity: 0, y: 8 }}
