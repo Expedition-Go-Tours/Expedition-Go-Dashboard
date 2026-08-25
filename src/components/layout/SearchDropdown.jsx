@@ -70,7 +70,9 @@ function flattenNavItems(items) {
 }
 
 const RECENT_KEY = "supplier-search-recent";
+const RECENT_TOURS_KEY = "supplier-search-recent-tours";
 const MAX_RECENT = 6;
+const MAX_RECENT_TOURS = 4;
 
 function getRecent() {
   try {
@@ -92,6 +94,30 @@ function saveRecent(path, validPaths) {
   const recent = getRecent().filter((p) => p !== path);
   recent.unshift(path);
   persistRecent(recent);
+}
+
+function getRecentTours() {
+  try {
+    const raw = localStorage.getItem(RECENT_TOURS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveRecentTour(tour) {
+  try {
+    const recent = getRecentTours().filter((t) => t.id !== tour.id);
+    recent.unshift({
+      id: tour.id,
+      label: tour.label,
+      subtitle: tour.subtitle || "",
+      coverPhoto: tour.coverPhoto || null,
+      status: tour.status || "",
+      path: tour.path || `/products/${tour.id}`,
+    });
+    localStorage.setItem(RECENT_TOURS_KEY, JSON.stringify(recent.slice(0, MAX_RECENT_TOURS)));
+  } catch { /* ignore */ }
 }
 
 function highlightMatch(text, query) {
@@ -160,6 +186,11 @@ export default function SearchDropdown() {
       .filter(Boolean);
   }, [recentPaths, navItems]);
 
+  const recentTourItems = useMemo(() => {
+    if (!open) return [];
+    return getRecentTours().map((t) => ({ ...t, kind: "tour" }));
+  }, [open]);
+
   const pageResults = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return [];
@@ -183,11 +214,11 @@ export default function SearchDropdown() {
   // Combined, flat list of results for keyboard navigation. Recent shows
   // pages only (tours are discoverable by typing).
   const displayItems = useMemo(() => {
-    if (!query.trim()) return recentItems;
+    if (!query.trim()) return [...recentItems, ...recentTourItems];
     return [...pageResults.map((i) => ({ ...i, kind: "page" })), ...tourResults];
-  }, [query, pageResults, tourResults, recentItems]);
+  }, [query, pageResults, tourResults, recentItems, recentTourItems]);
 
-  const isEmpty = query.trim() ? displayItems.length === 0 : recentItems.length === 0;
+  const isEmpty = query.trim() ? displayItems.length === 0 : (recentItems.length === 0 && recentTourItems.length === 0);
   const tourCount = tourQuery.data?.tours?.length ?? 0;
 
   useEffect(() => {
@@ -242,10 +273,12 @@ export default function SearchDropdown() {
 
   const goToTour = useCallback(
     (id) => {
+      const tour = displayItems.find((item) => item.kind === "tour" && item.id === id);
+      if (tour) saveRecentTour(tour);
       close();
       navigate(`/products/${id}`);
     },
-    [navigate, close],
+    [navigate, close, displayItems],
   );
 
   const handleKeyDown = (e) => {
@@ -361,10 +394,19 @@ export default function SearchDropdown() {
                     const isTour = item.kind === "tour";
                     const showPagesHeader = query.trim() && !isTour && idx === 0;
                     const showProductsHeader = query.trim() && isTour && (idx === 0 || displayItems[idx - 1]?.kind !== "tour");
+                    const showRecentToursHeader = !query.trim() && isTour && recentTourItems.length > 0 && idx === recentItems.length;
                     return (
                       <Fragment key={isTour ? `tour-${item.id}` : item.path}>
                         {showPagesHeader && <SectionHeader>Pages</SectionHeader>}
                         {showProductsHeader && <SectionHeader>Products</SectionHeader>}
+                        {showRecentToursHeader && (
+                          <div className="flex items-center gap-2 px-3 pt-2 pb-1 mt-1 border-t border-[#eaeaea]">
+                            <Clock className="h-3 w-3 text-[#94a3a3]" />
+                            <span className="text-[11px] font-semibold uppercase tracking-wider text-[#94a3a3]">
+                              Recent Products
+                            </span>
+                          </div>
+                        )}
                         <button
                           onClick={() => (isTour ? goToTour(item.id) : goTo(item.path))}
                           onMouseEnter={() => setHighlight(idx)}
