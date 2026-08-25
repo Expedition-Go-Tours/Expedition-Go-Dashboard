@@ -534,12 +534,16 @@ export default function ProductBuilderPage() {
     if (submitting) return
     setSubmitting(true)
     try {
-      // Always persist the CURRENT state before submitting — never skip based on
-      // isDirty (a silently-failed autosave can leave isDirty false while the
-      // stored draft is stale). The submitted payload is passed to the server so
-      // it persists + validates exactly what the supplier sees.
-      await handleSave({ force: true, skipNavigate: true })
-      const currentId = useProductBuilderStore.getState().savedProductId
+      // For existing products, skip the save — submitProductForReview sends
+      // the payload directly and the server persists it as draftContent.
+      // Calling handleSave here would update the LIVE tour first, making the
+      // server-side diff (draft vs live) empty.
+      // For new products (no ID yet), we must save first to create the product.
+      let currentId = useProductBuilderStore.getState().savedProductId
+      if (!currentId) {
+        await handleSave({ force: true, skipNavigate: true })
+        currentId = useProductBuilderStore.getState().savedProductId
+      }
       if (!currentId) {
         throw new Error('Failed to obtain product ID')
       }
