@@ -224,12 +224,13 @@ export const useProductBuilderStore = create(
 
       setField: (key, value) =>
         set((s) => {
-          const updates = { [key]: value, isDirty: true, autosaveError: null }
+          const clamped = key === 'maxGroupsPerTimeSlot' ? Math.max(1, value) : value
+          const updates = { [key]: clamped, isDirty: true, autosaveError: null }
           if (key === 'maxParticipants') {
             updates.pricingCategories = s.pricingCategories.map((c) => {
               const t = c.tiers || []
               if (t.length === 0) return c
-              return { ...c, tiers: t.map((tier, j) => j === t.length - 1 ? { ...tier, to: value } : tier) }
+              return { ...c, tiers: t.map((tier, j) => j === t.length - 1 ? { ...tier, to: clamped } : tier) }
             })
           }
           return updates
@@ -708,17 +709,16 @@ export const useProductBuilderStore = create(
           
           const removed = tiers[tierIndex]
           
-          // GetYourGuide behavior: Remove tier from ALL categories
           return {
-            pricingCategories: s.pricingCategories.map((c) => {
+            pricingCategories: s.pricingCategories.map((c, ci) => {
+              if (ci !== catIndex) return c
               const catTiers = c.tiers || []
-              if (catTiers.length <= 1) return { ...c, tiers: [] } // Remove all tiers if only 1 left
+              if (catTiers.length <= 1) return { ...c, tiers: [] }
               
               return {
                 ...c,
                 tiers: catTiers
                   .map((t, j) => {
-                    // Merge adjacent tiers when removing
                     if (j === tierIndex - 1 && removed) return { ...t, to: removed.to }
                     if (j === tierIndex + 1 && tierIndex === 0 && removed) return { ...t, from: removed.from }
                     return t
@@ -841,7 +841,7 @@ export const useProductBuilderStore = create(
 
       addTimeSlot: () =>
         set((s) => ({
-          timeSlots: [...s.timeSlots, { id: safeId(), startTime: '09:00' }],
+          timeSlots: [...s.timeSlots, { id: safeId(), startTime: '09:00', endTime: '10:00' }],
           isDirty: true,
         })),
       updateTimeSlot: (index, updates) =>

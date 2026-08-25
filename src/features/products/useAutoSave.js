@@ -19,6 +19,21 @@ function normalizeLocationPoint(loc) {
   return loc
 }
 
+function cleanCategories(cats) {
+  if (!Array.isArray(cats)) return []
+  return cats.map(c => {
+    const clean = { ...c }
+    if (clean.notAllowed) {
+      clean.price = null
+      clean.tiers = []
+    }
+    if (clean.ticketNotRequired) {
+      clean.tiers = []
+    }
+    return clean
+  })
+}
+
 function buildSchedulesAndPricing(state) {
   const { pricing, availability } = primaryOptionData(state)
   const schedules = Array.isArray(availability.schedules) ? availability.schedules : []
@@ -63,17 +78,30 @@ function buildSchedulesAndPricing(state) {
               hasEndDate: !!s.hasEndDate,
               endDate: s.hasEndDate ? (s.endDate || '') : null,
               weeklySchedule,
-              dateExceptions: (Array.isArray(s.dateExceptions) ? s.dateExceptions : []).map(ex => ({
-                ...ex,
-                overrideTimes: (ex.overrideTimes || []).map(t => typeof t === 'string' ? t : `${t.startTime}-${t.endTime}`),
-              })),
+              dateExceptions: (Array.isArray(s.dateExceptions) ? s.dateExceptions : [])
+                .filter(ex => ex.date && ex.date.trim())
+                .map(ex => {
+                  const clean = { ...ex }
+                  if (clean.type === 'closed') {
+                    clean.overrideTimes = []
+                  } else if (clean.type === 'override') {
+                    clean.overrideTimes = (clean.overrideTimes || [])
+                      .map(t => typeof t === 'string' ? t : `${t.startTime}-${t.endTime}`)
+                      .filter(Boolean)
+                    if (clean.overrideTimes.length === 0) clean.type = 'closed'
+                  } else {
+                    clean.overrideTimes = (clean.overrideTimes || [])
+                      .map(t => typeof t === 'string' ? t : `${t.startTime}-${t.endTime}`)
+                  }
+                  return clean
+                }),
               timeSlots: (Array.isArray(s.timeSlots) ? s.timeSlots : []).map(t => typeof t === 'string' ? { id: safeId(), startTime: t, endTime: '' } : { ...t, startTime: t.startTime, endTime: t.endTime || '' }),
               pricingModel: s.pricingModel || pricing.pricingModel || 'perPerson',
               currency: s.currency || pricing.currency || 'USD',
               pricingApproach: s.pricingApproach || pricing.pricingApproach || 'dependsOnAge',
               uniformPrice: s.uniformPrice ?? pricing.uniformPrice ?? null,
-              pricingCategories: cat,
-              prices: cat.filter(c => c.price != null).map(c => ({ ageGroup: c.name, retailPrice: c.price })),
+              pricingCategories: cleanCategories(cat),
+              prices: cleanCategories(cat).filter(c => c.price != null && !c.notAllowed && !c.ticketNotRequired).map(c => ({ ageGroup: c.name, retailPrice: c.price })),
               minParticipants: s.minParticipants ?? pricing.minParticipants ?? null,
               maxParticipants: s.maxParticipants ?? pricing.maxParticipants ?? null,
             }

@@ -1555,7 +1555,7 @@ function ScheduleCard({ schedule, index, onEdit }) {
                 <span className="text-xs text-slate-700">
                   {schedule.pricingModel === 'perGroup'
                     ? (Array.isArray(schedule.groupSizes) && schedule.groupSizes.length > 0
-                      ? `From $${Math.min(...schedule.groupSizes.map(g => g.price || 0))} per group`
+                      ? `From $${Math.min(...schedule.groupSizes.map(g => g.price || 0)) || 0} per group`
                       : 'Not set')
                     : schedule.pricingApproach === 'sameForEveryone'
                       ? `$${schedule.uniformPrice || 0} per Person`
