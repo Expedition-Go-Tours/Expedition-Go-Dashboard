@@ -87,7 +87,7 @@ export default function Step10Photos() {
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    accept: { 'image/jpeg': ['.jpg', '.jpeg'], 'image/png': ['.png'] },
+    accept: { 'image/jpeg': ['.jpg', '.jpeg'], 'image/png': ['.png'], 'image/webp': ['.webp'], 'image/avif': ['.avif'] },
     maxSize: 7 * 1024 * 1024,
   })
 
@@ -430,7 +430,7 @@ export default function Step10Photos() {
                   <ul className="text-sm text-slate-600 space-y-1 list-disc pl-4">
                     <li>Landscape photos</li>
                     <li>Minimum of 1280 pixels wide</li>
-                    <li>JPG, JPEG, or PNG file types</li>
+                    <li>JPG, JPEG, PNG, WebP, or AVIF file types</li>
                     <li>7MB maximum file size</li>
                   </ul>
                 </div>
