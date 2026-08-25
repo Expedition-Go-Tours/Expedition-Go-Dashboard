@@ -232,6 +232,7 @@ export const stepSchemas = {
     timeSlots: z.array(z.object({ startTime: z.string(), endTime: z.string().optional() })).optional(),
     minParticipants: z.any().optional(),
     maxParticipants: z.any().optional(),
+    maxGroupsPerTimeSlot: z.any().optional(),
   }).superRefine((data, ctx) => {
     const add = (issue) => {
       ctx.addIssue({ code: 'custom', path: issue.path, message: issue.message })

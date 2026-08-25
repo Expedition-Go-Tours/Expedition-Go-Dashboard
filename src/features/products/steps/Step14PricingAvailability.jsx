@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { toast } from 'sonner'
 import {
   Select,
   SelectTrigger,
@@ -17,6 +18,7 @@ import {
   validateCapacity,
   hasScheduleData,
   hasPricingData,
+  getAgeOverlap,
 } from '@/features/products/utils/pricingValidation'
 import DraftNumberInput from '@/components/ui/DraftNumberInput'
 import OptionPicker from '@/features/products/OptionPicker'
@@ -51,10 +53,13 @@ function validateScheduleStep(step, state) {
   }
   if (step === 3) {
     issues.push(...validateCapacity(state))
+    if (state.pricingModel === 'perGroup') {
+      issues.push(...validateGroupSizes(state.groupSizes))
+    }
   }
   if (step === 4) {
     if (state.pricingModel === 'perGroup') {
-      issues.push(...validateGroupSizes(state.groupSizes))
+      // Per-group: step 4 is auto-skipped, nothing to validate here
     } else if (state.pricingApproach === 'sameForEveryone') {
       if (state.uniformPrice == null || state.uniformPrice <= 0) {
         issues.push({ path: ['uniformPrice'], message: 'Enter a price per person' })
@@ -607,14 +612,10 @@ function PricingCategoriesStep({ errors = {}, onTouch }) {
         setShowPicker(false)
         return
       }
-      addPricingCategory({ name: trimmed, price: null, minAge: 1, maxAge: 99, notAllowed: false, ticketNotRequired: false, needsAdult: false, idRequired: false, idType: '' })
+      addPricingCategory({ name: trimmed, price: null, minAge: 0, maxAge: 99, notAllowed: false, ticketNotRequired: false, needsAdult: false, idRequired: false, idType: '' })
       setCustomName('')
       setCustomMode(false)
     }
-  }
-
-  if (pricingModel === 'perGroup') {
-    return <GroupSizeStep errors={errors} onTouch={onTouch} />
   }
 
   return (
@@ -688,8 +689,42 @@ function PricingCategoriesStep({ errors = {}, onTouch }) {
                       <span className="text-sm font-bold text-slate-900 min-w-[80px]">{cat.name || 'Category'}</span>
                       <div className="flex items-center gap-2">
                         <span className="text-sm text-slate-500">Age range</span>
-                        <span className="text-sm text-slate-700">{cat.minAge} to</span>
-                        <Select value={String(cat.maxAge)} onValueChange={(v) => updatePricingCategory(i, { maxAge: parseInt(v) })}>
+                        <Select value={String(cat.minAge)} onValueChange={(v) => {
+                          const newMin = parseInt(v)
+                          if (newMin > cat.maxAge) {
+                            toast.warning('Min age cannot be greater than max age')
+                            return
+                          }
+                          const overlapIdx = getAgeOverlap(pricingCategories, i, { minAge: newMin })
+                          if (overlapIdx !== null) {
+                            toast.warning(`Age range overlaps with "${pricingCategories[overlapIdx]?.name || 'another category'}"`)
+                            return
+                          }
+                          updatePricingCategory(i, { minAge: newMin })
+                        }}>
+                          <SelectTrigger className="h-9 w-16 px-2 text-sm border-slate-200 rounded-lg">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Array.from({ length: 100 }, (_, n) => (
+                              <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <span className="text-sm text-slate-500">to</span>
+                        <Select value={String(cat.maxAge)} onValueChange={(v) => {
+                          const newMax = parseInt(v)
+                          if (newMax < cat.minAge) {
+                            toast.warning('Max age cannot be less than min age')
+                            return
+                          }
+                          const overlapIdx = getAgeOverlap(pricingCategories, i, { maxAge: newMax })
+                          if (overlapIdx !== null) {
+                            toast.warning(`Age range overlaps with "${pricingCategories[overlapIdx]?.name || 'another category'}"`)
+                            return
+                          }
+                          updatePricingCategory(i, { maxAge: newMax })
+                        }}>
                           <SelectTrigger className="h-9 w-16 px-2 text-sm border-slate-200 rounded-lg">
                             <SelectValue />
                           </SelectTrigger>
@@ -831,14 +866,29 @@ function PricingCategoriesStep({ errors = {}, onTouch }) {
 }
 
 function CapacityStep({ errors = {}, onTouch }) {
-  const { pricingModel, minParticipants, maxParticipants, maxGroupsPerTimeSlot, setField } = useProductBuilderStore()
+  const {
+    pricingModel, minParticipants, maxParticipants, maxGroupsPerTimeSlot,
+    groupSizes, additionalPersonsEnabled, additionalPersonPrice,
+    setField, addGroupSize, updateGroupSize, removeGroupSize,
+  } = useProductBuilderStore()
+
+  const commission = 0.15
+
+  useEffect(() => {
+    const { pricingModel: model, groupSizes: sizes } = useProductBuilderStore.getState()
+    if (model === 'perGroup' && sizes.length === 0) {
+      addGroupSize()
+    }
+  }, [addGroupSize])
 
   if (pricingModel === 'perGroup') {
     return (
-      <div className="space-y-6">
+      <div className="space-y-8">
+        {/* Max groups per time slot */}
         <div>
-          <h3 className="text-base font-bold text-slate-900 mb-2">What's the maximum number of groups you can take per time slot?</h3>
-          <div className="flex items-center gap-4 mt-4">
+          <h3 className="text-base font-bold text-slate-900 mb-2">Capacity & Group Pricing</h3>
+          <p className="text-sm text-slate-600 mb-4">Set your group capacity, define group sizes, and set prices.</p>
+          <div className="flex items-center gap-4">
             <label className="text-sm text-slate-700 min-w-[130px]">Max # of groups</label>
             <input
               type="number"
@@ -855,6 +905,121 @@ function CapacityStep({ errors = {}, onTouch }) {
             />
           </div>
           {errors.maxGroupsPerTimeSlot && <span className="text-[13px] text-red-600 font-medium mt-1 block">{errors.maxGroupsPerTimeSlot}</span>}
+        </div>
+
+        {/* Group size bands with prices */}
+        <div>
+          <h4 className="text-sm font-bold text-slate-900 mb-3">Group sizes & prices</h4>
+          <div className="space-y-4">
+            {groupSizes.map((gs, i) => {
+              const bandPrice = gs.price
+              const payout = bandPrice ? (bandPrice * (1 - commission)).toFixed(2) : ''
+              const label = gs.from === gs.to
+                ? `Group of ${gs.from}`
+                : `Group of ${gs.from}-${gs.to}`
+
+              return (
+                <div key={gs.id || i} className="border border-slate-200 rounded-lg p-4">
+                  <div className="flex items-center gap-3 mb-3">
+                    {i === 0 && (
+                      <label className="text-sm text-slate-700 shrink-0">People</label>
+                    )}
+                    {i > 0 && <div className="w-[52px] shrink-0" />}
+                    <DraftNumberInput
+                      min={1}
+                      value={gs.from}
+                      onCommit={(v) => { updateGroupSize(i, { from: v == null ? 1 : v }); onTouch?.(`groupSizes.${i}.from`) }}
+                      className="h-10 w-20 rounded-lg border border-slate-200 px-3 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                    />
+                    <span className="text-sm text-slate-400">to</span>
+                    <DraftNumberInput
+                      min={1}
+                      value={gs.to}
+                      onCommit={(v) => { updateGroupSize(i, { to: v == null ? 1 : v }); onTouch?.(`groupSizes.${i}.to`) }}
+                      className="h-10 w-20 rounded-lg border border-slate-200 px-3 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeGroupSize(i)}
+                      disabled={groupSizes.length <= 1}
+                      className={`text-sm font-medium shrink-0 ${
+                        groupSizes.length <= 1
+                          ? 'text-slate-300 cursor-not-allowed'
+                          : 'text-red-500 hover:text-red-600'
+                      }`}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap items-end gap-x-4 gap-y-2">
+                    <div className="min-w-[140px] flex-1">
+                      <label className="block text-xs text-slate-500 mb-1">Group pays</label>
+                      <input
+                        type="number"
+                        value={bandPrice ?? ''}
+                        onChange={(e) => { updateGroupSize(i, { price: e.target.value ? parseFloat(e.target.value) : null }); onTouch?.(`groupSizes.${i}.price`) }}
+                        placeholder="USD"
+                        aria-invalid={!!errors[`groupSizes.${i}.price`]}
+                        className={`h-10 w-full max-w-[120px] rounded-lg border px-3 text-sm focus:outline-none focus:ring-1 ${
+                          errors[`groupSizes.${i}.price`]
+                            ? 'border-red-300 bg-red-50/30 focus:border-red-500 focus:ring-red-500'
+                            : 'border-slate-200 focus:border-emerald-500 focus:ring-emerald-500'
+                        }`}
+                      />
+                      {errors[`groupSizes.${i}.price`] && (
+                        <span className="block text-[13px] text-red-600 font-medium mt-1">{errors[`groupSizes.${i}.price`]}</span>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-xs text-slate-500 mb-1">Commission</label>
+                      <div className="h-10 rounded-lg bg-slate-100 flex items-center px-3 text-sm text-slate-500 min-w-[60px]">
+                        15%
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-slate-500 mb-1">Payout per group</label>
+                      <div className="h-10 rounded-lg bg-slate-100 flex items-center px-3 text-sm text-slate-700 font-medium min-w-[80px]">
+                        {bandPrice ? `${payout} USD` : ''}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+          <button
+            type="button"
+            onClick={addGroupSize}
+            className="flex items-center gap-1.5 text-sm text-emerald-600 hover:text-emerald-700 font-medium mt-3"
+          >
+            <Plus className="w-4 h-4" />
+            Additional group size
+          </button>
+        </div>
+
+        {/* Additional persons */}
+        <div className="border border-slate-200 rounded-lg p-4">
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={additionalPersonsEnabled}
+              onChange={(e) => setField('additionalPersonsEnabled', e.target.checked)}
+              className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+            />
+            <span className="text-sm font-bold text-slate-900">Additional Persons</span>
+          </label>
+          {additionalPersonsEnabled && (
+            <div className="mt-3 flex items-center gap-3">
+              <label className="text-sm text-slate-700">Price per additional person</label>
+              <input
+                type="number"
+                value={additionalPersonPrice ?? ''}
+                onChange={(e) => setField('additionalPersonPrice', e.target.value ? parseFloat(e.target.value) : null)}
+                placeholder="USD"
+                className="h-10 w-28 rounded-lg border border-slate-200 px-3 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+              />
+            </div>
+          )}
         </div>
       </div>
     )
@@ -1208,12 +1373,6 @@ function PerPersonPriceStep({ errors = {}, onTouch }) {
 }
 
 function PriceStep({ errors = {} }) {
-  const { pricingModel } = useProductBuilderStore()
-
-  if (pricingModel === 'perGroup') {
-    return <PerGroupPriceStep errors={errors} />
-  }
-
   return <PerPersonPriceStep errors={errors} />
 }
 
@@ -1239,10 +1398,24 @@ function ScheduleWizard({ onBack }) {
       }
       setWizardErrors({})
       clearStepErrors(16)
-      setField('currentScheduleStep', currentScheduleStep + 1)
+
+      // Per-group on step 3: all validation passed — save and exit
+      if (currentScheduleStep === 3 && state.pricingModel === 'perGroup') {
+        saveSchedule()
+        onBack()
+        return
+      }
+
+      // Per-group: skip step 2 (no pricing approach) and go straight to step 3
+      let nextStep = currentScheduleStep + 1
+      if (nextStep === 2 && state.pricingModel === 'perGroup') {
+        nextStep = 3
+      }
+      setField('currentScheduleStep', nextStep)
       return
     }
 
+    // Step 4 final save — validate all steps
     let allErrors = {}
     let firstStep = null
     for (let step = 1; step <= 4; step++) {
@@ -1266,7 +1439,13 @@ function ScheduleWizard({ onBack }) {
   const handleBack = () => {
     setDirection(-1)
     if (currentScheduleStep > 1) {
-      setField('currentScheduleStep', currentScheduleStep - 1)
+      // Per-group: skip step 2 when going back
+      let prevStep = currentScheduleStep - 1
+      const state = useProductBuilderStore.getState()
+      if (prevStep === 2 && state.pricingModel === 'perGroup') {
+        prevStep = 1
+      }
+      setField('currentScheduleStep', prevStep)
     } else {
       resetScheduleForm()
       onBack()

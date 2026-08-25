@@ -63,7 +63,10 @@ function buildSchedulesAndPricing(state) {
               hasEndDate: !!s.hasEndDate,
               endDate: s.hasEndDate ? (s.endDate || '') : null,
               weeklySchedule,
-              dateExceptions: Array.isArray(s.dateExceptions) ? s.dateExceptions : [],
+              dateExceptions: (Array.isArray(s.dateExceptions) ? s.dateExceptions : []).map(ex => ({
+                ...ex,
+                overrideTimes: (ex.overrideTimes || []).map(t => typeof t === 'string' ? t : `${t.startTime}-${t.endTime}`),
+              })),
               timeSlots: (Array.isArray(s.timeSlots) ? s.timeSlots : []).map(t => typeof t === 'string' ? { id: safeId(), startTime: t, endTime: '' } : { ...t, startTime: t.startTime, endTime: t.endTime || '' }),
               pricingModel: s.pricingModel || pricing.pricingModel || 'perPerson',
               currency: s.currency || pricing.currency || 'USD',

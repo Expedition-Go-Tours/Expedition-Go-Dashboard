@@ -577,7 +577,7 @@ export const useProductBuilderStore = create(
 
       addPricingCategory: (template) =>
         set((s) => ({
-          pricingCategories: [...s.pricingCategories, template || { name: '', price: null, minAge: 1, maxAge: 99, notAllowed: false, ticketNotRequired: false, needsAdult: false, idRequired: false, idType: '', tiers: [] }],
+          pricingCategories: [...s.pricingCategories, template || { name: '', price: null, minAge: 0, maxAge: 99, notAllowed: false, ticketNotRequired: false, needsAdult: false, idRequired: false, idType: '', tiers: [] }],
           isDirty: true,
         })),
       updatePricingCategory: (index, updates) =>

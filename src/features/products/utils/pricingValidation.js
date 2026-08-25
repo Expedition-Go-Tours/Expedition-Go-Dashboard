@@ -243,17 +243,20 @@ export function validateCapacity(state) {
   const { minParticipants, maxParticipants, maxGroupsPerTimeSlot, pricingModel } = state || {}
   const issues = []
 
-  if (minParticipants == null || minParticipants < 1) {
-    issues.push({ path: ['minParticipants'], message: 'Enter a minimum number' })
-  }
-  if (maxParticipants == null || maxParticipants < 1) {
-    issues.push({ path: ['maxParticipants'], message: 'Enter a maximum number' })
-  }
-  if (minParticipants != null && maxParticipants != null && minParticipants > maxParticipants) {
-    issues.push({ path: ['minParticipants'], message: 'Min must be less than or equal to max' })
-  }
-  if (pricingModel === 'perGroup' && (maxGroupsPerTimeSlot == null || maxGroupsPerTimeSlot < 1)) {
-    issues.push({ path: ['maxGroupsPerTimeSlot'], message: 'Enter a maximum number of groups' })
+  if (pricingModel === 'perGroup') {
+    if (maxGroupsPerTimeSlot == null || maxGroupsPerTimeSlot < 1) {
+      issues.push({ path: ['maxGroupsPerTimeSlot'], message: 'Enter a maximum number of groups' })
+    }
+  } else {
+    if (minParticipants == null || minParticipants < 1) {
+      issues.push({ path: ['minParticipants'], message: 'Enter a minimum number' })
+    }
+    if (maxParticipants == null || maxParticipants < 1) {
+      issues.push({ path: ['maxParticipants'], message: 'Enter a maximum number' })
+    }
+    if (minParticipants != null && maxParticipants != null && minParticipants > maxParticipants) {
+      issues.push({ path: ['minParticipants'], message: 'Min must be less than or equal to max' })
+    }
   }
 
   return issues
