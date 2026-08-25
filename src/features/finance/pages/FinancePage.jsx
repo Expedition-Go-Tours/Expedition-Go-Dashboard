@@ -32,6 +32,7 @@ const FILTER_PILLS = [
   { key: "REQUESTED", label: "In payout request" },
   { key: "PAID", label: "Paid" },
   { key: "DISPUTED", label: "On refund hold" },
+  { key: "CANCELLED", label: "Cancelled" },
 ];
 
 const REFUND_STATUS_FILTERS = [
@@ -253,6 +254,7 @@ export default function FinancePage() {
   const [refundForm, setRefundForm] = useState(INITIAL_REFUND_FORM);
   const [submittingRefund, setSubmittingRefund] = useState(false);
   const [eligibleBookings, setEligibleBookings] = useState([]);
+  const [loadingEligible, setLoadingEligible] = useState(false);
   const [page, setPage] = useState(1);
   const [earningsPagination, setEarningsPagination] = useState(null);
   const [payoutsPagination, setPayoutsPagination] = useState(null);
@@ -399,12 +401,15 @@ export default function FinancePage() {
   const openRefundModal = async () => {
     setShowRefundModal(true);
     setRefundForm(INITIAL_REFUND_FORM);
+    setLoadingEligible(true);
     try {
       const result = await fetchFinanceEarnings({ limit: 500, payoutStatus: "PENDING,ELIGIBLE" });
       const eligible = (result.earnings || []).filter((e) => !e.openDispute);
       setEligibleBookings(eligible);
     } catch {
       setEligibleBookings([]);
+    } finally {
+      setLoadingEligible(false);
     }
   };
 
@@ -686,7 +691,12 @@ export default function FinancePage() {
                 <div className="mt-5 space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Booking</label>
-                    {eligibleBookings.length === 0 ? (
+                    {loadingEligible ? (
+                      <div className="flex items-center gap-2 p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-500">
+                        <Loader2 size={15} className="animate-spin shrink-0" />
+                        Loading eligible bookings…
+                      </div>
+                    ) : eligibleBookings.length === 0 ? (
                       <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-700">
                         <AlertTriangle size={15} className="shrink-0" />
                         No eligible bookings right now. Bookings that are paid out or already disputed can't be refunded here.
@@ -1454,6 +1464,7 @@ function EarningStatusBadge({ status }) {
     "PAID": { bg: "bg-emerald-50", text: "text-emerald-700", label: "Paid" },
     "DISPUTED": { bg: "bg-red-50", text: "text-red-700", label: "On hold" },
     "CANCELLED": { bg: "bg-gray-100", text: "text-gray-500", label: "Cancelled" },
+    "FAILED": { bg: "bg-red-50", text: "text-red-700", label: "Failed" },
   };
 
   const style = styles[status] || styles["PENDING"];

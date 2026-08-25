@@ -1,45 +1,5 @@
 import api from "@/lib/axios";
 
-export async function fetchEarnings(params = {}) {
-  const [earningsRes, dashboardRes] = await Promise.allSettled([
-    api.get("/suppliers/earnings", { params, skipGlobalErrorHandler: true }),
-    api.get("/suppliers/dashboard", { skipGlobalErrorHandler: true }),
-  ]);
-
-  const payload = earningsRes.status === "fulfilled" ? earningsRes.value.data?.data || {} : {};
-
-  let summary = payload.summary || {};
-
-  if (dashboardRes.status === "fulfilled") {
-    const dash = dashboardRes.value.data?.data || {};
-    const earnings = dash.earnings || {};
-    const bookings = dash.bookings || {};
-    summary = {
-      ...summary,
-      totalRevenue: summary.totalRevenue ?? earnings.totalEarnings ?? 0,
-      totalBookings: summary.totalBookings ?? bookings.total ?? 0,
-    };
-  }
-
-  return {
-    earnings: (payload.earnings || []).map((item) => ({
-      id: item.id,
-      bookingNumber: item.bookingNumber,
-      date: item.paidAt || item.travelDate,
-      travelDate: item.travelDate,
-      tour: item.tour?.title || "—",
-      customer: item.customer?.name || "—",
-      total: Number(item.grossAmount) || 0,
-      supplierPayout: Number(item.supplierPayout) || 0,
-      commissionAmount: Number(item.platformCommission) || 0,
-      commissionRate: Number(item.commissionRate) || 0,
-      currency: item.currency || "USD",
-    })),
-    summary,
-    pagination: payload.pagination || null,
-  };
-}
-
 export async function fetchPayouts(params = {}) {
   const response = await api.get("/payouts/me", {
     params,
