@@ -404,7 +404,9 @@ export const useProductBuilderStore = create(
           const photos = [...s.photos]
           const [removed] = photos.splice(from, 1)
           photos.splice(to, 0, removed)
-          return { photos, isDirty: true }
+          // Sync coverPhoto when the first photo changes
+          const coverPhoto = photos[0]?.url || s.coverPhoto
+          return { photos, coverPhoto, isDirty: true }
         }),
       setCoverPhoto: (url) => set({ coverPhoto: url, isDirty: true }),
       trackUploadedUrl: (url) =>
