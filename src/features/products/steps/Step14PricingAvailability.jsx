@@ -219,7 +219,18 @@ function ScheduleStep({ errors = {}, onTouch }) {
     copyDayToRemaining, removeAllWeeklyHours,
     addDateException, updateDateException, removeDateException,
     addTimeSlot, updateTimeSlot, removeTimeSlot,
+    selectedOptionId, options,
   } = useProductBuilderStore()
+
+  // Prefill schedule name from the selected booking option title
+  useEffect(() => {
+    if (!scheduleName && selectedOptionId) {
+      const option = options.find(o => o.id === selectedOptionId)
+      if (option?.title) {
+        setField('scheduleName', option.title)
+      }
+    }
+  }, [selectedOptionId])
 
   const hasAnyHours = Object.values(weeklySchedule).some((hours) => hours.length > 0)
   const firstDayWithHours = DAYS.find((d) => weeklySchedule[d]?.length > 0)
@@ -605,7 +616,7 @@ function PricingCategoriesStep({ errors = {}, onTouch }) {
                           updatePricingCategory(i, { minAge: newMin })
                         }}>
                           <SelectTrigger className="h-9 w-16 px-2 text-sm border-slate-200 rounded-lg">
-                            <SelectValue />
+                            <SelectValue>{cat.minAge}</SelectValue>
                           </SelectTrigger>
                           <SelectContent>
                             {Array.from({ length: 100 }, (_, n) => (
@@ -628,7 +639,7 @@ function PricingCategoriesStep({ errors = {}, onTouch }) {
                           updatePricingCategory(i, { maxAge: newMax })
                         }}>
                           <SelectTrigger className="h-9 w-16 px-2 text-sm border-slate-200 rounded-lg">
-                            <SelectValue />
+                            <SelectValue>{cat.maxAge}</SelectValue>
                           </SelectTrigger>
                           <SelectContent>
                             {Array.from({ length: 100 }, (_, n) => (
@@ -793,9 +804,16 @@ function CapacityStep({ errors = {}, onTouch }) {
             <label className="text-sm text-slate-700 min-w-[130px]">Max # of groups</label>
             <input
               type="number"
-              value={maxGroupsPerTimeSlot}
-              onChange={(e) => setField('maxGroupsPerTimeSlot', parseInt(e.target.value) || 1)}
-              onBlur={() => onTouch?.('maxGroupsPerTimeSlot')}
+              value={maxGroupsPerTimeSlot ?? 1}
+              onChange={(e) => {
+                const v = e.target.value
+                setField('maxGroupsPerTimeSlot', v === '' ? '' : (parseInt(v) || ''))
+              }}
+              onBlur={() => {
+                const v = maxGroupsPerTimeSlot
+                if (v === '' || v == null || isNaN(v)) setField('maxGroupsPerTimeSlot', 1)
+                onTouch?.('maxGroupsPerTimeSlot')
+              }}
               min={1}
               aria-invalid={!!errors.maxGroupsPerTimeSlot}
               className={`h-11 w-32 rounded-lg border px-3.5 text-sm focus:outline-none focus:ring-1 ${
@@ -825,9 +843,16 @@ function CapacityStep({ errors = {}, onTouch }) {
             </label>
             <input
               type="number"
-              value={minParticipants}
-              onChange={(e) => setField('minParticipants', parseInt(e.target.value) || 1)}
-              onBlur={() => onTouch?.('minParticipants')}
+              value={minParticipants ?? 1}
+              onChange={(e) => {
+                const v = e.target.value
+                setField('minParticipants', v === '' ? '' : (parseInt(v) || ''))
+              }}
+              onBlur={() => {
+                const v = minParticipants
+                if (v === '' || v == null || isNaN(v)) setField('minParticipants', 1)
+                onTouch?.('minParticipants')
+              }}
               min={1}
               data-field="minParticipants"
               aria-invalid={!!errors.minParticipants}
@@ -843,9 +868,16 @@ function CapacityStep({ errors = {}, onTouch }) {
             <label className="text-sm text-slate-700 min-w-[140px]">Maximum number</label>
             <input
               type="number"
-              value={maxParticipants}
-              onChange={(e) => setField('maxParticipants', parseInt(e.target.value) || 1)}
-              onBlur={() => onTouch?.('maxParticipants')}
+              value={maxParticipants ?? 1}
+              onChange={(e) => {
+                const v = e.target.value
+                setField('maxParticipants', v === '' ? '' : (parseInt(v) || ''))
+              }}
+              onBlur={() => {
+                const v = maxParticipants
+                if (v === '' || v == null || isNaN(v)) setField('maxParticipants', 1)
+                onTouch?.('maxParticipants')
+              }}
               min={1}
               data-field="maxParticipants"
               aria-invalid={!!errors.maxParticipants}
@@ -920,7 +952,7 @@ function PerGroupPriceStep({ errors = {}, onTouch }) {
                 />
                 <button
                   type="button"
-                  onClick={() => removeGroupSize(i)}
+                  onClick={() => removeGroupSize(gs.id)}
                   disabled={groupSizes.length <= 1}
                   className={`text-sm font-medium shrink-0 ${
                     groupSizes.length <= 1

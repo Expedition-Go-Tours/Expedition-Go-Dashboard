@@ -176,10 +176,11 @@ function TicketValidityBlock({ option, index, updateOption }) {
                       onCommit={(v) => updateOption(index, { validity: v == null ? 1 : v })}
                     />
                     <Select value={option.validityUnit ?? 'days'} onValueChange={(v) => updateOption(index, { validityUnit: v })}>
-                      <SelectTrigger className="min-h-[34px] h-9 text-sm px-2 border-slate-200 rounded-lg">
+                      <SelectTrigger className="min-h-[34px] h-9 text-sm px-2 border-slate-200 rounded-lg w-[100px]">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="hours">Hour(s)</SelectItem>
                         <SelectItem value="days">Day(s)</SelectItem>
                         <SelectItem value="weeks">Week(s)</SelectItem>
                         <SelectItem value="months">Month(s)</SelectItem>

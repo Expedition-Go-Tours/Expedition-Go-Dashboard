@@ -1,4 +1,4 @@
-import { MapPin, Navigation, Flag, Pencil, Bed, UtensilsCrossed, Wine } from 'lucide-react'
+import { MapPin, Navigation, Flag, Pencil, Bed, UtensilsCrossed, Wine, RotateCcw, Ban } from 'lucide-react'
 import { useProductBuilderStore } from '@/features/products/productBuilderStore'
 import { ACCOMMODATION_LABELS } from '@/features/products/utils/itineraryConstants'
 
@@ -77,6 +77,7 @@ export default function Step05ItineraryPreview() {
   const durationUnit = useProductBuilderStore((s) => s.durationUnit)
   const meetingMode = useProductBuilderStore((s) => s.meetingMode)
   const meetingPoint = useProductBuilderStore((s) => s.meetingPoint)
+  const meetingPoints = useProductBuilderStore((s) => s.meetingPoints)
   const arrivalTimeType = useProductBuilderStore((s) => s.arrivalTimeType)
   const arrivalTimeCustom = useProductBuilderStore((s) => s.arrivalTimeCustom)
   const pickupType = useProductBuilderStore((s) => s.pickupType)
@@ -85,6 +86,7 @@ export default function Step05ItineraryPreview() {
   const pickupDescription = useProductBuilderStore((s) => s.pickupDescription)
   const dropoffOption = useProductBuilderStore((s) => s.dropoffOption)
   const dropoffLocation = useProductBuilderStore((s) => s.dropoffLocation)
+  const dropoffDescription = useProductBuilderStore((s) => s.dropoffDescription)
   const dayLogistics = useProductBuilderStore((s) => s.dayLogistics)
   const navigateTo = useProductBuilderStore((s) => s.navigateTo)
   const setPreviewFocus = useProductBuilderStore((s) => s.setPreviewFocus)
@@ -155,10 +157,13 @@ export default function Step05ItineraryPreview() {
       const arrival = arrivalTimeType === 'custom'
         ? (arrivalTimeCustom ? `Arrive by ${arrivalTimeCustom}` : 'Arrive by the custom time you set')
         : (ARRIVAL_LABELS[arrivalTimeType] || '')
+      const pts = Array.isArray(meetingPoints) && meetingPoints.length > 0
+        ? meetingPoints
+        : (meetingPoint ? [meetingPoint] : [])
       return {
         kind: 'meeting',
-        title: 'Meeting point',
-        lines: meetingPoint ? [meetingPoint.name, meetingPoint.address].filter(Boolean) : [],
+        title: pts.length > 1 ? 'Meeting points' : 'Meeting point',
+        lines: pts.map((p) => [p.name, p.address].filter(Boolean)).flat(),
         note: arrival,
         onEdit: editMeeting,
       }
@@ -179,6 +184,13 @@ export default function Step05ItineraryPreview() {
         title: 'Drop-off point',
         lines: dropoffLocation ? [dropoffLocation.name, dropoffLocation.address].filter(Boolean) : [],
         note: 'Customers are dropped off at a different place',
+      }
+    }
+    if (dropoffOption === 'customer_preferred') {
+      return {
+        title: "Customer's drop-off",
+        lines: [dropoffDescription || "Drop-off at customer's preferred location"],
+        note: 'Customers choose their own drop-off point',
       }
     }
     return null
@@ -244,35 +256,56 @@ export default function Step05ItineraryPreview() {
                   return (
                     <div key={`day-${dayNum}`} className="mb-2">
                       <div className="flex items-center gap-2 mb-2 mt-4 first:mt-0">
-                        <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full">
-                          Day {dayNum}
+                        <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${isLastDay ? 'text-amber-700 bg-amber-50' : 'text-emerald-700 bg-emerald-50'}`}>
+                          {isLastDay ? 'Final Day' : `Day ${dayNum}`}
                         </span>
                         <span className="text-[11px] text-slate-400">
                           {dayStops.length} stop{dayStops.length !== 1 ? 's' : ''}
                         </span>
                       </div>
-                      {(dayLogistics?.[dayNum]?.accommodation || dayLogistics?.[dayNum]?.meals?.length > 0 || dayLogistics?.[dayNum]?.drinksIncluded) && (
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-2 text-[12px] text-slate-500">
-                          {dayLogistics?.[dayNum]?.accommodation && (
-                            <span className="flex items-center gap-1">
-                              <Bed size={12} className="text-slate-400" />
-                              {ACCOMMODATION_LABELS[dayLogistics[dayNum].accommodation]}
-                            </span>
-                          )}
-                          {dayLogistics?.[dayNum]?.meals?.length > 0 && (
-                            <span className="flex items-center gap-1">
-                              <UtensilsCrossed size={12} className="text-slate-400" />
-                              {dayLogistics[dayNum].meals.map((m) => `${m.type}${m.format ? ` (${m.format})` : ''}`).join(', ')}
-                            </span>
-                          )}
-                          {dayLogistics?.[dayNum]?.drinksIncluded && (
-                            <span className="flex items-center gap-1">
-                              <Wine size={12} className="text-slate-400" />
-                              Drinks included
-                            </span>
-                          )}
-                        </div>
-                      )}
+                      {(() => {
+                        const log = dayLogistics?.[dayNum] || {}
+                        const hasNoSleepOver = isLastDay && !!log.noSleepOver
+                        const hasReturnToStart = isLastDay && !!log.returnToStart
+                        const hasMeals = log.meals?.length > 0
+                        const hasDrinks = !!log.drinksIncluded
+                        const hasAccommodation = !hasNoSleepOver && !!log.accommodation
+                        if (!hasAccommodation && !hasMeals && !hasDrinks && !hasReturnToStart) return null
+                        return (
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-2 text-[12px] text-slate-500">
+                            {hasAccommodation && (
+                              <span className="flex items-center gap-1">
+                                <Bed size={12} className="text-slate-400" />
+                                {ACCOMMODATION_LABELS[log.accommodation]}
+                              </span>
+                            )}
+                            {hasMeals && (
+                              <span className="flex items-center gap-1">
+                                <UtensilsCrossed size={12} className="text-slate-400" />
+                                {log.meals.map((m) => `${m.type}${m.format ? ` (${m.format})` : ''}`).join(', ')}
+                              </span>
+                            )}
+                            {hasDrinks && (
+                              <span className="flex items-center gap-1">
+                                <Wine size={12} className="text-slate-400" />
+                                Drinks included
+                              </span>
+                            )}
+                            {hasReturnToStart && (
+                              <span className="flex items-center gap-1 text-emerald-600 font-medium">
+                                <RotateCcw size={12} />
+                                Returns to start point
+                              </span>
+                            )}
+                            {hasNoSleepOver && (
+                              <span className="flex items-center gap-1 text-amber-600 font-medium">
+                                <Ban size={12} />
+                                No overnight stay
+                              </span>
+                            )}
+                          </div>
+                        )
+                      })()}
                       {dayStops.map((loc, i) => (
                         <TimelineNode key={loc._globalIdx} rail={!isLastDay || i < dayStops.length - 1 || !!end}>
                           <NodeDot>{stopNumber.get(loc._globalIdx)}</NodeDot>

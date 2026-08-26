@@ -180,6 +180,11 @@ function tourToProduct(tour) {
           lng: meetingPoint.lng,
         }
       : null,
+    meetingPoints: Array.isArray(content.meetingPoints)
+      ? content.meetingPoints
+      : Array.isArray(booking.meetingPoints)
+        ? booking.meetingPoints
+        : [],
     meetingPointPicture: content.meetingPointPicture || '',
     meetingPointDescription: (content.meetingInstructions || '').slice(0, 200),
     arrivalTimeType: content.arrivalTimeType || 'none',

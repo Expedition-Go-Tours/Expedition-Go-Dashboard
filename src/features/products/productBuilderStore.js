@@ -4,7 +4,7 @@ import { safeId } from '@/lib/utils'
 import { GYG_STEPS } from './gygSteps'
 import { isStepComplete } from './stepValidation'
 import { getCountryCallingCode } from 'libphonenumber-js'
-import { rederiveTiersFrom } from './tierUtils'
+import { rederiveTiersFrom, rederiveGroupSizesFrom } from './tierUtils'
 import { isMultiDayTour, dayCountForDuration } from './utils/itineraryConstants'
 import {
   pricingFromBuffers,
@@ -121,6 +121,7 @@ const INITIAL_FORM = {
   options: [],
   meetingMode: 'meeting_point',
   meetingPoint: null,
+  meetingPoints: [],
   meetingPointPicture: '',
   meetingPointDescription: '',
   arrivalTimeType: 'none',
@@ -224,7 +225,7 @@ export const useProductBuilderStore = create(
 
       setField: (key, value) =>
         set((s) => {
-          const clamped = key === 'maxGroupsPerTimeSlot' ? Math.max(1, value) : value
+          const clamped = key === 'maxGroupsPerTimeSlot' && typeof value === 'number' && !isNaN(value) ? Math.max(1, value) : value
           const updates = { [key]: clamped, isDirty: true, autosaveError: null }
           if (key === 'maxParticipants') {
             updates.pricingCategories = s.pricingCategories.map((c) => {
@@ -753,32 +754,43 @@ export const useProductBuilderStore = create(
           const gs = s.groupSizes
           const g = gs[index]
           if (!g) return s
+          // If editing from/to, use rederive to enforce contiguous ranges
+          if (updates.from !== undefined || updates.to !== undefined) {
+            return {
+              groupSizes: rederiveGroupSizesFrom(gs, index, updates),
+              isDirty: true,
+            }
+          }
           const merged = { ...g, ...updates }
-          if (merged.to < merged.from) return s
           return {
             groupSizes: gs.map((g2, i) => (i === index ? merged : g2)),
             isDirty: true,
           }
         }),
-      removeGroupSize: (index) =>
+      removeGroupSize: (idOrIndex) =>
         set((s) => {
           if (s.groupSizes.length <= 1) return s
+          // Support both id (string) and index (number) for backward compat
+          const idx = typeof idOrIndex === 'string'
+            ? s.groupSizes.findIndex(g => g.id === idOrIndex)
+            : idOrIndex
+          if (idx < 0 || idx >= s.groupSizes.length) return s
           const sorted = [...s.groupSizes].sort((a, b) => (a.from ?? 0) - (b.from ?? 0))
-          if (index < 0 || index >= sorted.length) return s
-          const current = sorted[index]
-          if (!current) return s
-          const prev = sorted[index - 1]
-          const next = sorted[index + 1]
-          const newFrom = prev ? prev.to + 1 : 1
-          const newTo = next ? next.from - 1 : (current.to ?? 100)
-          if (newFrom > newTo) return s
+          const sortedIdx = typeof idOrIndex === 'string'
+            ? sorted.findIndex(g => g.id === idOrIndex)
+            : idx
+          if (sortedIdx < 0 || sortedIdx >= sorted.length) return s
+          // Remove the tier and let remaining tiers re-derive contiguity
+          const remaining = sorted.filter((_, i) => i !== sortedIdx)
+          if (remaining.length === 0) return s
+          // Re-derive: first tier starts at 1, each subsequent starts at prev.to + 1
+          const result = remaining.map((g, i) => {
+            if (i === 0) return { ...g, from: 1 }
+            const prev = remaining[i - 1]
+            return { ...g, from: prev.to + 1, to: Math.max(prev.to + 1, g.to) }
+          })
           return {
-            groupSizes: sorted.map((g, i) => {
-              if (i === index) return null
-              if (i === index - 1) return { ...prev, to: newTo }
-              if (i === index + 1) return { ...next, from: newFrom }
-              return g
-            }).filter(g => g != null),
+            groupSizes: result,
             isDirty: true,
           }
         }),
@@ -1069,6 +1081,34 @@ export const useProductBuilderStore = create(
           return { pickupLocations: locations, isDirty: true }
         }),
 
+      addMeetingPoint: (loc) =>
+        set((s) => ({
+          meetingPoints: [...s.meetingPoints, {
+            name: loc.name || '',
+            address: loc.address || '',
+            lat: loc.lat ?? null,
+            lng: loc.lng ?? null,
+          }],
+          isDirty: true,
+        })),
+      updateMeetingPoint: (index, updates) =>
+        set((s) => ({
+          meetingPoints: s.meetingPoints.map((l, i) => (i === index ? { ...l, ...updates } : l)),
+          isDirty: true,
+        })),
+      removeMeetingPoint: (index) =>
+        set((s) => ({
+          meetingPoints: s.meetingPoints.filter((_, i) => i !== index),
+          isDirty: true,
+        })),
+      reorderMeetingPoints: (from, to) =>
+        set((s) => {
+          const list = [...s.meetingPoints]
+          const [removed] = list.splice(from, 1)
+          list.splice(to, 0, removed)
+          return { meetingPoints: list, isDirty: true }
+        }),
+
       nextStep: () => {
         get().syncSelectedOption()
         const { currentStep, completedStepIds } = get()
@@ -1216,9 +1256,16 @@ export const useProductBuilderStore = create(
     }),
     {
       name: 'product-builder-draft',
-      version: 5,
+      version: 6,
       migrate: (persistedState, version) => {
         let state = persistedState
+        if (version < 6) {
+          if (state.meetingPoint && typeof state.meetingPoint === 'object' && !Array.isArray(state.meetingPoint) && state.meetingPoint.address) {
+            state = { ...state, meetingPoints: [state.meetingPoint] }
+          } else if (!Array.isArray(state.meetingPoints)) {
+            state = { ...state, meetingPoints: [] }
+          }
+        }
         if (version < 5) {
           if (Array.isArray(state.locations)) {
             state = { ...state, locations: state.locations.map((l) => ({ ...l, day: l.day ?? 1 })) }

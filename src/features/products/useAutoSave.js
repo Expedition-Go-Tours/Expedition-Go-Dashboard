@@ -144,6 +144,11 @@ export function buildPayload(state) {
       }
     : {}
 
+  const rawAttractions = state.attractions || []
+  const normalizedAttractions = rawAttractions.map((a) => (typeof a === 'string'
+    ? { id: a, name: a, location: '', description: '', timeSpent: null, timeSpentUnit: 'minutes', admissionIncluded: 'no' }
+    : a))
+
   const payload = {
     ...state,
     ...topLevelOverrides,
@@ -151,9 +156,13 @@ export function buildPayload(state) {
     shortSummary: state.shortDescription || '',
     highlights: (state.highlights || []).filter(Boolean),
     locations: sortLocationsByDay(state.locations || []),
+    attractions: normalizedAttractions,
     photos: outgoingPhotos,
     ...(outgoingPhotos.length > 0 ? { existingPhotos: outgoingPhotos } : {}),
     meetingPoint: normalizeLocationPoint(state.meetingPoint),
+    meetingPoints: Array.isArray(state.meetingPoints)
+      ? state.meetingPoints.map(normalizeLocationPoint).filter(Boolean)
+      : [],
     dropoffLocation: normalizeLocationPoint(state.dropoffLocation),
     options: optionPayload,
     schedulesAndPricing: buildSchedulesAndPricing(state),
@@ -184,11 +193,16 @@ export function buildPayload(state) {
     payload.shortDescription = p.shortSummary ?? payload.shortDescription
     payload.highlights = Array.isArray(p.highlights) ? p.highlights : payload.highlights
     payload.locations = Array.isArray(p.locations) ? p.locations : payload.locations
-    payload.attractions = Array.isArray(p.attractions) ? p.attractions : payload.attractions
+    payload.attractions = Array.isArray(p.attractions)
+      ? p.attractions.map((a) => (typeof a === 'string'
+          ? { id: a, name: a, location: '', description: '', timeSpent: null, timeSpentUnit: 'minutes', admissionIncluded: 'no' }
+          : a))
+      : payload.attractions
     payload.meals = Array.isArray(p.meals) ? p.meals : payload.meals
     payload.mealType = p.mealType ?? payload.mealType
     payload.dayLogistics = p.dayLogistics ?? payload.dayLogistics
     payload.meetingPoint = p.meetingPoint ?? payload.meetingPoint
+    payload.meetingPoints = Array.isArray(p.meetingPoints) ? p.meetingPoints : payload.meetingPoints
     payload.meetingPointPicture = p.meetingPointPicture ?? payload.meetingPointPicture
     payload.arrivalTime = p.arrivalTime ?? payload.arrivalTime
     payload.whatsIncluded = Array.isArray(p.included) ? p.included : payload.whatsIncluded
@@ -247,7 +261,9 @@ export function buildPayload(state) {
         .map((m) => ({ type: m.type || '', format: m.format || '' }))
       const hasAccommodation = !!log.accommodation
       const hasDrinks = !!log.drinksIncluded
-      if (hasAccommodation || hasDrinks || meals.length > 0) {
+      const hasReturnToStart = !!log.returnToStart
+      const hasNoSleepOver = !!log.noSleepOver
+      if (hasAccommodation || hasDrinks || hasReturnToStart || hasNoSleepOver || meals.length > 0) {
         cleaned[day] = { ...log, meals }
       }
     }

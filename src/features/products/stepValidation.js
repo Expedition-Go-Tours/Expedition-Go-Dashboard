@@ -38,6 +38,7 @@ const STEP_FIELDS = {
   13: [
     'meetingMode',
     'meetingPoint',
+    'meetingPoints',
     'meetingPointPicture',
     'meetingPointDescription',
     'arrivalTimeType',

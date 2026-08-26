@@ -64,7 +64,7 @@ export const productOptionSchema = z.object({
   maxGroupSize: z.number().nullable().optional(),
   validityType: z.enum(['open_ended', 'date_picked', 'period', 'from_activation']).optional(),
   validity: z.number().nullable(),
-  validityUnit: z.enum(['days', 'weeks', 'months']).nullable(),
+  validityUnit: z.enum(['hours', 'days', 'weeks', 'months']).nullable(),
   validityStartDate: z.string().optional(),
   validityEndDate: z.string().optional(),
 })
@@ -99,7 +99,30 @@ export const stepSchemas = {
       durationUnit: z.enum(['minutes', 'hours', 'days']).optional(),
       accommodationIncluded: z.boolean().optional(),
     }).superRefine((data, ctx) => {
-      // Conditional validation: require accommodationIncluded when duration >= 24 hours
+      // Conditional validation: require category-specific fields based on product type
+      if (data.category === 'tour' && (!data.transportModes || data.transportModes.length === 0)) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['transportModes'],
+          message: 'Select at least one mode of transportation',
+        })
+      }
+      if (data.category === 'activity' && (!data.activitiesIncluded || data.activitiesIncluded.length === 0)) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['activitiesIncluded'],
+          message: 'Select at least one activity',
+        })
+      }
+      if (data.category === 'transport' && (!data.transportServices || data.transportServices.length === 0)) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['transportServices'],
+          message: 'Select at least one transportation service',
+        })
+      }
+
+      // Require accommodationIncluded when duration >= 24 hours
       if (data.duration != null && data.durationUnit) {
         const durationInHours = data.durationUnit === 'days' ? data.duration * 24
           : data.durationUnit === 'hours' ? data.duration
@@ -109,7 +132,7 @@ export const stepSchemas = {
             code: 'custom',
             path: ['accommodationIncluded'],
             message: 'Accommodation inclusion is required for tours 24 hours or longer',
-          });
+          })
         }
       }
     }),
@@ -190,6 +213,7 @@ export const stepSchemas = {
   13: z.object({
     meetingMode: z.enum(['meeting_point', 'pickup', 'none']),
     meetingPoint: locationPointSchema.nullable().optional(),
+    meetingPoints: z.array(locationPointSchema).optional(),
     meetingPointPicture: z.string().optional(),
     meetingPointDescription: z.string().max(MEETING_POINT_DESCRIPTION_MAX_CHARS, limitMessage(MEETING_POINT_DESCRIPTION_MAX_CHARS)).optional(),
     arrivalTimeType: z.enum(['none', '5min', '10min', '15min', '20min', '25min', '30min', 'notified', 'custom']).optional(),
@@ -213,7 +237,7 @@ export const stepSchemas = {
     pickupGeoshape: z.any().nullable().optional(),
     planPickupTimes: z.boolean().optional(),
     pickupStartTime: z.string().optional(),
-    dropoffOption: z.enum(['same_location', 'different_location', 'none', 'service']).optional(),
+    dropoffOption: z.enum(['same_location', 'different_location', 'customer_preferred', 'none', 'service']).optional(),
     dropoffLocation: locationPointSchema.nullable().optional(),
     dropoffDescription: z.string().optional(),
   }),

@@ -8,7 +8,7 @@ import {
   Eye, Shield, Activity, Navigation, MoreHorizontal,
   Tag, Percent, DollarSign, MessageSquare, Pencil,
   MapPin, CalendarDays, Bed, UtensilsCrossed, MoonStar,
-  Ticket, Lock, Headphones, BookOpen,
+  Ticket, Lock, Headphones, BookOpen, RotateCcw, Ban,
 } from "lucide-react";
 import { toast } from "sonner";
 import { getMyProduct, deleteProduct } from "@/features/products/api";
@@ -720,20 +720,32 @@ export default function ProductDetailPage() {
                 </div>
 
                 {/* MEETING POINT MODE */}
-                {(!content.meetingMode || content.meetingMode === 'meeting_point') && (
-                  <>
-                    {(booking.meetingPoint?.name || booking.meetingPoint?.address) && (
-                      <div className="bg-slate-50 rounded-lg px-3.5 py-3 mb-3">
-                        <p className="text-[11px] text-slate-400 uppercase tracking-wider font-medium mb-1">Meeting Point</p>
-                        {booking.meetingPoint?.name && <p className="font-semibold text-slate-800 text-sm">{booking.meetingPoint.name}</p>}
-                        {booking.meetingPoint?.address && <p className="text-xs text-slate-500 mt-0.5">{booking.meetingPoint.address}</p>}
-                        {(booking.meetingPoint?.lat && booking.meetingPoint?.lng) && (
-                          <p className="text-xs text-slate-400 flex items-center gap-1 mt-1.5">
-                            <Navigation size={10} /> {booking.meetingPoint.lat}, {booking.meetingPoint.lng}
+                {(!content.meetingMode || content.meetingMode === 'meeting_point') && (() => {
+                  const meetingPts = Array.isArray(content.meetingPoints) && content.meetingPoints.length > 0
+                    ? content.meetingPoints
+                    : (booking.meetingPoint?.name || booking.meetingPoint?.address ? [booking.meetingPoint] : [])
+                  return (
+                    <>
+                      {meetingPts.length > 0 && (
+                        <div className="mb-3">
+                          <p className="text-[11px] text-slate-400 uppercase tracking-wider font-medium mb-1.5">
+                            {meetingPts.length > 1 ? 'Meeting Points' : 'Meeting Point'}
                           </p>
-                        )}
-                      </div>
-                    )}
+                          <div className="space-y-1.5">
+                            {meetingPts.map((pt, i) => (
+                              <div key={i} className="bg-slate-50 rounded-lg px-3.5 py-3">
+                                {pt.name && <p className="font-semibold text-slate-800 text-sm">{pt.name}</p>}
+                                {pt.address && <p className="text-xs text-slate-500 mt-0.5">{pt.address}</p>}
+                                {(pt.lat && pt.lng) && (
+                                  <p className="text-xs text-slate-400 flex items-center gap-1 mt-1.5">
+                                    <Navigation size={10} /> {pt.lat}, {pt.lng}
+                                  </p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     {content.meetingPointPicture && (
                       <div className="mb-3">
                         <p className="text-[11px] text-slate-400 uppercase tracking-wider font-medium mb-1.5">Photo</p>
@@ -760,8 +772,9 @@ export default function ProductDetailPage() {
                     {content.meetingPointDescription && (
                       <p className="text-sm text-slate-600 leading-relaxed mt-2">{content.meetingPointDescription}</p>
                     )}
-                  </>
-                )}
+                    </>
+                  )
+                })()}
 
                 {/* PICKUP MODE */}
                 {content.meetingMode === 'pickup' && (
@@ -853,6 +866,7 @@ export default function ProductDetailPage() {
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-200/60 text-slate-600 uppercase tracking-wider">
                           {content.dropoffOption === 'same_location' ? 'Same as meeting point' :
                            content.dropoffOption === 'different_location' ? 'Different location' :
+                           content.dropoffOption === 'customer_preferred' ? "Customer's choice" :
                            'Service included'}
                         </span>
                       </div>
@@ -881,18 +895,24 @@ export default function ProductDetailPage() {
               });
               const dayKeys = Object.keys(days).map(Number).sort((a, b) => a - b);
               const isMultiDay = dayKeys.length > 1 || content.locations.some((l) => (l.day ?? 1) > 1);
+              const lastDayNum = dayKeys.length > 0 ? Math.max(...dayKeys) : null;
               return (
                 <SectionCard title="Itinerary" onEdit={() => handleEditSection("Location")}>
                   <div className="space-y-5">
                     {dayKeys.map((dayNum) => {
                       const stops = days[dayNum];
                       const logistics = content.dayLogistics?.[dayNum];
+                      const isLastDay = dayNum === lastDayNum;
+                      const hasNoSleepOver = isLastDay && !!logistics?.noSleepOver;
+                      const hasReturnToStart = isLastDay && !!logistics?.returnToStart;
                       return (
                         <div key={dayNum}>
                           {isMultiDay && (
                             <div className="flex flex-wrap items-center gap-2 mb-3">
-                              <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full">Day {dayNum}</span>
-                              {logistics?.accommodation && (
+                              <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${isLastDay ? 'text-amber-700 bg-amber-50' : 'text-emerald-700 bg-emerald-50'}`}>
+                                {isLastDay ? 'Final Day' : `Day ${dayNum}`}
+                              </span>
+                              {!hasNoSleepOver && logistics?.accommodation && (
                                 <span className="flex items-center gap-1 text-xs text-slate-500"><Bed size={12} className="text-slate-400" /> {ACCOMMODATION_LABELS[logistics.accommodation] || logistics.accommodation}</span>
                               )}
                               {logistics?.meals?.length > 0 && (
@@ -900,6 +920,12 @@ export default function ProductDetailPage() {
                               )}
                               {logistics?.drinksIncluded && (
                                 <span className="text-xs text-slate-400">· Drinks included</span>
+                              )}
+                              {hasReturnToStart && (
+                                <span className="flex items-center gap-1 text-xs text-emerald-600 font-medium"><RotateCcw size={12} /> Returns to start point</span>
+                              )}
+                              {hasNoSleepOver && (
+                                <span className="flex items-center gap-1 text-xs text-amber-600 font-medium"><Ban size={12} /> No overnight stay</span>
                               )}
                             </div>
                           )}
@@ -924,7 +950,7 @@ export default function ProductDetailPage() {
                                 </div>
                               </div>
                             ))}
-                            {isMultiDay && (
+                            {isMultiDay && !hasNoSleepOver && (
                               <div className="flex items-center gap-1.5 text-[11px] text-slate-400 pl-9">
                                 <MoonStar size={12} className="text-amber-500" />
                                 Overnight in {stopTitle(stops[stops.length - 1])}

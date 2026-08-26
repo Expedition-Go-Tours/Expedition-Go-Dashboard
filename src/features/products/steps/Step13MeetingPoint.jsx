@@ -6,7 +6,7 @@ import {
   SelectContent,
   SelectItem,
 } from '@/components/ui/select'
-import { HelpCircle, Info, Upload, X, Image, Loader2, MapPin } from 'lucide-react'
+import { HelpCircle, Info, Upload, X, Image, Loader2, MapPin, Pencil } from 'lucide-react'
 import { useProductBuilderStore } from '@/features/products/productBuilderStore'
 import { useStepErrors } from '@/features/products/useStepErrors'
 import {
@@ -107,15 +107,20 @@ function AddressModal({ title, description, onSave, onCancel, initialValues }) {
 function MeetingPointSection({ errors }) {
   const {
     meetingPoint,
+    meetingPoints,
     meetingPointPicture,
     meetingPointDescription,
     arrivalTimeType,
     setField,
+    addMeetingPoint,
+    updateMeetingPoint,
+    removeMeetingPoint,
     previewFocus,
     clearPreviewFocus,
   } = useProductBuilderStore()
   const fileInputRef = useRef(null)
   const [showAddressModal, setShowAddressModal] = useState(false)
+  const [editingIndex, setEditingIndex] = useState(null)
   const [uploading, setUploading] = useState(false)
 
   useEffect(() => {
@@ -148,50 +153,95 @@ function MeetingPointSection({ errors }) {
     }
   }, [setField])
 
+  const allPoints = Array.isArray(meetingPoints) ? meetingPoints : []
+  const hasLegacyPoint = !Array.isArray(meetingPoints) && meetingPoint?.address
+  const displayPoints = allPoints.length > 0 ? allPoints : (hasLegacyPoint ? [meetingPoint] : [])
+
+  function openAddModal() {
+    setEditingIndex(null)
+    setShowAddressModal(true)
+  }
+
+  function openEditModal(index) {
+    setEditingIndex(index)
+    setShowAddressModal(true)
+  }
+
   return (
     <div className="space-y-8">
-      {/* Meeting point address */}
-      <div data-field="meetingPoint">
+      {/* Meeting point addresses */}
+      <div data-field="meetingPoints">
         <h3 className="text-base font-bold text-slate-900 mb-3">Meeting point</h3>
         <label className="block text-sm font-semibold text-slate-800 mb-2">Add meeting point address</label>
+
+        {displayPoints.length > 0 && (
+          <div className="space-y-2 mb-3">
+            {displayPoints.map((pt, i) => (
+              <div key={i} className="flex items-center justify-between gap-3 p-3 rounded-lg border border-slate-200 bg-white group">
+                <div className="min-w-0 flex-1">
+                  {pt.name && <p className="text-sm font-medium text-slate-800 truncate">{pt.name}</p>}
+                  <p className="text-xs text-slate-500 truncate">{pt.address || 'No address'}</p>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => openEditModal(i)}
+                    className="w-7 h-7 rounded-full flex items-center justify-center text-slate-400 hover:text-[#00838F] hover:bg-[#00838F]/10 transition-colors"
+                    title="Edit address"
+                    aria-label="Edit address"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => removeMeetingPoint(i)}
+                    className="w-7 h-7 rounded-full flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                    title="Remove address"
+                    aria-label="Remove address"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
         <button
           type="button"
-          onClick={() => setShowAddressModal(true)}
+          onClick={openAddModal}
           className="px-5 py-2.5 border-2 border-[#00838F] text-[#00838F] rounded-lg text-sm font-medium hover:bg-[#00838F]/10 transition-colors"
         >
           Add address
         </button>
-        {meetingPoint?.address && (
-          <div className="flex items-center justify-between gap-3 mt-2 p-3 rounded-lg border border-slate-200 bg-white">
-            <p className="text-sm text-slate-600 flex-1">{meetingPoint.address}</p>
-            <button
-              type="button"
-              onClick={() => setField('meetingPoint', null)}
-              className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
-              title="Remove meeting point address"
-              aria-label="Remove meeting point address"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        )}
-        {errors.meetingPoint && <span className="text-[13px] text-red-600 font-medium mt-1 block">{errors.meetingPoint[0]}</span>}
+        {errors.meetingPoints && <span className="text-[13px] text-red-600 font-medium mt-1 block">{errors.meetingPoints[0]}</span>}
       </div>
 
       {showAddressModal && (
         <AddressModal
-          title="Add meeting point address"
+          title={editingIndex != null ? 'Edit meeting point address' : 'Add meeting point address'}
           description="This is where customers can come and find you to start the activity. To make it as specific as possible, zoom in and drag the pin to the right place."
+          initialValues={editingIndex != null ? displayPoints[editingIndex] : undefined}
           onSave={(loc) => {
-            setField('meetingPoint', {
+            const point = {
               name: loc.name || '',
               address: loc.address,
               lat: loc.lat,
               lng: loc.lng,
-            })
+            }
+            if (editingIndex != null && editingIndex < displayPoints.length) {
+              if (allPoints.length > 0 && editingIndex < allPoints.length) {
+                updateMeetingPoint(editingIndex, point)
+              } else {
+                setField('meetingPoint', point)
+              }
+            } else {
+              addMeetingPoint(point)
+            }
+            setEditingIndex(null)
             setShowAddressModal(false)
           }}
-          onCancel={() => setShowAddressModal(false)}
+          onCancel={() => { setEditingIndex(null); setShowAddressModal(false) }}
         />
       )}
 
@@ -809,6 +859,7 @@ function DropoffSection({ errors }) {
     meetingMode,
     dropoffOption,
     dropoffLocation,
+    dropoffDescription,
     setField,
     previewFocus,
     clearPreviewFocus,
@@ -865,8 +916,32 @@ function DropoffSection({ errors }) {
           />
           <span className="text-sm text-slate-700">No drop-off service, the customer stays at the site or destination</span>
         </label>
+        <label className="flex items-start gap-3 cursor-pointer">
+          <input
+            type="radio"
+            name="dropoffOption"
+            checked={dropoffOption === 'customer_preferred'}
+            onChange={() => setField('dropoffOption', 'customer_preferred')}
+            className="mt-0.5 w-4 h-4 text-[#00838F] border-slate-300 focus:ring-[#00838F]"
+          />
+          <span className="text-sm text-slate-700">At the customer's preferred location</span>
+        </label>
         {errors.dropoffOption && <span className="text-[13px] text-red-600 font-medium mt-1">{errors.dropoffOption[0]}</span>}
       </div>
+
+      {dropoffOption === 'customer_preferred' && (
+        <div className="mt-4" data-field="dropoffDescription">
+          <label className="block text-sm font-semibold text-slate-800 mb-2">How does the customer specify their drop-off point?</label>
+          <textarea
+            value={dropoffDescription || ''}
+            onChange={(e) => setField('dropoffDescription', e.target.value)}
+            placeholder="e.g. Customers choose their drop-off location at booking, contact us to arrange, or any location within 5 km of the activity endpoint"
+            rows={3}
+            className="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-[#00838F] focus:ring-1 focus:ring-[#00838F] outline-none transition-colors resize-none"
+          />
+          <p className="text-[12px] text-slate-400 mt-1.5">This will be visible to travelers on the booking page.</p>
+        </div>
+      )}
 
       {dropoffOption === 'different_location' && (
         <div className="mt-4" data-field="dropoffLocation">

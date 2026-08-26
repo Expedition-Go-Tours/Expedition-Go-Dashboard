@@ -152,3 +152,51 @@ export function normalizePricingCategories(categories, maxParticipants) {
     tiers: normalizeCategoryTiers(c && c.tiers, maxParticipants),
   }))
 }
+
+/**
+ * Re-derives per-group pricing tiers to stay contiguous after a live range edit.
+ *
+ * Rules:
+ *  - Each tier's `from` must be `prev.to + 1` (no gaps, no overlaps).
+ *  - `to` must be >= `from`.
+ *  - Cascades forward and backward from the edited tier.
+ *
+ * @param {Array<{id:string,from:number,to:number,price?:number|null}>} groupSizes
+ * @param {number} editedIndex Index of the tier being edited.
+ * @param {{from?:number,to?:number}} edits The new range values.
+ * @returns {Array}
+ */
+export function rederiveGroupSizesFrom(groupSizes, editedIndex, edits) {
+  if (!Array.isArray(groupSizes) || groupSizes.length === 0) return []
+
+  const sorted = [...groupSizes].sort((a, b) => (a.from ?? 0) - (b.from ?? 0))
+  const edited = { ...sorted[editedIndex] }
+
+  if (edits && edits.from !== undefined) {
+    edited.from = Math.max(1, Math.floor(Number(edits.from) || 1))
+  }
+  if (edits && edits.to !== undefined) {
+    edited.to = Math.max(1, Math.floor(Number(edits.to) || 1))
+  }
+  // Ensure to >= from
+  if (edited.to < edited.from) edited.to = edited.from
+
+  sorted[editedIndex] = edited
+
+  // Cascade forward: each tier starts at prev.to + 1
+  for (let i = editedIndex + 1; i < sorted.length; i++) {
+    const prev = sorted[i - 1]
+    const newFrom = prev.to + 1
+    sorted[i] = { ...sorted[i], from: newFrom }
+    if (sorted[i].to < sorted[i].from) sorted[i].to = sorted[i].from
+  }
+
+  // Cascade backward: each tier ends at next.from - 1
+  for (let i = editedIndex - 1; i >= 0; i--) {
+    const next = sorted[i + 1]
+    const newTo = next.from - 1
+    sorted[i] = { ...sorted[i], to: Math.max(sorted[i].from, newTo) }
+  }
+
+  return sorted
+}

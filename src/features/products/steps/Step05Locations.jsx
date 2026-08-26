@@ -9,7 +9,7 @@ import {
   SelectContent,
   SelectItem,
 } from '@/components/ui/select'
-import { Pencil, GripVertical, ChevronDown, Bed, UtensilsCrossed, MoonStar, Plus, X } from 'lucide-react'
+import { Pencil, GripVertical, ChevronDown, Bed, UtensilsCrossed, MoonStar, Plus, X, RotateCcw, Ban, Check, Flag } from 'lucide-react'
 import LocationAutocomplete from '@/components/shared/LocationAutocomplete'
 import {
   sumStopMinutes,
@@ -291,12 +291,13 @@ function MultiDayItinerary({ locations, dayCount, addLocation, removeLocation, m
           const isCollapsed = collapsedDays[day] || false
           const isDropTarget = dropTargetDay === day
           const logistics = dayLogistics?.[day] || {}
+          const isLastDay = day === dayCount
 
           return (
             <div key={day} className="relative pb-4 last:pb-0">
               <div className="absolute -left-8 top-4 z-10">
-                <div className="w-7 h-7 rounded-full bg-emerald-600 text-white text-xs font-bold grid place-items-center shadow-sm shadow-emerald-200">
-                  {day}
+                <div className={`w-7 h-7 rounded-full text-white text-xs font-bold grid place-items-center shadow-sm ${isLastDay ? 'bg-amber-500 shadow-amber-200' : 'bg-emerald-600 shadow-emerald-200'}`}>
+                  {isLastDay ? <Flag size={12} /> : day}
                 </div>
               </div>
 
@@ -310,7 +311,9 @@ function MultiDayItinerary({ locations, dayCount, addLocation, removeLocation, m
                     ? 'border-emerald-400 ring-2 ring-emerald-200 bg-emerald-50/30'
                     : dayLocations.length === 0
                       ? 'border-dashed border-slate-300 bg-white'
-                      : 'border-slate-200 bg-white'
+                      : isLastDay
+                        ? 'border-amber-200 bg-white'
+                        : 'border-slate-200 bg-white'
                 }`}
               >
                 <DayCardHeader
@@ -319,6 +322,7 @@ function MultiDayItinerary({ locations, dayCount, addLocation, removeLocation, m
                   perDayMinutes={perDayMinutes}
                   isCollapsed={isCollapsed}
                   onToggle={() => toggleDay(day)}
+                  isLastDay={isLastDay}
                 />
 
                 {!isCollapsed && (
@@ -333,10 +337,10 @@ function MultiDayItinerary({ locations, dayCount, addLocation, removeLocation, m
                     {dayLocations.length === 0 ? (
                       <div className="px-4 pb-5 pt-1 text-center">
                         <p className="text-[13px] text-slate-400">
-                          No locations added for this day yet
+                          {isLastDay ? 'Where does the tour end?' : 'No locations added for this day yet'}
                         </p>
                         <p className="text-[12px] text-slate-400 mt-0.5">
-                          Search above or drag a stop from another day
+                          {isLastDay ? 'Add the final stops or wrap-up location' : 'Search above or drag a stop from another day'}
                         </p>
                       </div>
                     ) : (
@@ -356,13 +360,22 @@ function MultiDayItinerary({ locations, dayCount, addLocation, removeLocation, m
                             timeline
                           />
                         </div>
-                        <div className="px-4 pb-3 -mt-1 flex items-center gap-1.5 text-[11px] text-slate-400 border-t border-slate-100 pt-2.5 mx-4">
-                          <MoonStar size={12} className="text-amber-500" />
-                          Overnight in {dayLocations[dayLocations.length - 1].city || dayLocations[dayLocations.length - 1].name || dayLocations[dayLocations.length - 1].address || 'this location'}
-                          {logistics.accommodation && (
-                            <span className="text-slate-500">· {ACCOMMODATION_LABELS[logistics.accommodation]}</span>
-                          )}
-                        </div>
+                        {isLastDay ? (
+                          <LastDayWrapUp
+                            day={day}
+                            logistics={logistics}
+                            setDayLogistics={setDayLogistics}
+                            startLocationName={locations.find((l) => l.day === 1)?.city || locations.find((l) => l.day === 1)?.name || 'the starting point'}
+                          />
+                        ) : (
+                          <div className="px-4 pb-3 -mt-1 flex items-center gap-1.5 text-[11px] text-slate-400 border-t border-slate-100 pt-2.5 mx-4">
+                            <MoonStar size={12} className="text-amber-500" />
+                            Overnight in {dayLocations[dayLocations.length - 1].city || dayLocations[dayLocations.length - 1].name || dayLocations[dayLocations.length - 1].address || 'this location'}
+                            {logistics.accommodation && (
+                              <span className="text-slate-500">· {ACCOMMODATION_LABELS[logistics.accommodation]}</span>
+                            )}
+                          </div>
+                        )}
                       </>
                     )}
 
@@ -371,6 +384,7 @@ function MultiDayItinerary({ locations, dayCount, addLocation, removeLocation, m
                       logistics={logistics}
                       accommodationIncluded={accommodationIncluded}
                       setDayLogistics={setDayLogistics}
+                      hideAccommodation={isLastDay && !!logistics.noSleepOver}
                     />
                   </>
                 )}
@@ -447,7 +461,7 @@ function DietarySection({ showDietaryRestrictions, dietaryOptions, onToggle, onA
   )
 }
 
-function DayLogisticsPanel({ day, logistics, accommodationIncluded, setDayLogistics }) {
+function DayLogisticsPanel({ day, logistics, accommodationIncluded, setDayLogistics, hideAccommodation }) {
   const meals = logistics?.meals || []
   const drinksIncluded = !!logistics?.drinksIncluded
   const accommodation = logistics?.accommodation || null
@@ -474,7 +488,7 @@ function DayLogisticsPanel({ day, logistics, accommodationIncluded, setDayLogist
 
   return (
     <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/60 space-y-3">
-      {accommodationIncluded && (
+      {accommodationIncluded && !hideAccommodation && (
         <div>
           <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
             <Bed size={12} />
@@ -563,7 +577,92 @@ function DayLogisticsPanel({ day, logistics, accommodationIncluded, setDayLogist
   )
 }
 
-function DayCardHeader({ day, locations, perDayMinutes, isCollapsed, onToggle }) {
+function LastDayWrapUp({ day, logistics, setDayLogistics, startLocationName }) {
+  const returnToStart = !!logistics?.returnToStart
+  const noSleepOver = !!logistics?.noSleepOver
+
+  function toggle(field) {
+    setDayLogistics(day, { [field]: !logistics?.[field] })
+  }
+
+  return (
+    <div className="px-4 pb-3 border-t border-amber-100 pt-3 mx-4 -mt-1">
+      <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-amber-600 mb-2.5">
+        <Flag size={12} />
+        Last day wrap-up
+      </div>
+      <div className="grid grid-cols-2 gap-2.5">
+        <button
+          type="button"
+          onClick={() => toggle('returnToStart')}
+          className={`group relative text-left rounded-xl border-2 p-3.5 transition-all duration-200 cursor-pointer ${
+            returnToStart
+              ? 'border-emerald-500 bg-emerald-50/60 shadow-sm shadow-emerald-100'
+              : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/50'
+          }`}
+        >
+          <div className="flex items-start gap-2.5">
+            <div className={`mt-0.5 w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+              returnToStart ? 'bg-emerald-100' : 'bg-slate-100 group-hover:bg-slate-200'
+            }`}>
+              <RotateCcw size={14} className={returnToStart ? 'text-emerald-600' : 'text-slate-400'} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className={`text-[13px] font-semibold leading-tight ${returnToStart ? 'text-emerald-800' : 'text-slate-700'}`}>
+                Return to start point?
+              </p>
+              <p className="text-[11px] text-slate-400 mt-1 leading-snug">
+                Tour ends where it began. Travelers are dropped back at {startLocationName}.
+              </p>
+            </div>
+            <div className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
+              returnToStart ? 'border-emerald-500 bg-emerald-500' : 'border-slate-300 group-hover:border-slate-400'
+            }`}>
+              {returnToStart && (
+                <Check size={11} className="text-white" strokeWidth={3} />
+              )}
+            </div>
+          </div>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => toggle('noSleepOver')}
+          className={`group relative text-left rounded-xl border-2 p-3.5 transition-all duration-200 cursor-pointer ${
+            noSleepOver
+              ? 'border-amber-500 bg-amber-50/60 shadow-sm shadow-amber-100'
+              : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/50'
+          }`}
+        >
+          <div className="flex items-start gap-2.5">
+            <div className={`mt-0.5 w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+              noSleepOver ? 'bg-amber-100' : 'bg-slate-100 group-hover:bg-slate-200'
+            }`}>
+              <Ban size={14} className={noSleepOver ? 'text-amber-600' : 'text-slate-400'} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className={`text-[13px] font-semibold leading-tight ${noSleepOver ? 'text-amber-800' : 'text-slate-700'}`}>
+                No overnight stay?
+              </p>
+              <p className="text-[11px] text-slate-400 mt-1 leading-snug">
+                Tour ends on the last day. No hotel accommodation needed.
+              </p>
+            </div>
+            <div className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
+              noSleepOver ? 'border-amber-500 bg-amber-500' : 'border-slate-300 group-hover:border-slate-400'
+            }`}>
+              {noSleepOver && (
+                <Check size={11} className="text-white" strokeWidth={3} />
+              )}
+            </div>
+          </div>
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function DayCardHeader({ day, locations, perDayMinutes, isCollapsed, onToggle, isLastDay }) {
   const dayStopMinutes = sumStopMinutes(locations)
   const stopCount = locations.length
 
@@ -592,7 +691,7 @@ function DayCardHeader({ day, locations, perDayMinutes, isCollapsed, onToggle })
       onClick={onToggle}
       className="w-full flex items-center gap-3 px-4 py-3 text-left bg-white hover:bg-slate-50/50 transition-colors border-b border-slate-100 rounded-t-xl"
     >
-      <span className="text-sm font-bold text-slate-800">Day {day}</span>
+      <span className={`text-sm font-bold ${isLastDay ? 'text-amber-700' : 'text-slate-800'}`}>{isLastDay ? 'Final Day' : `Day ${day}`}</span>
 
       <span className={`w-2 h-2 rounded-full shrink-0 ${statusColor}`} title={statusLabel} />
 

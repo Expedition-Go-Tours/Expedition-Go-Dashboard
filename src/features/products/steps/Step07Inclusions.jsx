@@ -7,7 +7,7 @@ import {
   SelectContent,
   SelectItem,
 } from '@/components/ui/select'
-import { Info, HelpCircle, Plus, X } from 'lucide-react'
+import { Info, HelpCircle, Plus, Trash2, X } from 'lucide-react'
 import { useProductBuilderStore } from '@/features/products/productBuilderStore'
 import { useStepErrors } from '@/features/products/useStepErrors'
 import { DIETARY_OPTIONS } from '@/constants/gygLists'
@@ -164,6 +164,7 @@ export default function Step07Inclusions() {
   const errors = useStepErrors(7)
   const addMeal = useProductBuilderStore((s) => s.addMeal)
   const updateMeal = useProductBuilderStore((s) => s.updateMeal)
+  const removeMeal = useProductBuilderStore((s) => s.removeMeal)
   const addDietaryOption = useProductBuilderStore((s) => s.addDietaryOption)
   const removeDietaryOption = useProductBuilderStore((s) => s.removeDietaryOption)
 
@@ -248,10 +249,21 @@ export default function Step07Inclusions() {
           <div className="space-y-4">
             {/* Meal rows */}
             <div className="space-y-3" data-field="meals">
+              <div className="flex items-center justify-between">
+                <label className="block text-sm font-medium text-slate-700">Meals</label>
+                <button
+                  type="button"
+                  onClick={addMeal}
+                  className="flex items-center gap-1.5 h-10 px-3 text-sm font-medium text-emerald-600 hover:text-emerald-700 transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span className="underline">Add meal</span>
+                </button>
+              </div>
               {meals.map((meal, i) => (
                 <div key={i} className="flex items-end gap-3">
                   <div className="flex-1">
-                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Type of meal</label>
+                    {i === 0 && <label className="block text-sm font-medium text-slate-700 mb-1.5">Type of meal</label>}
                     <Select value={meal.type} onValueChange={(v) => {
                       const formats = MEAL_FORMATS_BY_TYPE[v] || []
                       const newFormat = formats.includes(meal.format) ? meal.format : ''
@@ -269,7 +281,7 @@ export default function Step07Inclusions() {
                     </Select>
                   </div>
                   <div className="flex-1">
-                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Format</label>
+                    {i === 0 && <label className="block text-sm font-medium text-slate-700 mb-1.5">Format</label>}
                     <Select value={meal.format} onValueChange={(v) => updateMeal(i, 'format', v)}>
                       <SelectTrigger className="h-10 text-sm">
                         <SelectValue placeholder="Please select" />
@@ -281,14 +293,16 @@ export default function Step07Inclusions() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <button
-                    type="button"
-                    onClick={addMeal}
-                    className="shrink-0 flex items-center gap-1.5 h-10 px-3 text-sm font-medium text-emerald-600 hover:text-emerald-700 transition-colors"
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span className="underline">Meal</span>
-                  </button>
+                  {meals.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeMeal(i)}
+                      className="shrink-0 flex items-center justify-center w-10 h-10 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                      title="Remove meal"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
