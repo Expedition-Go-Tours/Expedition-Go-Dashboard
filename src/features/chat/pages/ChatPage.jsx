@@ -273,10 +273,11 @@ export default function ChatPage() {
     emitMarkRead(selectedConv.id);
   }, [selectedConv?.id, currentUserId, emitMarkRead]);
 
-  // Show all conversations the supplier participates in (customer chats + admin chats)
+  // Customer conversations only — admin chats go in the floating bubble
+  const customerConversations = conversations.filter((c) => c.type === "SUPPLIER_CUSTOMER");
   const filteredConversations = activeTab === "unread"
-    ? conversations.filter((c) => (c.unreadCount ?? 0) > 0)
-    : conversations;
+    ? customerConversations.filter((c) => (c.unreadCount ?? 0) > 0)
+    : customerConversations;
 
   const otherParticipant = selectedConv?.participants?.find(
     (p) => currentUserId ? p.userId !== currentUserId : false
