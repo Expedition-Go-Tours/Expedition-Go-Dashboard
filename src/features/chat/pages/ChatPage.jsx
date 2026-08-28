@@ -273,10 +273,10 @@ export default function ChatPage() {
     emitMarkRead(selectedConv.id);
   }, [selectedConv?.id, currentUserId, emitMarkRead]);
 
-  const customerConversations = conversations.filter((c) => c.type === "SUPPLIER_CUSTOMER");
+  // Show all conversations the supplier participates in (customer chats + admin chats)
   const filteredConversations = activeTab === "unread"
-    ? customerConversations.filter((c) => (c.unreadCount ?? 0) > 0)
-    : customerConversations;
+    ? conversations.filter((c) => (c.unreadCount ?? 0) > 0)
+    : conversations;
 
   const otherParticipant = selectedConv?.participants?.find(
     (p) => currentUserId ? p.userId !== currentUserId : false
