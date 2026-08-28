@@ -73,13 +73,11 @@ export default function ChatPage() {
     }
   }, [currentUserId, setConversations]);
 
-  // Initial fetch only if store is empty
+  // Always refresh conversations on mount to avoid stale data
   useEffect(() => {
     if (!currentUserId) return;
-    if (!loaded) {
-      loadConversations();
-    }
-  }, [currentUserId, loaded, loadConversations]);
+    loadConversations();
+  }, [currentUserId, loadConversations]);
 
   const loadMessages = useCallback(async (convId, conv) => {
     if (!convId || isFetchingRef.current) return;
