@@ -149,6 +149,8 @@ export default function ChatPage() {
       .then((conv) => {
         appendConversation(conv);
         Promise.resolve().then(() => handleSelectConversation(conv));
+        // Refresh conversation list to ensure it includes the new conversation
+        loadConversations();
       })
       .catch(() => {
         toast.error("Failed to open conversation");
