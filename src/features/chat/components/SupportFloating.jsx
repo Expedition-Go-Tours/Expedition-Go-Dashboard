@@ -256,7 +256,12 @@ export default function SupportFloating() {
 
   useEffect(() => {
     if (messages.length > 0 && messagesEndRef.current && !loadingMore) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+      // Defer until after the DOM renders new messages and the opening
+      // animation completes — without the delay, scrollIntoView fires
+      // while the container is still expanding and lands in the middle.
+      requestAnimationFrame(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      });
     }
   }, [messages.length, loadingMore]);
 

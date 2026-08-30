@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Bell,
   Check,
@@ -51,6 +51,7 @@ function ReplyBar({ notification }) {
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const inputRef = useRef(null);
+  const navigate = useNavigate();
 
   const handleSend = async () => {
     const content = text.trim();
@@ -74,8 +75,7 @@ function ReplyBar({ notification }) {
     const convId = notification.data?.conversationId;
     const convType = notification.data?.conversationType;
     if (convType === "SUPPLIER_CUSTOMER") {
-      // Customer message — navigate to full-page chat
-      window.location.href = `/chat?customerId=${notification.data?.senderId}`;
+      navigate(`/chat?customerId=${notification.data?.senderId}`);
     } else if (convId) {
       useChatFloatingStore.getState().open(convId);
     }
