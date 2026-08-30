@@ -72,7 +72,11 @@ function ReplyBar({ notification }) {
 
   const handleOpenChat = () => {
     const convId = notification.data?.conversationId;
-    if (convId) {
+    const convType = notification.data?.conversationType;
+    if (convType === "SUPPLIER_CUSTOMER") {
+      // Customer message — navigate to full-page chat
+      window.location.href = `/chat?customerId=${notification.data?.senderId}`;
+    } else if (convId) {
       useChatFloatingStore.getState().open(convId);
     }
   };
