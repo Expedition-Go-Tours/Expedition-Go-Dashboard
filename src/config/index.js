@@ -78,7 +78,7 @@ const env = {
   VITE_ENABLE_ANALYTICS: envBool(import.meta.env.VITE_ENABLE_ANALYTICS, false),
 
   // App
-  VITE_APP_NAME: envString(import.meta.env.VITE_APP_NAME, 'TravioAfrica Admin Dashboard'),
+  VITE_APP_NAME: envString(import.meta.env.VITE_APP_NAME, 'TravioAfrica Supplier Dashboard'),
   VITE_APP_VERSION: envString(import.meta.env.VITE_APP_VERSION, '1.0.0'),
   VITE_APP_ENV: appEnv,
   VITE_BASE_URL: envString(import.meta.env.VITE_BASE_URL, '/'),

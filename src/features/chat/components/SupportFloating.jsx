@@ -30,7 +30,7 @@ const POLL_INTERVAL = 30000;
 const CONV_CACHE_TTL = 30000;
 
 const SUPPORT_PHONE = "+233 XX XXX XXXX";
-const SUPPORT_EMAIL = "support@expedition-go.com";
+const SUPPORT_EMAIL = "support@travioafrica.com";
 const SUPPORT_HOURS = [
   { label: "Mon - Fri", value: "8:00 AM - 6:00 PM" },
   { label: "Saturday", value: "9:00 AM - 2:00 PM" },
