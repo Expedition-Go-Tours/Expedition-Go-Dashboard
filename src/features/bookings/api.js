@@ -35,6 +35,14 @@ export function mapBookingRow(booking) {
     specialRequests: booking.specialRequests || "",
     selectedTime: booking.selectedTime || "",
     pickup: typeof booking.pickup === 'string' ? (() => { try { return JSON.parse(booking.pickup); } catch { return null; } })() : booking.pickup || null,
+    pickupStatus: booking.pickupStatus || null,
+    pickupDeferred: !!booking.pickupDeferred,
+    isIncomplete: booking.isIncomplete != null ? booking.isIncomplete : null,
+    // Tour's pickup config (zones / locations / pickupType) so the edit modal
+    // can offer the supplier's own pickup points instead of free text only.
+    pickupConfig: typeof booking.tour?.bookingAndTickets === 'string'
+      ? (() => { try { return JSON.parse(booking.tour.bookingAndTickets); } catch { return null; } })()
+      : booking.tour?.bookingAndTickets || null,
     discount: Number(booking.discounts) || 0,
     offerId: booking.appliedOfferId || null,
     offerName: booking.offerName || booking.appliedOffer?.name || null,

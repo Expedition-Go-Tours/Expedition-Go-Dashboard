@@ -7,8 +7,19 @@ import { updateBookingPickup } from "../../api";
 
 export default function EditPickupModal({ booking, onClose, onSaved }) {
   const pickup = booking?.pickup || {};
+  const pickupConfig =
+    typeof booking?.pickupConfig === "string"
+      ? (() => { try { return JSON.parse(booking.pickupConfig); } catch { return null; } })()
+      : booking?.pickupConfig || {};
+  const configAreas = Array.isArray(pickupConfig?.pickupAreas) ? pickupConfig.pickupAreas : [];
+  const configLocations = Array.isArray(pickupConfig?.pickupLocations) ? pickupConfig.pickupLocations : [];
+  // Area mode wins when zones exist and pickupType isn't explicitly 'address'
+  // with no zones — mirrors the storefront's rule.
+  const useAreas = configAreas.length > 0 && !(pickupConfig?.pickupType === "address" && configLocations.length > 0);
   const [pickupTime, setPickupTime] = useState(pickup.time || "");
   const [pickupPlace, setPickupPlace] = useState(pickup.place || "");
+  const [areaName, setAreaName] = useState(pickup.areaName || "");
+  const [locationName, setLocationName] = useState(pickup.locationName || "");
   const [instructions, setInstructions] = useState(pickup.instructions || "");
   const [lat, setLat] = useState(pickup.lat || null);
   const [lng, setLng] = useState(pickup.lng || null);
@@ -67,6 +78,8 @@ export default function EditPickupModal({ booking, onClose, onSaved }) {
       if (instructions !== pickup.instructions) payload.instructions = instructions;
       if (lat !== pickup.lat) payload.lat = lat;
       if (lng !== pickup.lng) payload.lng = lng;
+      if (areaName !== (pickup.areaName || "")) payload.areaName = areaName;
+      if (locationName !== (pickup.locationName || "")) payload.locationName = locationName;
 
       if (Object.keys(payload).length === 0) {
         toast.info("No changes to save");
@@ -81,6 +94,27 @@ export default function EditPickupModal({ booking, onClose, onSaved }) {
       toast.error(err.response?.data?.message || err.message || "Failed to save pickup details");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleConfigPointChange = (value) => {
+    markDirty();
+    if (useAreas) {
+      setAreaName(value);
+      setLocationName("");
+      const area = configAreas.find((a) => a?.name === value);
+      if (area && area.lat != null && area.lng != null) {
+        setLat(Number(area.lat));
+        setLng(Number(area.lng));
+      }
+    } else {
+      setLocationName(value);
+      setAreaName("");
+      const loc = configLocations.find((l) => l?.name === value);
+      if (loc && loc.lat != null && loc.lng != null) {
+        setLat(Number(loc.lat));
+        setLng(Number(loc.lng));
+      }
     }
   };
 
@@ -157,6 +191,31 @@ export default function EditPickupModal({ booking, onClose, onSaved }) {
                 placeholder="e.g. Main entrance, Marriott Hotel"
               />
             </div>
+
+            {(configAreas.length > 0 || configLocations.length > 0) && (
+              <div>
+                <label className="block text-sm font-semibold text-slate-800 mb-1.5">
+                  Pickup point{" "}
+                  <span className="font-normal text-slate-400">
+                    (choose from the supplier&rsquo;s configured {useAreas ? "zones" : "points"})
+                  </span>
+                </label>
+                <select
+                  value={useAreas ? areaName : locationName}
+                  onChange={(e) => handleConfigPointChange(e.target.value)}
+                  className="w-full rounded-lg border border-emerald-100/60 bg-emerald-50/30 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#044b3b]/20 focus:border-[#044b3b] focus:bg-white transition-all"
+                >
+                  <option value="">Custom / not listed</option>
+                  {(useAreas ? configAreas : configLocations)
+                    .filter((p) => p && (p.name || p.address))
+                    .map((p) => (
+                      <option key={p.name || p.address} value={p.name || p.address}>
+                        {p.name || p.address}
+                      </option>
+                    ))}
+                </select>
+              </div>
+            )}
 
             <div>
               <label className="block text-sm font-semibold text-slate-800 mb-1.5">
