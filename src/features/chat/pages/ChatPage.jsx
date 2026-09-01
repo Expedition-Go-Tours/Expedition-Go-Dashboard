@@ -29,7 +29,6 @@ export default function ChatPage() {
   const [activeTab, setActiveTab] = useState(tabParam);
   const [loadingMore, setLoadingMore] = useState(false);
   const [sending, setSending] = useState(false);
-  const [creatingConv, setCreatingConv] = useState(false);
   const [showDetailsPanel, setShowDetailsPanel] = useState(false);
   const [mobileView, setMobileView] = useState('list');
   const isFetchingRef = useRef(false);
@@ -43,7 +42,6 @@ export default function ChatPage() {
   const hasMore = useChatStore((s) => s.hasMore);
   const loadingConvs = useChatStore((s) => s.loadingConvs);
   const loadingMsgs = useChatStore((s) => s.loadingMsgs);
-  const loaded = useChatStore((s) => s.loaded);
 
   const setConversations = useChatStore((s) => s.setConversations);
   const appendConversation = useChatStore((s) => s.appendConversation);
@@ -142,7 +140,6 @@ export default function ChatPage() {
       return;
     }
 
-    setCreatingConv(true);
     getOrCreateConversation(customerIdParam, 'SUPPLIER_CUSTOMER')
       .then((conv) => {
         appendConversation(conv);
@@ -152,11 +149,8 @@ export default function ChatPage() {
       })
       .catch(() => {
         toast.error("Failed to open conversation");
-      })
-      .finally(() => {
-        setCreatingConv(false);
       });
-  }, [customerIdParam, currentUserId, conversations, handleSelectConversation, appendConversation]);
+  }, [customerIdParam, currentUserId, conversations, handleSelectConversation, appendConversation, loadConversations]);
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);

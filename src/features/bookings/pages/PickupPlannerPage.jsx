@@ -13,9 +13,10 @@ import { cn } from "@/lib/utils";
 import EmptyState from "@/components/shared/EmptyState";
 import { fetchPickupPlanner } from "../api";
 import { getAuthToken } from "@/stores/authStore";
-import PickupBookingCard, { isPickupIncomplete } from "../components/pickup/PickupBookingCard";
+import PickupBookingCard from "../components/pickup/PickupBookingCard";
 import EditPickupModal from "../components/pickup/EditPickupModal";
 import ExportMenu from "../components/pickup/ExportMenu";
+import { pickupLabel, isPickupIncomplete } from "../lib/pickupHelpers";
 
 const RANGE_PRESETS = [
   { key: "today", label: "Today" },
@@ -58,16 +59,6 @@ function formatDateHeader(dateKey) {
     month: "long",
     year: "numeric",
   });
-}
-
-function pickupLabel(pickup) {
-  if (!pickup) return "";
-  if (pickup.place) return pickup.place;
-  if (pickup.areaName) return `Pickup area: ${pickup.areaName}`;
-  if (pickup.locationName) return pickup.locationName;
-  if (pickup.address?.name) return pickup.address.name;
-  if (pickup.address?.address) return pickup.address.address;
-  return "Pickup requested";
 }
 
 function sortBookingsByPriority(bookings) {
@@ -134,9 +125,16 @@ export default function PickupPlannerPage() {
     }
   }, [computeRange, status, page]);
 
-  useEffect(() => {
+  // Changing the range or status resets back to page 1 (event-handler driven —
+  // not an effect, so the linter stays happy and the reset is deterministic).
+  const handleRangeChange = useCallback((next) => {
+    setRange(next);
     setPage(1);
-  }, [range, status]);
+  }, []);
+  const handleStatusChange = useCallback((e) => {
+    setStatus(e.target.value);
+    setPage(1);
+  }, []);
 
   useEffect(() => {
     Promise.resolve().then(() => loadPlanner());
@@ -246,7 +244,7 @@ export default function PickupPlannerPage() {
             <button
               key={preset.key}
               type="button"
-              onClick={() => setRange(preset.key)}
+              onClick={() => handleRangeChange(preset.key)}
               className={cn(
                 "px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all",
                 range === preset.key
@@ -261,7 +259,7 @@ export default function PickupPlannerPage() {
 
         <select
           value={status}
-          onChange={(e) => setStatus(e.target.value)}
+          onChange={handleStatusChange}
           className="h-10 rounded-xl border border-emerald-100/60 bg-emerald-50/30 px-3 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#044b3b]/20 focus:border-[#044b3b] focus:bg-white transition-all"
         >
           <option value="">All statuses</option>

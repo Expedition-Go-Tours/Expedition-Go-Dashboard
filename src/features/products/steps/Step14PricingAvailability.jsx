@@ -230,7 +230,7 @@ function ScheduleStep({ errors = {}, onTouch }) {
         setField('scheduleName', option.title)
       }
     }
-  }, [selectedOptionId])
+  }, [selectedOptionId, scheduleName, options, setField])
 
   const hasAnyHours = Object.values(weeklySchedule).some((hours) => hours.length > 0)
   const firstDayWithHours = DAYS.find((d) => weeklySchedule[d]?.length > 0)
@@ -486,7 +486,7 @@ function ScheduleStep({ errors = {}, onTouch }) {
 
 function PricingCategoriesStep({ errors = {}, onTouch }) {
   const {
-    pricingModel, pricingApproach, pricingCategories, showAdvancedCategorySettings,
+    pricingApproach, pricingCategories, showAdvancedCategorySettings,
     setField, addPricingCategory, updatePricingCategory, removePricingCategory,
   } = useProductBuilderStore()
 
@@ -781,11 +781,8 @@ function PricingCategoriesStep({ errors = {}, onTouch }) {
 function CapacityStep({ errors = {}, onTouch }) {
   const {
     pricingModel, minParticipants, maxParticipants, maxGroupsPerTimeSlot,
-    groupSizes, additionalPersonsEnabled, additionalPersonPrice,
-    setField, addGroupSize, updateGroupSize, removeGroupSize,
+    setField, addGroupSize,
   } = useProductBuilderStore()
-
-  const commission = 0.15
 
   useEffect(() => {
     const { pricingModel: model, groupSizes: sizes } = useProductBuilderStore.getState()
@@ -926,9 +923,6 @@ function PerGroupPriceStep({ errors = {}, onTouch }) {
         {groupSizes.map((gs, i) => {
           const bandPrice = gs.price
           const payout = bandPrice ? (bandPrice * (1 - commission)).toFixed(2) : ''
-          const label = gs.from === gs.to
-            ? `Group of ${gs.from}`
-            : `Group of ${gs.from}-${gs.to}`
 
           return (
             <div key={gs.id || i} className="border border-slate-200 rounded-lg p-4">

@@ -36,8 +36,9 @@ export async function markConversationAsRead(conversationId) {
   return res.data.data;
 }
 
-export async function getUnreadCount() {
-  const res = await api.get("/chat/conversations/unread-count");
+export async function getUnreadCount(type) {
+  const params = type ? `?type=${encodeURIComponent(type)}` : "";
+  const res = await api.get(`/chat/conversations/unread-count${params}`);
   return res.data.data?.unreadCount ?? 0;
 }
 

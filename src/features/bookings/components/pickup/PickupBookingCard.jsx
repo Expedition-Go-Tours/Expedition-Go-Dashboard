@@ -5,24 +5,7 @@ import StatusBadge from "@/components/shared/StatusBadge";
 import PickupMapPreview from "../PickupMapPreview";
 import CompletenessIndicator from "./CompletenessIndicator";
 import TravelerManifest from "./TravelerManifest";
-
-function pickupLabel(pickup) {
-  if (!pickup) return "";
-  if (pickup.place) return pickup.place;
-  if (pickup.areaName) return `Pickup area: ${pickup.areaName}`;
-  if (pickup.locationName) return pickup.locationName;
-  if (pickup.address?.name) return pickup.address.name;
-  if (pickup.address?.address) return pickup.address.address;
-  return "Pickup requested";
-}
-
-function isPickupIncomplete(pickup) {
-  if (!pickup) return true;
-  if (!pickup.place && !pickup.areaName && !pickup.locationName && !pickup.address) return true;
-  if (!pickup.time) return true;
-  if (!pickup.instructions) return true;
-  return false;
-}
+import { pickupLabel, isPickupIncomplete } from "../../lib/pickupHelpers";
 
 export default function PickupBookingCard({ booking, onEdit }) {
   const pickup = booking.pickup || {};
@@ -199,5 +182,3 @@ export default function PickupBookingCard({ booking, onEdit }) {
     </div>
   );
 }
-
-export { pickupLabel, isPickupIncomplete };

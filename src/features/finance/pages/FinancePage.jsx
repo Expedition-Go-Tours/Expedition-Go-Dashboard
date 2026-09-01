@@ -296,7 +296,14 @@ export default function FinancePage() {
   }, [activeTab, disputeStatusFilter, filterPill, page]);
 
   // Reset to the first page whenever the tab or refund filter changes
-  useEffect(() => { setPage(1); }, [activeTab, disputeStatusFilter, filterPill]);
+  // (render-phase state adjustment — the linter-approved way to sync state to
+  // a prop/derived change without calling setState in an effect).
+  const resetKey = `${activeTab}|${disputeStatusFilter ?? ""}|${filterPill ?? ""}`;
+  const [prevResetKey, setPrevResetKey] = useState(resetKey);
+  if (resetKey !== prevResetKey) {
+    setPrevResetKey(resetKey);
+    setPage(1);
+  }
 
   useEffect(() => {
     let cancelled = false;

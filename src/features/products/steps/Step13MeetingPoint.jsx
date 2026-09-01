@@ -581,7 +581,6 @@ function PickupSection({ errors }) {
         {pickupType === 'area' && (
           <div className="space-y-2 mb-3" data-field="pickupAreas">
             {pickupAreas.map((area, i) => {
-              const hasZone = Array.isArray(area.polygon) && area.polygon.length >= 3
               return (
               <div key={i} className="p-3 rounded-lg border border-slate-200 bg-white" data-field={`pickupAreas.${i}`}>
                 <div className="flex items-center gap-2">

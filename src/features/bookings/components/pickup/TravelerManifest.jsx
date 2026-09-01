@@ -1,4 +1,4 @@
-import { Users, User } from "lucide-react";
+import { Users } from "lucide-react";
 
 function normalizeTravelers(travelers) {
   if (!travelers) return null;
@@ -92,5 +92,3 @@ export default function TravelerManifest({ travelers, compact = false }) {
     </div>
   );
 }
-
-export { getTravelerDetails, normalizeTravelers };

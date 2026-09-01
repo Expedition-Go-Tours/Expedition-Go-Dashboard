@@ -66,7 +66,7 @@ export default function SupportFloating() {
   const currentUserId = user?.id;
 
   const { isOpen, open: openStore, close: closeStore } = useChatFloatingStore();
-  const [, setConversations] = useState([]);
+  const [conversations, setConversations] = useState([]);
   const [selectedConv, setSelectedConv] = useState(null);
   const [messages, setMessages] = useState([]);
   const [messageStatuses, setMessageStatuses] = useState({});
@@ -94,10 +94,15 @@ export default function SupportFloating() {
   const prevConvIdRef = useRef(null);
   const pendingScrollRef = useRef(null);
   const prevCountRef = useRef(0);
+  const conversationsRef = useRef([]);
 
   useEffect(() => {
     selectedIdRef.current = selectedConv?.id || null;
   }, [selectedConv?.id]);
+
+  useEffect(() => {
+    conversationsRef.current = conversations;
+  }, [conversations]);
 
   const isNearBottom = useCallback(() => {
     const el = messagesContainerRef.current;
@@ -174,7 +179,14 @@ export default function SupportFloating() {
           }
         }
         if (!cancelled) {
-          const badgeCount = convs.reduce((sum, c) => sum + (c.id === target?.id ? 0 : (c.unreadCount || 0)), 0);
+          // The floating bubble only displays the SUPPLIER_ADMIN ("Admin Support")
+          // thread, so its badge must never count unread from other chatrooms
+          // (SUPPLIER_CUSTOMER / EXPEDITION_CUSTOMER) that it cannot open.
+          const badgeCount = convs.reduce(
+            (sum, c) =>
+              sum + (c.type === "SUPPLIER_ADMIN" && c.id !== target?.id ? (c.unreadCount || 0) : 0),
+            0
+          );
           setUnreadBadge(badgeCount);
         }
       } catch (err) { console.error('[SupportFloating] Failed to load conversations:', err); } finally {
@@ -198,6 +210,12 @@ export default function SupportFloating() {
         });
         setMessageStatuses((prev) => ({ ...prev, [msg.id]: "delivered" }));
       } else {
+        // Only count toward the floating bubble badge when the message lands in
+        // the SUPPLIER_ADMIN ("Admin Support") thread it displays. Other
+        // chatrooms (SUPPLIER_CUSTOMER / EXPEDITION_CUSTOMER) keep their own
+        // unread on the full Chat page but must not inflate this badge.
+        const existing = conversationsRef.current.find((c) => c.id === conversationId);
+        const isAdminThread = existing ? existing.type === "SUPPLIER_ADMIN" : false;
         setConversations((prev) => {
           if (prev.some((c) => c.id === conversationId)) {
             return prev.map((c) =>
@@ -206,7 +224,7 @@ export default function SupportFloating() {
           }
           return [{ id: conversationId, messages: [msg], updatedAt: msg.createdAt, unreadCount: 1 }, ...prev];
         });
-        setUnreadBadge((prev) => prev + 1);
+        if (isAdminThread) setUnreadBadge((prev) => prev + 1);
       }
     };
 
@@ -310,7 +328,8 @@ export default function SupportFloating() {
     if (!currentUserId) return;
     const poll = async () => {
       try {
-        const count = await getUnreadCount();
+        // Scope to the SUPPLIER_ADMIN thread the floating bubble displays.
+        const count = await getUnreadCount("SUPPLIER_ADMIN");
         setUnreadBadge(count);
       } catch (err) { console.error('[SupportFloating] Failed to poll unread count:', err); }
     };
