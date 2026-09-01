@@ -1,6 +1,8 @@
 const BACKEND_TYPE_TO_UI = {
   BOOKING_CONFIRMED: "booking",
   BOOKING_CANCELLED: "booking",
+  BOOKING_STATUS_UPDATED: "booking",
+  PICKUP_UPDATED: "booking",
   PAYMENT_RECEIVED: "payment",
   REVIEW_RECEIVED: "review",
   SUPPLIER_APPROVED: "system",
@@ -48,6 +50,8 @@ function getNotificationRoute(type, data = {}) {
   switch (type) {
     case "BOOKING_CONFIRMED":
     case "BOOKING_CANCELLED":
+    case "BOOKING_STATUS_UPDATED":
+    case "PICKUP_UPDATED":
       return { path: "/bookings", label: "View Bookings" };
     case "REVIEW_RECEIVED":
       return { path: "/reviews", label: "View Reviews" };
