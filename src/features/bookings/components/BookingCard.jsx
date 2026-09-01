@@ -132,6 +132,13 @@ export default function BookingCard({
     (a) => !(travelDatePassed && a.value === 'CONFIRMED')
   );
   const pickup = booking.pickup || {};
+  // Customer chose "pickup later" (no location yet) — distinguish this from a
+  // booking that never had pickup details, so the card shows an accurate state.
+  const pickupDeferred =
+    booking.pickupDeferred ||
+    pickup.pickupLater ||
+    pickup.skipValidation ||
+    pickup.status === "deferred";
   const partySummary = formatPartySummary(booking.travelersRaw);
   const travelerNames = formatTravelerDetails(booking.travelersRaw);
   const travelerDetails = getTravelerDetails(booking.travelersRaw);
@@ -439,10 +446,20 @@ export default function BookingCard({
                 <h4 className="text-sm font-bold text-slate-900 mb-3">
                   Pickup details
                 </h4>
-                {pickup.place ||
-                pickup.areaName ||
-                pickup.locationName ||
-                pickup.address ? (
+                {pickupDeferred ? (
+                  <div className="rounded-lg bg-amber-50 border border-amber-200/60 px-3 py-2.5">
+                    <p className="flex items-center gap-1.5 text-sm font-medium text-amber-800">
+                      <Clock size={14} className="shrink-0" />
+                      Awaiting pickup details
+                    </p>
+                    <p className="mt-1 text-xs text-amber-700">
+                      The customer chose to arrange pickup later — set the time and location in the Pickup Planner.
+                    </p>
+                  </div>
+                ) : pickup.place ||
+                  pickup.areaName ||
+                  pickup.locationName ||
+                  pickup.address ? (
                   <div className="space-y-1.5">
                     <p className="flex items-center gap-1.5 text-sm text-slate-700">
                       <MapPinned size={14} className="text-slate-400 shrink-0" />
