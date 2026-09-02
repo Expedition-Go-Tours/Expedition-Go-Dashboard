@@ -17,6 +17,10 @@ export default function PickupBookingCard({ booking, onEdit }) {
     pickup.status === "deferred";
   const needsAttention = deferred || incomplete;
   const address = pickup.place || pickup.address?.name || pickup.address?.address || "";
+  // Area pickups store the customer's exact point nested under `address` while
+  // supplier-set points live at the top level — resolve both for the preview.
+  const previewLat = pickup.lat ?? pickup.address?.lat ?? null;
+  const previewLng = pickup.lng ?? pickup.address?.lng ?? null;
 
   return (
     <div
@@ -156,7 +160,7 @@ export default function PickupBookingCard({ booking, onEdit }) {
           </div>
 
           <div className="mt-2.5 ml-6">
-            <PickupMapPreview lat={pickup.lat} lng={pickup.lng} address={address} />
+            <PickupMapPreview lat={previewLat} lng={previewLng} address={address} />
           </div>
         </div>
 

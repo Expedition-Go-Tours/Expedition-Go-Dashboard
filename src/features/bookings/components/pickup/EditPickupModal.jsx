@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { Loader2, X } from "lucide-react";
+import { Loader2, X, MapPinned } from "lucide-react";
 import { toast } from "sonner";
 import AmPmTimePicker from "@/components/shared/AmPmTimePicker";
 import LocationMapPicker from "@/components/shared/LocationMapPicker";
@@ -16,15 +16,47 @@ export default function EditPickupModal({ booking, onClose, onSaved }) {
   // Area mode wins when zones exist and pickupType isn't explicitly 'address'
   // with no zones — mirrors the storefront's rule.
   const useAreas = configAreas.length > 0 && !(pickupConfig?.pickupType === "address" && configLocations.length > 0);
+
+  // A customer-chosen pickup is stored with the exact point nested under
+  // `address` (area mode), while supplier-set locations live at the top level.
+  // Resolve both so the map always shows where the customer actually is.
+  const baseLat = pickup.lat != null ? Number(pickup.lat) : pickup.address?.lat != null ? Number(pickup.address.lat) : null;
+  const baseLng = pickup.lng != null ? Number(pickup.lng) : pickup.address?.lng != null ? Number(pickup.address.lng) : null;
+  const coordsEqual = (a, b) =>
+    (a == null && b == null) || (a != null && b != null && Number(a) === Number(b));
+
+  const customerAddress =
+    pickup.address && typeof pickup.address === "object"
+      ? pickup.address.name || pickup.address.address || ""
+      : "";
+  const storedLocationLabel = pickup.place || customerAddress || pickup.locationName || pickup.areaName || "";
+  const storedLocationSource = pickup.place
+    ? "Pickup place"
+    : customerAddress
+      ? "Customer's address"
+      : pickup.locationName
+        ? "Pickup point"
+        : pickup.areaName
+          ? "Pickup area"
+          : "";
+  const confirmedBySupplier = !!pickup.updatedBy || pickup.status === "confirmed";
+
   const [pickupTime, setPickupTime] = useState(pickup.time || "");
   const [pickupPlace, setPickupPlace] = useState(pickup.place || "");
   const [areaName, setAreaName] = useState(pickup.areaName || "");
   const [locationName, setLocationName] = useState(pickup.locationName || "");
   const [instructions, setInstructions] = useState(pickup.instructions || "");
-  const [lat, setLat] = useState(pickup.lat || null);
-  const [lng, setLng] = useState(pickup.lng || null);
+  const [lat, setLat] = useState(baseLat);
+  const [lng, setLng] = useState(baseLng);
   const [saving, setSaving] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
+
+  const pointOptions = (useAreas ? configAreas : configLocations).filter(
+    (p) => p && (p.name || p.address)
+  );
+  const currentPoint = (useAreas ? areaName : locationName) || "";
+  const currentPointMissing =
+    !!currentPoint && !pointOptions.some((p) => (p.name || p.address) === currentPoint);
   const dialogRef = useRef(null);
   const previousFocus = useRef(null);
 
@@ -76,8 +108,8 @@ export default function EditPickupModal({ booking, onClose, onSaved }) {
       if (pickupTime !== pickup.time) payload.pickupTime = pickupTime;
       if (pickupPlace !== pickup.place) payload.pickupPlace = pickupPlace;
       if (instructions !== pickup.instructions) payload.instructions = instructions;
-      if (lat !== pickup.lat) payload.lat = lat;
-      if (lng !== pickup.lng) payload.lng = lng;
+      if (!coordsEqual(lat, baseLat)) payload.lat = lat != null ? Number(lat) : null;
+      if (!coordsEqual(lng, baseLng)) payload.lng = lng != null ? Number(lng) : null;
       if (areaName !== (pickup.areaName || "")) payload.areaName = areaName;
       if (locationName !== (pickup.locationName || "")) payload.locationName = locationName;
 
@@ -169,6 +201,47 @@ export default function EditPickupModal({ booking, onClose, onSaved }) {
           </div>
 
           <div className="space-y-5">
+            {storedLocationLabel && (
+              <div
+                className={`rounded-lg border px-3.5 py-3 ${
+                  confirmedBySupplier
+                    ? "bg-emerald-50/50 border-emerald-200/50"
+                    : "bg-amber-50/60 border-amber-200/60"
+                }`}
+              >
+                <div className="flex items-start gap-2.5">
+                  <div
+                    className={`p-1.5 rounded-md border shrink-0 ${
+                      confirmedBySupplier
+                        ? "bg-white border-emerald-200/60"
+                        : "bg-white border-amber-200/60"
+                    }`}
+                  >
+                    <MapPinned
+                      size={14}
+                      className={confirmedBySupplier ? "text-emerald-600" : "text-amber-600"}
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                      {storedLocationSource}
+                      {!confirmedBySupplier && (
+                        <span className="text-amber-600"> · set by customer</span>
+                      )}
+                    </p>
+                    <p className="text-sm font-medium text-slate-800 mt-0.5 break-words">
+                      {storedLocationLabel}
+                    </p>
+                    {!confirmedBySupplier && (
+                      <p className="text-[11px] text-slate-500 mt-1">
+                        Confirm the pickup below and save — the customer is notified.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div>
               <label className="block text-sm font-semibold text-slate-800 mb-2">
                 Pickup time
@@ -192,7 +265,7 @@ export default function EditPickupModal({ booking, onClose, onSaved }) {
               />
             </div>
 
-            {(configAreas.length > 0 || configLocations.length > 0) && (
+            {(pointOptions.length > 0 || currentPointMissing) && (
               <div>
                 <label className="block text-sm font-semibold text-slate-800 mb-1.5">
                   Pickup point{" "}
@@ -201,18 +274,17 @@ export default function EditPickupModal({ booking, onClose, onSaved }) {
                   </span>
                 </label>
                 <select
-                  value={useAreas ? areaName : locationName}
+                  value={currentPoint}
                   onChange={(e) => handleConfigPointChange(e.target.value)}
                   className="w-full rounded-lg border border-emerald-100/60 bg-emerald-50/30 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#044b3b]/20 focus:border-[#044b3b] focus:bg-white transition-all"
                 >
                   <option value="">Custom / not listed</option>
-                  {(useAreas ? configAreas : configLocations)
-                    .filter((p) => p && (p.name || p.address))
-                    .map((p) => (
-                      <option key={p.name || p.address} value={p.name || p.address}>
-                        {p.name || p.address}
-                      </option>
-                    ))}
+                  {currentPointMissing && <option value={currentPoint}>{currentPoint}</option>}
+                  {pointOptions.map((p) => (
+                    <option key={p.name || p.address} value={p.name || p.address}>
+                      {p.name || p.address}
+                    </option>
+                  ))}
                 </select>
               </div>
             )}
