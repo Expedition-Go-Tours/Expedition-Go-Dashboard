@@ -313,8 +313,8 @@ export default function BookingsPage() {
             label: "Confirmed",
             value: stats.confirmed,
             icon: CheckCircle2,
-            color: "text-emerald-600",
-            bar: "bg-emerald-400",
+            color: "text-blue-600",
+            bar: "bg-blue-400",
           },
           {
             label: "Completed",
