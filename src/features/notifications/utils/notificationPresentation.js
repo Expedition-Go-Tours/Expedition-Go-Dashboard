@@ -2,8 +2,16 @@ const BACKEND_TYPE_TO_UI = {
   BOOKING_CONFIRMED: "booking",
   BOOKING_CANCELLED: "booking",
   BOOKING_STATUS_UPDATED: "booking",
+  BOOKING_AWAITING_CONFIRMATION: "booking",
+  BOOKING_PAYMENT_FAILED: "payment",
   PICKUP_UPDATED: "booking",
   PAYMENT_RECEIVED: "payment",
+  PAYMENT_COMPLETED: "payment",
+  PAYMENT_FAILED: "payment",
+  PAYMENT_ACTION_REQUIRED: "payment",
+  REFUND_ISSUED: "payment",
+  DISPUTE_OPENED: "booking",
+  DISPUTE_RESOLVED: "booking",
   REVIEW_RECEIVED: "review",
   SUPPLIER_APPROVED: "system",
   SUPPLIER_REJECTED: "alert",
@@ -15,6 +23,7 @@ const BACKEND_TYPE_TO_UI = {
   PAYOUT_REQUEST_REJECTED: "alert",
   SYSTEM_ALERT: "system",
   NEW_MESSAGE: "message",
+  TEAM_INVITE_ACCEPTED: "system",
   TOUR_SUBMITTED: "product",
   TOUR_APPROVED: "product",
   TOUR_FLAGGED: "product",
@@ -39,6 +48,9 @@ function getNotificationRoute(type, data = {}) {
   if (data.payoutRequestId) {
     return { path: `/finance?tab=requests`, label: "View Payout Request" };
   }
+  if (data.disputeId) {
+    return { path: "/finance?tab=refunds", label: "View Refund" };
+  }
   if (data.conversationId) {
     // Customer conversations: pass customerId so ChatPage auto-selects
     if (data.conversationType === 'SUPPLIER_CUSTOMER' && data.senderId) {
@@ -51,8 +63,18 @@ function getNotificationRoute(type, data = {}) {
     case "BOOKING_CONFIRMED":
     case "BOOKING_CANCELLED":
     case "BOOKING_STATUS_UPDATED":
+    case "BOOKING_PAYMENT_FAILED":
     case "PICKUP_UPDATED":
       return { path: "/bookings", label: "View Bookings" };
+    case "BOOKING_AWAITING_CONFIRMATION":
+    case "PAYMENT_FAILED":
+    case "PAYMENT_COMPLETED":
+    case "PAYMENT_ACTION_REQUIRED":
+    case "REFUND_ISSUED":
+      return { path: "/bookings", label: "View Booking" };
+    case "DISPUTE_OPENED":
+    case "DISPUTE_RESOLVED":
+      return { path: "/finance?tab=refunds", label: "View Refunds" };
     case "REVIEW_RECEIVED":
       return { path: "/reviews", label: "View Reviews" };
     case "PAYMENT_RECEIVED":
